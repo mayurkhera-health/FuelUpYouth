@@ -1,0 +1,142 @@
+from datetime import date as dt_date, timedelta
+from fastapi import APIRouter, HTTPException
+from api.database import get_conn
+from api.services import claude_ai
+
+router = APIRouter()
+
+SCORE_BADGES = [
+    (90, "Elite Fueler", "You're fueling like a D1 athlete! Keep this up for the game!"),
+    (75, "Game Ready", "Great fueling today! One more snack and you'll be fully game-ready."),
+    (50, "Getting There", "Good start — you're missing some key fuel. Check the suggestions below."),
+    (0,  "Needs Fuel",   "Your tank is running low. Eat something now — your body needs it!"),
+]
+
+
+def _badge(score: int):
+    for threshold, badge, msg in SCORE_BADGES:
+        if score >= threshold:
+            return badge, msg
+    return "Needs Fuel", "Eat something now!"
+
+
+@router.get("/{athlete_id}/daily")
+def daily_fuel_score(athlete_id: int, date: str = None):
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Athlete not found.")
+        athlete = dict(row)
+        target_date = date or str(dt_date.today())
+
+        targets_row = conn.execute(
+            "SELECT * FROM daily_targets WHERE athlete_id = ? AND target_date = ?",
+            (athlete_id, target_date),
+        ).fetchone()
+        if not targets_row:
+            return {"athlete_id": athlete_id, "date": target_date, "message": "No targets set. Add events first."}
+
+        meals = conn.execute(
+            "SELECT * FROM meal_logs WHERE athlete_id = ? AND DATE(logged_at) = ?",
+            (athlete_id, target_date),
+        ).fetchall()
+
+        analysis = claude_ai.prompt2_meal_analysis(athlete, dict(targets_row), [dict(m) for m in meals], target_date)
+        score = analysis.get("fuel_score", 0)
+        badge, message = _badge(score)
+
+        return {
+            "athlete_id": athlete_id,
+            "date": target_date,
+            "fuel_score": score,
+            "badge": badge,
+            "teen_message": message,
+            "gap_fix_suggestions": analysis.get("gap_fix_suggestions", []),
+            "traffic_lights": analysis.get("traffic_lights", []),
+            "lea_alert": analysis.get("lea_alert"),
+            "iron_alert": analysis.get("iron_alert"),
+        }
+    finally:
+        conn.close()
+
+
+@router.get("/{athlete_id}/weekly")
+def weekly_parent_report(athlete_id: int):
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Athlete not found.")
+        athlete = dict(row)
+
+        today = dt_date.today()
+        week_start = today - timedelta(days=6)
+        week_data = {"days": []}
+
+        for i in range(7):
+            day = str(week_start + timedelta(days=i))
+            targets_row = conn.execute(
+                "SELECT * FROM daily_targets WHERE athlete_id = ? AND target_date = ?",
+                (athlete_id, day),
+            ).fetchone()
+            meals = conn.execute(
+                "SELECT * FROM meal_logs WHERE athlete_id = ? AND DATE(logged_at) = ?",
+                (athlete_id, day),
+            ).fetchall()
+            meal_list = [dict(m) for m in meals]
+            week_data["days"].append({
+                "date": day,
+                "targets": dict(targets_row) if targets_row else None,
+                "meals_logged": len(meal_list),
+                "total_calories": sum(m.get("calories") or 0 for m in meal_list),
+                "total_carbs_g": sum(m.get("carbs_g") or 0 for m in meal_list),
+                "total_protein_g": sum(m.get("protein_g") or 0 for m in meal_list),
+                "total_iron_mg": sum(m.get("iron_mg") or 0 for m in meal_list),
+                "total_calcium_mg": sum(m.get("calcium_mg") or 0 for m in meal_list),
+                "total_water_oz": sum(m.get("water_oz") or 0 for m in meal_list),
+            })
+
+        report = claude_ai.prompt3_weekly_report(athlete, week_data)
+        report["athlete_id"] = athlete_id
+        report["week_start"] = str(week_start)
+        report["week_end"] = str(today)
+        return report
+    finally:
+        conn.close()
+
+
+@router.get("/{athlete_id}/tournament-readiness")
+def tournament_readiness(athlete_id: int, tournament_date: str = None):
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Athlete not found.")
+        athlete = dict(row)
+
+        today = dt_date.today()
+        t_date = tournament_date or str(today + timedelta(days=3))
+        two_weeks_ago = str(today - timedelta(days=14))
+
+        meals = conn.execute(
+            "SELECT * FROM meal_logs WHERE athlete_id = ? AND DATE(logged_at) >= ?",
+            (athlete_id, two_weeks_ago),
+        ).fetchall()
+        avg_cal = sum(m["calories"] or 0 for m in meals) / max(14, 1)
+
+        return {
+            "athlete_id": athlete_id,
+            "athlete_name": athlete["first_name"],
+            "tournament_date": t_date,
+            "avg_daily_calories_last_14_days": round(avg_cal),
+            "carb_loading_protocol": {
+                "day_minus_3": "Increase carbs to 6-8g/kg — pasta dinner tonight",
+                "day_minus_2": "Carbs 8-10g/kg — power pasta + Greek yogurt bedtime snack",
+                "day_minus_1": "MAXIMUM carb loading — 10-12g/kg — pasta dinner is THE most important meal",
+                "tournament_day": "High carb breakfast 2-3hrs before first game + electrolytes MANDATORY between every game",
+            },
+            "disclaimer": "FuelUp provides educational food guidance — not medical nutrition therapy. Consult your child's physician for medical concerns.",
+        }
+    finally:
+        conn.close()
