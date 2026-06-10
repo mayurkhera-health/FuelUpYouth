@@ -67,7 +67,7 @@ export default function SettingsScreen({ athlete, parent, onSave, onSignOut, onC
     return (
       <div>
         <BackBar label={title} onBack={() => setSection(null)} />
-        {legalDocLoading && <div style={s.legalPlaceholder}>Loading…</div>}
+        {legalDocLoading && !legalDocContent && <div style={s.legalPlaceholder}>Loading…</div>}
         {legalDocError && (
           <div>
             <div style={{ ...s.legalPlaceholder, color: "#dc2626" }}>Could not load document.</div>
@@ -200,7 +200,8 @@ const s = {
     lineHeight: 1.75,
     color: "#1b3a2a",
     whiteSpace: "pre-wrap",
-    fontFamily: "'DM Sans', 'Nunito', sans-serif",
+    fontFamily: "'Nunito', sans-serif",
+    padding: "0 4px 24px",
   },
   retryBtn: {
     marginTop: "8px",
@@ -212,5 +213,6 @@ const s = {
     fontSize: "14px",
     fontWeight: "700",
     cursor: "pointer",
+    fontFamily: "'Nunito', sans-serif",
   },
 };
