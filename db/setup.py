@@ -130,6 +130,46 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_otp_parent
             ON otp_codes(parent_id, used, expires_at);
+
+        CREATE TABLE IF NOT EXISTS water_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id INTEGER REFERENCES athletes(id),
+            log_date TEXT NOT NULL,
+            cups INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(athlete_id, log_date)
+        );
+
+        CREATE TABLE IF NOT EXISTS knowledge_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            slug TEXT UNIQUE NOT NULL,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL,
+            source TEXT,
+            source_urls TEXT,
+            last_reviewed_date TEXT,
+            applicable_age_range TEXT,
+            tags TEXT,
+            review_status TEXT DEFAULT 'draft',
+            version INTEGER DEFAULT 1,
+            file_path TEXT NOT NULL,
+            ingested_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS knowledge_chunks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER REFERENCES knowledge_items(id) ON DELETE CASCADE,
+            chunk_index INTEGER NOT NULL,
+            heading TEXT,
+            content TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_item
+            ON knowledge_chunks(item_id);
+
+        CREATE INDEX IF NOT EXISTS idx_knowledge_items_status
+            ON knowledge_items(review_status);
     """)
 
     conn.commit()
