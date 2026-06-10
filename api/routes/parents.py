@@ -45,6 +45,21 @@ def confirm_consent(parent_id: int):
         conn.close()
 
 
+@router.post("/login")
+def login(data: OTPRequest):
+    email = data.email.strip().lower()
+    conn = get_conn()
+    try:
+        parent = conn.execute("SELECT * FROM parents WHERE lower(email) = lower(?)", (email,)).fetchone()
+        if not parent:
+            raise HTTPException(404, "No account found with that email address.")
+        parent_id = dict(parent)["id"]
+        athletes = conn.execute("SELECT * FROM athletes WHERE parent_id = ?", (parent_id,)).fetchall()
+        return {"parent": dict(parent), "athletes": [dict(a) for a in athletes]}
+    finally:
+        conn.close()
+
+
 @router.post("/request-otp")
 def request_otp(data: OTPRequest):
     email = data.email.strip().lower()
