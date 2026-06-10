@@ -1,14 +1,11 @@
+import json
 from fastapi import APIRouter, HTTPException
 from api.models import AthleteCreate, AthleteResponse
 from api.database import get_conn
+from api.services.nutrition_calc import calc_daily_targets
+from api.services import claude_ai
 
 router = APIRouter()
-
-UNSAFE_SUPPLEMENTS = {
-    "protein powder": "Protein powder is not recommended for adolescent athletes. Whole food protein sources are superior. (Boston Children's Hospital RDN)",
-    "creatine": "Creatine is NOT approved for athletes under 18 — not recommended for pediatric use. (Boston Children's Hospital RDN)",
-    "energy drink": "Energy drinks contain caffeine levels dangerous for adolescents and are linked to cardiac events in youth. (Boston Children's Hospital RDN, AAP)",
-}
 
 
 @router.post("/", response_model=AthleteResponse, status_code=201)
@@ -33,7 +30,26 @@ def create_athlete(data: AthleteCreate):
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE rowid = last_insert_rowid()").fetchone()
-        return dict(row)
+        athlete = dict(row)
+
+        # Generate Blueprint (Prompt 0) — runs async-style but blocking is fine on creation
+        try:
+            event_types = ["rest", "practice", "game", "tournament", "strength"]
+            targets_by_event = {et: calc_daily_targets(athlete, et) for et in event_types}
+            blueprint = claude_ai.prompt0_athlete_blueprint(athlete, targets_by_event)
+            blueprint_str = json.dumps(blueprint)
+            conn2 = get_conn()
+            conn2.execute(
+                "UPDATE athletes SET blueprint_json=? WHERE id=?",
+                (blueprint_str, athlete["id"])
+            )
+            conn2.commit()
+            conn2.close()
+            athlete["blueprint_json"] = blueprint_str
+        except Exception:
+            pass  # Blueprint failure must never block athlete creation
+
+        return athlete
     finally:
         conn.close()
 
@@ -73,15 +89,51 @@ def update_athlete(athlete_id: int, data: AthleteCreate):
         conn.close()
 
 
-@router.get("/{athlete_id}/supplement-check")
-def supplement_check(athlete_id: int):
+
+@router.get("/{athlete_id}/blueprint")
+def get_blueprint(athlete_id: int):
     conn = get_conn()
     try:
         row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Athlete not found.")
-        supplement_use = (dict(row).get("supplement_use") or "").lower()
-        flags = [msg for key, msg in UNSAFE_SUPPLEMENTS.items() if key in supplement_use]
-        return {"athlete_id": athlete_id, "supplement_use": supplement_use, "flags": flags, "has_concerns": bool(flags)}
+        athlete = dict(row)
+        blueprint_str = athlete.get("blueprint_json")
+
+        # If no blueprint stored yet, generate now (covers athletes created before this feature)
+        if not blueprint_str:
+            event_types = ["rest", "practice", "game", "tournament", "strength"]
+            targets_by_event = {et: calc_daily_targets(athlete, et) for et in event_types}
+            blueprint = claude_ai.prompt0_athlete_blueprint(athlete, targets_by_event)
+            blueprint_str = json.dumps(blueprint)
+            conn.execute(
+                "UPDATE athletes SET blueprint_json=? WHERE id=?",
+                (blueprint_str, athlete_id)
+            )
+            conn.commit()
+
+        # Also attach _calculated for React to use numbers from
+        event_types = ["rest", "practice", "game", "tournament", "strength"]
+        gender = athlete.get("gender", "").lower()
+        is_girl = gender in ("girl", "female", "f")
+        calculated = {
+            "rmr": round(
+                11.1 * athlete["weight_lbs"] * 0.453592 + 8.4 * (athlete["height_ft"] * 12 + athlete["height_in"]) * 2.54
+                - (537 if is_girl else 340)
+            ),
+            "iron_mg": 15 if is_girl else 11,
+            "calcium_mg": 1300,
+            "magnesium_mg": (360 if is_girl else 410) if athlete["age"] >= 14 else 240,
+            "vitamin_d_iu": 1000,
+            "ffm_kg": round(athlete["weight_lbs"] * 0.453592 * 0.85, 1),
+            "targets": {et: calc_daily_targets(athlete, et) for et in event_types},
+        }
+        calculated["lea_threshold_kcal"] = round(30 * calculated["ffm_kg"])
+
+        return {
+            "athlete_id": athlete_id,
+            "blueprint": json.loads(blueprint_str),
+            "_calculated": calculated,
+        }
     finally:
         conn.close()

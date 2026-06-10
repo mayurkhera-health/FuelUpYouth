@@ -2,25 +2,46 @@ import os
 import json
 import anthropic
 
-SCIENCE_SYSTEM = """You are FuelUp's AI nutrition engine, built exclusively on pediatric sports nutrition science for athletes ages 13-17.
+SCIENCE_SYSTEM = """You are FuelUp's AI nutrition engine, built exclusively on pediatric sports nutrition science for athletes ages 9–17.
 
-SCIENCE FRAMEWORK:
-- Everett MD 2025 (Stony Brook) — primary reference
-- Boston Children's Hospital RDN recommendations
-- AAP (American Academy of Pediatrics) guidelines
-- ACSM 2016
+SCIENCE FRAMEWORK (7 primary sources):
+- Everett S, MDPI Nutrients 2025 (doi:10.3390/nu17172792) — PRIMARY peer-reviewed reference
+- Castle J. "Eat Like a Champion" (RDN) — game-day timing and parent/athlete messaging framework
+- Lair C & Murdoch S PhD RD. "Feeding the Young Athlete" — physiological depth, before/during/after model
+- "The Teenage Athletes' Nutrition Journal" — 4 Pillars: energy balance, portion, TIMING, hydration
+- Boston Children's Hospital RDN Sports Nutrition Guidelines 2024
+- AAP (American Academy of Pediatrics) — calcium, iron, fat restriction guidelines
+- NIH Office of Dietary Supplements — DRI values for iron, magnesium, vitamin D
 
-CRITICAL RULES:
-1. NEVER use Harris-Benedict or adult formulas for youth
-2. RMR Girls = 11.1×wt(kg)+8.4×ht(cm)−537 | RMR Boys = 11.1×wt(kg)+8.4×ht(cm)−340 (Everett 2025)
-3. NEVER restrict fat in youth — disrupts hormone production (Everett 2025)
-4. Iron: Girls 15mg/day, Boys 11mg/day (AAP/NIH DRI)
-5. Calcium: 1,300mg/day ALL athletes — peak bone mass window (AAP)
-6. LEA Alert: calories < 30 kcal/kg fat-free mass — alert parent immediately
-7. Flag: protein powder/creatine/energy drinks in youth with Boston Children's Hospital evidence
-8. NEVER recommend artificial food dyes (Red #40, Yellow #5, Yellow #6)
-9. Pre-game day is the most missed nutrition day — glycogen takes 24-48hrs to replenish
-10. FuelUp is an EDUCATIONAL food guidance tool — NOT medical nutrition therapy
+CRITICAL SCIENCE RULES:
+1. NEVER use Harris-Benedict — youth only: Girls RMR=11.1×wt_kg+8.4×ht_cm−537 | Boys=11.1×wt_kg+8.4×ht_cm−340 (Everett 2025)
+2. NEVER restrict fat below 20% in youth — disrupts hormone production and fat-soluble vitamin absorption (Everett 2025, AAP)
+3. NEVER recommend supplements, creatine, caffeine, or energy drinks for any athlete under 18 (Everett 2025 — contraindicated)
+4. NEVER recommend artificial food dyes (Red #40, Yellow #5, Yellow #6)
+5. Iron: Girls 15mg/day (CRITICAL — 53.2% of female adolescent athletes are deficient), Boys 11mg/day (AAP/NIH DRI)
+6. Calcium: 1,300mg/day ALL athletes ages 9–17 — peak bone mass window, never miss this (AAP)
+7. Magnesium: 240mg/day ages 9–13 | Girls 14+ 360mg/day | Boys 14+ 410mg/day (NIH DRI)
+8. Vitamin D: 1,000 IU/day all athletes — required for calcium absorption and muscle power (Boston Children's Hospital)
+9. LEA Alert: Total calories < 30 kcal/kg fat-free mass = medical emergency → refer to RD immediately
+10. Pre-game day matters MORE than game day — glycogen replenishment takes 24–48 hours (Castle, Lair/Murdoch)
+11. 30-minute post-exercise recovery window is the single most impactful and most skipped nutrition moment (all 7 sources)
+12. Chocolate milk is the gold-standard youth recovery food — optimal 3:1 carb:protein ratio (Castle, Lair/Murdoch)
+13. Youth athletes have HIGHER per-kg energy needs than adults — growth + training overlap
+14. Frame all messaging: performance/speed/strength for athletes; science/safety/numbers for parents
+15. FuelUp is an EDUCATIONAL food guidance tool — NOT medical nutrition therapy
+
+CARBOHYDRATE TARGETS (g/kg body weight):
+Rest: 4–5 | Practice/Training/Strength: 6–8 | Game: 8–10 | Tournament: 10–12
+
+PROTEIN TARGETS (g/kg body weight):
+Rest: 1.2–1.4 | Practice/Training: 1.4–1.6 | Strength: 1.8–2.0 | Game: 1.6–1.8 | Tournament: 1.8–2.0
+
+MEAL TIMING RULES (Castle + Lair/Murdoch + Teenage Athletes Journal):
+- Pre-game main meal: 3–3.5 hours before (high carbs, low fat, low fiber)
+- Pre-game snack: 30–60 min before (easy-digest carbs only — banana, honey toast, rice cakes)
+- Post-exercise recovery: within 30 min — 1.0–1.2 g/kg carbs + 20–25g protein (Everett 2025)
+- Meal frequency: 3 meals + 2–4 snacks, never more than 3–4 hrs without eating
+- Bedtime casein: Greek yogurt or cottage cheese on all high-intensity days (6–8 hrs slow protein release)
 
 Respond ONLY with valid JSON. No markdown, no prose outside the JSON."""
 
@@ -248,3 +269,181 @@ Return ONLY valid JSON:
         return json.loads(msg.content[0].text)
     except Exception:
         return {"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0, "iron_mg": 0, "calcium_mg": 0, "confidence": "low", "portion_note": "Could not parse"}
+
+
+def prompt0_athlete_blueprint(athlete: dict, targets_by_event: dict) -> dict:
+    """
+    Prompt 0: Generate the full Nutrition Blueprint narrative for an athlete.
+    Runs once on athlete creation. Numbers live in _calculated only — Claude writes
+    narrative only. React renders numbers from _calculated, never from Claude text.
+    targets_by_event: dict keyed by event type (rest/practice/game/tournament/strength)
+    with calc_daily_targets() output for each.
+    """
+    import math
+
+    wt_kg      = athlete["weight_lbs"] * 0.453592
+    ht_cm      = (athlete["height_ft"] * 12 + athlete["height_in"]) * 2.54
+    ffm_kg     = round(wt_kg * 0.85, 1)
+    gender     = athlete.get("gender", "").lower()
+    is_girl    = gender in ("girl", "female", "f")
+    age        = athlete.get("age", 14)
+    position   = athlete.get("position") or "midfielder"
+    level      = athlete.get("competition_level") or "club"
+    allergies  = athlete.get("allergies") or "None"
+    diet_rest  = athlete.get("dietary_restrictions") or "None"
+    name       = athlete.get("first_name", "the athlete")
+
+    # RMR calc (Everett 2025)
+    if is_girl:
+        rmr = round(11.1 * wt_kg + 8.4 * ht_cm - 537)
+    else:
+        rmr = round(11.1 * wt_kg + 8.4 * ht_cm - 340)
+
+    # LEA check — use rest-day calories as the floor
+    rest_cals  = targets_by_event.get("rest", {}).get("total_calories", 0)
+    lea_thresh = round(30 * ffm_kg)
+    lea_risk   = rest_cals < lea_thresh
+
+    MOCK = {
+        "hero": {
+            "headline": f"{name}'s Personalized Nutrition Blueprint",
+            "parent_subtext": f"Science-backed targets calculated specifically for {name} — age {age}, {position}, {level} level — using the Everett MD 2025 formula for youth athletes.",
+            "athlete_message": f"Hey {name}! This is your custom fuel plan. Follow it and you'll have the energy to dominate every practice and game."
+        },
+        "rmr": {
+            "parent_explanation": f"{name}'s Resting Metabolic Rate of {rmr:,} kcal/day is the baseline energy needed just to keep their body running — breathing, heart beating, muscles repairing. This is calculated using the Everett MD 2025 formula, the gold standard for youth athletes aged 9–17.",
+            "athlete_explanation": f"Even when you're resting, your body burns {rmr:,} calories just keeping you alive. That's your engine idling — add soccer and it goes way higher.",
+            "formula_note": "Everett MD 2025 (Stony Brook) — never Harris-Benedict, which was derived from adults."
+        },
+        "calorie_range": {
+            "parent_explanation": f"Total daily calorie needs vary by training load. On rest days {name} needs fewer calories; on game and tournament days the number rises significantly to support glycogen replenishment and performance.",
+            "athlete_explanation": "Your calorie target changes every day based on what you're doing. Game days need the most fuel — don't skip meals before a match.",
+            "context_note": f"Position context: {position}s cover 6–8 miles per game, requiring sustained energy availability throughout the full 90 minutes."
+        },
+        "macros": {
+            "carbs": {
+                "parent_explanation": "Carbohydrates are the primary fuel for high-intensity intermittent exercise like soccer. They replenish muscle glycogen — the energy reserves that power sprints, tackles, and sharp cuts.",
+                "athlete_explanation": "Carbs are your rocket fuel. Rice, pasta, oats, fruit — eat them especially the night before and morning of a game.",
+                "why_it_matters": "Glycogen loading takes 24–48 hours. The pre-game day meal matters more than the pre-game meal itself."
+            },
+            "protein": {
+                "parent_explanation": f"Protein targets scale with training intensity. On strength and tournament days {name} needs the most protein to repair muscle micro-tears and drive adaptation.",
+                "athlete_explanation": "Protein rebuilds your muscles after hard training. Chicken, eggs, fish, Greek yogurt — eat protein within 30 minutes of finishing practice.",
+                "why_it_matters": "The 30-minute post-exercise anabolic window is critical — protein synthesis rates are highest immediately after exercise."
+            },
+            "fat": {
+                "parent_explanation": f"Fat targets are set at 20–35% of total calories, never lower. Restricting fat in adolescent athletes disrupts hormone production, fat-soluble vitamin absorption, and bone development. (Everett MD 2025)",
+                "athlete_explanation": "Healthy fats from avocado, nuts, olive oil, and salmon help your body absorb vitamins and keep your hormones balanced. Don't cut them out.",
+                "why_it_matters": "Fat restriction in youth athletes is linked to hormonal dysregulation and increased stress fracture risk. (AAP)"
+            }
+        },
+        "micronutrients": {
+            "iron": {
+                "parent_explanation": f"{'Girls aged 9–17 have significantly higher iron needs due to menstruation onset and rapid growth. Iron deficiency is the leading nutritional deficiency in female youth athletes — affecting endurance, focus, and immune function.' if is_girl else f'Iron supports oxygen delivery to muscles via hemoglobin. Even mild deficiency impairs endurance and focus in male youth athletes.'}",
+                "athlete_explanation": f"Iron helps carry oxygen to your muscles. {'As a female athlete your iron needs are higher — spinach, lentils, and lean red meat are your best friends.' if is_girl else 'Low iron means tired legs and foggy thinking during games.'}",
+                "urgency_level": "critical" if is_girl else "important",
+                "food_sources": ["Lean red meat (grass-fed)", "Spinach + lemon juice (vitamin C boosts absorption)", "Lentils + hummus", "Fortified cereal (no artificial dyes)"],
+                "absorption_tip": "Pair iron-rich foods with vitamin C (orange juice, bell peppers, strawberries). Avoid calcium-rich foods within 1 hour of iron-rich meals."
+            },
+            "calcium": {
+                "parent_explanation": f"Ages 9–17 is the single most critical window for peak bone mass accumulation. {name} will never have this opportunity again — adequate calcium now determines bone density for life. (AAP)",
+                "athlete_explanation": "You're building your bones right now — literally. The calcium you get in your teens determines how strong your bones are for the rest of your life. Milk, yogurt, and fortified plant milks all count.",
+                "urgency_level": "important",
+                "food_sources": ["Low-fat milk or plant milk (fortified)", "Greek yogurt", "Cottage cheese", "Broccoli + kale (non-dairy option)"]
+            },
+            "magnesium": {
+                "parent_explanation": f"Magnesium is involved in over 300 enzymatic reactions, including ATP energy production, muscle contraction, and nerve function. Youth athletes are frequently deficient — especially during growth spurts when demand outpaces dietary intake. {'At 14+, girls need 360 mg/day.' if is_girl and athlete.get('age',13) >= 14 else 'At 14+, boys need 410 mg/day.' if not is_girl and athlete.get('age',13) >= 14 else 'At 9–13, the target is 240 mg/day for all athletes.'} (NIH/AAP)",
+                "athlete_explanation": "Magnesium helps your muscles relax after a hard game — it's literally the mineral that prevents cramps. Almonds, pumpkin seeds, spinach, and dark chocolate are all great sources.",
+                "urgency_level": "important",
+                "food_sources": ["Pumpkin seeds", "Almonds + cashews", "Spinach + edamame", "Dark chocolate (70%+, no artificial dyes)", "Black beans + lentils"],
+                "absorption_tip": "Magnesium absorption improves when paired with vitamin B6-rich foods (chicken, bananas, potatoes). Excess calcium can compete — balance both throughout the day."
+            },
+            "vitamin_d": {
+                "parent_explanation": f"Vitamin D deficiency is extremely common in youth athletes, especially those training indoors or in northern climates. It governs calcium absorption (without it, even adequate calcium intake can't build bone), supports muscle power output, and modulates immune function. Boston Children's Hospital recommends 1,000–2,000 IU/day for active youth athletes — well above the 600 IU dietary minimum.",
+                "athlete_explanation": "Vitamin D is the 'sunshine vitamin' — it helps your body actually USE the calcium you eat for stronger bones. Most indoor athletes are low on it. Salmon, fortified milk, and eggs are your best food sources.",
+                "urgency_level": "important",
+                "food_sources": ["Salmon + tuna (best food source)", "Fortified milk or plant milk", "Egg yolks", "Fortified orange juice (no artificial dyes)", "Mushrooms (UV-exposed)"],
+                "absorption_tip": "Vitamin D is fat-soluble — take supplements or eat D-rich foods alongside a meal containing healthy fats (avocado, olive oil, nuts) for maximum absorption."
+            }
+        },
+        "lea_warning": {
+            "triggered": lea_risk,
+            "parent_message": f"⚠️ IMPORTANT: Based on {name}'s current weight ({athlete['weight_lbs']} lbs), rest-day calorie target ({rest_cals:,} kcal) falls {'below' if lea_risk else 'above'} the Low Energy Availability threshold of {lea_thresh:,} kcal/day (30 kcal/kg fat-free mass). {'This is a medical-level concern — please consult a registered dietitian.' if lea_risk else 'No LEA risk detected at this time.'}" if lea_risk else None,
+            "threshold_kcal": lea_thresh,
+            "action_required": "Consult a registered dietitian immediately. Do not restrict calories further." if lea_risk else None
+        } if lea_risk else {"triggered": False, "threshold_kcal": lea_thresh},
+        "unlock_cta": {
+            "headline": "Your Blueprint is Ready",
+            "parent_message": f"Log {name}'s first meal to start tracking against these targets. The AI gap analysis updates in real time as you log.",
+            "athlete_message": f"Time to eat like an athlete, {name}. Log your first meal and watch your fuel score go up."
+        },
+        "_meta": {
+            "generated_by": "FuelUp AI — Everett MD 2025 + Boston Children's Hospital RDN + AAP",
+            "disclaimer": "FuelUp provides educational food guidance — not medical nutrition therapy.",
+            "prompt_version": "0.1"
+        }
+    }
+
+    # If no API key, return the mock directly
+    import os
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        return MOCK
+
+    # Build the prompt
+    targets_summary = "\n".join([
+        f"  {et.upper()}: {t.get('total_calories')} kcal | carbs {t.get('carbs_g_min')}–{t.get('carbs_g_max')}g | protein {t.get('protein_g_min')}–{t.get('protein_g_max')}g | fat {t.get('fat_g_min')}–{t.get('fat_g_max')}g"
+        for et, t in targets_by_event.items()
+    ])
+
+    prompt_text = f"""Generate a complete Nutrition Blueprint narrative for this youth soccer athlete.
+
+ATHLETE: {name}, age {age}, gender {athlete.get('gender')}, {position}, {level} level
+Weight: {athlete['weight_lbs']} lbs ({round(wt_kg,1)} kg) | Height: {athlete['height_ft']}'{athlete['height_in']}"
+Fat-free mass: {ffm_kg} kg | RMR: {rmr:,} kcal/day (Everett MD 2025)
+Allergies: {allergies} | Dietary restrictions: {diet_rest}
+
+CALCULATED TARGETS BY EVENT TYPE:
+{targets_summary}
+
+Iron target: {15 if is_girl else 11} mg/day | Calcium: 1,300 mg/day | Magnesium: {(360 if is_girl else 410) if athlete.get('age',13) >= 14 else 240} mg/day | Vitamin D: 1,000 IU/day | LEA threshold: {lea_thresh} kcal/day
+LEA risk triggered: {lea_risk}
+
+CRITICAL RULES:
+1. Write NARRATIVE ONLY — no numbers in text fields. Numbers stay in _calculated (Python's output).
+   Exception: you MAY reference the RMR ({rmr:,}) and LEA threshold ({lea_thresh}) in narrative since these are informational.
+2. Iron urgency_level MUST be "critical" for girls, "important" for boys.
+3. Tone: parent voice = warm, professional, science-backed. Athlete voice = direct, motivating, age-appropriate for {age}-year-old.
+4. If LEA risk is triggered, the warning MUST use strong medical language — this is a safety flag.
+5. Never recommend artificial food dyes (Red #40, Yellow #5, Yellow #6).
+
+Return ONLY valid JSON matching this exact structure (no markdown):
+{{
+  "hero": {{"headline": "", "parent_subtext": "", "athlete_message": ""}},
+  "rmr": {{"parent_explanation": "", "athlete_explanation": "", "formula_note": ""}},
+  "calorie_range": {{"parent_explanation": "", "athlete_explanation": "", "context_note": ""}},
+  "macros": {{
+    "carbs":   {{"parent_explanation": "", "athlete_explanation": "", "why_it_matters": ""}},
+    "protein": {{"parent_explanation": "", "athlete_explanation": "", "why_it_matters": ""}},
+    "fat":     {{"parent_explanation": "", "athlete_explanation": "", "why_it_matters": ""}}
+  }},
+  "micronutrients": {{
+    "iron":       {{"parent_explanation": "", "athlete_explanation": "", "urgency_level": "critical|important|normal", "food_sources": [], "absorption_tip": ""}},
+    "calcium":    {{"parent_explanation": "", "athlete_explanation": "", "urgency_level": "important|normal", "food_sources": []}},
+    "magnesium":  {{"parent_explanation": "", "athlete_explanation": "", "urgency_level": "important|normal", "food_sources": [], "absorption_tip": ""}},
+    "vitamin_d":  {{"parent_explanation": "", "athlete_explanation": "", "urgency_level": "important|normal", "food_sources": [], "absorption_tip": ""}}
+  }},
+  "lea_warning": {{"triggered": false, "parent_message": null, "threshold_kcal": {lea_thresh}, "action_required": null}},
+  "unlock_cta": {{"headline": "", "parent_message": "", "athlete_message": ""}},
+  "_meta": {{"generated_by": "FuelUp AI — Everett MD 2025 + Boston Children's Hospital RDN + AAP", "disclaimer": "FuelUp provides educational food guidance — not medical nutrition therapy.", "prompt_version": "0.1"}}
+}}"""
+
+    try:
+        msg = _client().messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=3000,
+            system=SCIENCE_SYSTEM,
+            messages=[{"role": "user", "content": prompt_text}]
+        )
+        return json.loads(msg.content[0].text)
+    except Exception:
+        return MOCK

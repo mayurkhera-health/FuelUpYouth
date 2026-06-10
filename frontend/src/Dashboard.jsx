@@ -1,7 +1,7 @@
 import { useState } from "react";
 import AppShell from "./AppShell";
 
-export default function Dashboard({ parent, athletes, initialTab = "nutrition", onSignOut }) {
+export default function Dashboard({ parent, athletes, initialTab = "nutrition", isNewAccount = false, onUnlockApp, onSignOut }) {
   const [selectedAthlete, setSelectedAthlete] = useState(
     athletes.length === 1 ? athletes[0] : null
   );
@@ -12,6 +12,8 @@ export default function Dashboard({ parent, athletes, initialTab = "nutrition", 
         athlete={selectedAthlete}
         parent={parent}
         initialTab={initialTab}
+        isNewAccount={isNewAccount}
+        onUnlockApp={onUnlockApp}
         onSignOut={onSignOut}
       />
     );
@@ -22,7 +24,7 @@ export default function Dashboard({ parent, athletes, initialTab = "nutrition", 
       <div style={s.card}>
         <div style={s.header}>
           <div style={s.logo}>⚽ FuelUp</div>
-          <div style={s.subtitle}>Youth Soccer Nutrition Platform</div>
+          <div style={s.subtitle}>Youth Sports Performance Nutrition Platform</div>
         </div>
         <h2 style={s.title}>Welcome back, {parent.full_name.split(" ")[0]}!</h2>
         <p style={s.desc}>Select an athlete to continue.</p>

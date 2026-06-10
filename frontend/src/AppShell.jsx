@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import HomeScreen from "./HomeScreen";
 import NutritionDashboard from "./NutritionDashboard";
 import ScheduleScreen from "./ScheduleScreen";
@@ -7,20 +7,58 @@ import ReportsScreen from "./ReportsScreen";
 import HydrationScreen from "./HydrationScreen";
 import MealPlannerScreen from "./MealPlannerScreen";
 import SettingsScreen from "./SettingsScreen";
+import Blueprint from "./Blueprint";
 
 const TABS = [
-  { id: "home",      label: "Home"        },
+  { id: "home",      label: "Today"       },
   { id: "nutrition", label: "Nutrition"   },
   { id: "schedule",  label: "Schedule"    },
   { id: "meal-plan", label: "🍳 Meal Plan" },
+  { id: "blueprint", label: "🏅 Blueprint" },
   { id: "reports",   label: "Reports"     },
   { id: "hydration", label: "💧 Hydration" },
 ];
 
-export default function AppShell({ athlete: initialAthlete, parent, initialTab = "home", onSignOut }) {
+export default function AppShell({ athlete: initialAthlete, parent, initialTab = "home", isNewAccount = false, onUnlockApp, onSignOut }) {
   const [tab, setTab]           = useState(initialTab);
   const [athlete, setAthlete]   = useState(initialAthlete);
   const [showSettings, setShowSettings] = useState(false);
+  const [newAccount, setNewAccount] = useState(isNewAccount);
+
+  function handleUnlockAndNavigate(tabId) {
+    setNewAccount(false);
+    onUnlockApp?.();
+    setTab(tabId);
+  }
+
+  const [freshImport, setFreshImport] = useState(false);
+  const tabBarRef = useRef(null);
+
+  // Scroll tab bar so the active tab is always visible
+  useEffect(() => {
+    const bar = tabBarRef.current;
+    if (!bar) return;
+    const activeBtn = bar.querySelector("[data-active='true']");
+    if (activeBtn) {
+      const { offsetLeft, offsetWidth } = activeBtn;
+      const { scrollLeft, clientWidth } = bar;
+      if (offsetLeft < scrollLeft) {
+        bar.scrollTo({ left: offsetLeft - 16, behavior: "smooth" });
+      } else if (offsetLeft + offsetWidth > scrollLeft + clientWidth) {
+        bar.scrollTo({ left: offsetLeft + offsetWidth - clientWidth + 16, behavior: "smooth" });
+      }
+    }
+  }, [tab]);
+
+  function handleScheduleImported() {
+    setFreshImport(true);
+    setTab("meal-plan");
+  }
+
+  // Blueprint only shows during first-run onboarding flow
+  const visibleTabs = newAccount
+    ? TABS.filter(t => t.id === "blueprint")
+    : TABS.filter(t => t.id !== "blueprint");
 
   const initials = `${athlete.first_name?.[0] || ""}${athlete.last_name?.[0] || ""}`.toUpperCase();
 
@@ -45,10 +83,11 @@ export default function AppShell({ athlete: initialAthlete, parent, initialTab =
         </div>
 
         {/* Tab bar */}
-        <div style={s.tabBar}>
-          {TABS.map(t => (
+        <div style={s.tabBar} ref={tabBarRef}>
+          {visibleTabs.map(t => (
             <button
               key={t.id}
+              data-active={tab === t.id}
               style={{ ...s.tab, ...(tab === t.id ? s.tabActive : {}) }}
               onClick={() => { setShowSettings(false); setTab(t.id); }}
             >
@@ -61,9 +100,10 @@ export default function AppShell({ athlete: initialAthlete, parent, initialTab =
         <div style={s.content}>
           {tab === "home"      && <HomeScreen         athlete={athlete} onNavigate={setTab} />}
           {tab === "nutrition" && <NutritionDashboard athlete={athlete} />}
-          {tab === "schedule"  && <ScheduleScreen     athlete={athlete} />}
+          {tab === "schedule"  && <ScheduleScreen     athlete={athlete} onScheduleImported={handleScheduleImported} />}
           {tab === "recipes"   && <RecipesScreen      athlete={athlete} />}
-          {tab === "meal-plan" && <MealPlannerScreen   athlete={athlete} onNavigate={setTab} />}
+          {tab === "meal-plan" && <MealPlannerScreen   athlete={athlete} onNavigate={setTab} freshImport={freshImport} onFreshImportSeen={() => setFreshImport(false)} />}
+          {tab === "blueprint" && <Blueprint           athlete={athlete} onAddSchedule={newAccount ? () => handleUnlockAndNavigate("schedule") : null} />}
           {tab === "reports"   && <ReportsScreen      athlete={athlete} />}
           {tab === "hydration" && <HydrationScreen    athlete={athlete} />}
         </div>

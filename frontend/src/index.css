@@ -59,6 +59,10 @@ body {
   to   { transform: translateX(0);    opacity: 1; }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 #root {
   width: 1126px;
   max-width: 100%;
