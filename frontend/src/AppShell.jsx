@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import HomeScreen from "./HomeScreen";
+import Today from "./pages/Today";
 import NutritionDashboard from "./NutritionDashboard";
 import ScheduleScreen from "./ScheduleScreen";
 import RecipesScreen from "./RecipesScreen";
@@ -98,7 +99,7 @@ export default function AppShell({ athlete: initialAthlete, parent, initialTab =
 
         {/* Main content */}
         <div style={s.content}>
-          {tab === "home"      && <HomeScreen         athlete={athlete} onNavigate={setTab} />}
+          {tab === "home"      && <Today               athlete={athlete} onNavigate={setTab} />}
           {tab === "nutrition" && <NutritionDashboard athlete={athlete} />}
           {tab === "schedule"  && <ScheduleScreen     athlete={athlete} onScheduleImported={handleScheduleImported} />}
           {tab === "recipes"   && <RecipesScreen      athlete={athlete} />}
@@ -164,8 +165,8 @@ const s = {
     padding: "18px 28px 12px",
     borderBottom: "1px solid #dce8e0",
   },
-  logo: { fontSize: "20px", fontWeight: "900", color: "#2d6a4f", fontFamily: "'Nunito', sans-serif" },
-  athleteLabel: { fontSize: "13px", color: "#8aa898", marginTop: "1px" },
+  logo: { fontSize: "22px", fontWeight: "900", color: "#2d6a4f", fontFamily: "'Nunito', sans-serif" },
+  athleteLabel: { fontSize: "15px", color: "#8aa898", marginTop: "1px" },
 
   avatarBtn: {
     position: "relative",
@@ -182,7 +183,7 @@ const s = {
     borderRadius: "50%",
     background: "linear-gradient(135deg, #2d6a4f, #52b788)",
     color: "#fff",
-    fontSize: "14px",
+    fontSize: "16px",
     fontWeight: "800",
     fontFamily: "'Nunito', sans-serif",
     display: "flex",
@@ -199,7 +200,7 @@ const s = {
     borderRadius: "50%",
     width: "16px",
     height: "16px",
-    fontSize: "11px",
+    fontSize: "13px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -219,7 +220,7 @@ const s = {
     border: "none",
     borderBottom: "2.5px solid transparent",
     padding: "12px 14px",
-    fontSize: "13px",
+    fontSize: "15px",
     fontWeight: "700",
     fontFamily: "'Nunito', sans-serif",
     color: "#8aa898",
@@ -262,14 +263,14 @@ const s = {
     borderBottom: "1.5px solid #dce8e0",
     flexShrink: 0,
   },
-  drawerTitle: { fontSize: "17px", fontWeight: "800", color: "#1b3a2a", fontFamily: "'Nunito', sans-serif" },
+  drawerTitle: { fontSize: "19px", fontWeight: "800", color: "#1b3a2a", fontFamily: "'Nunito', sans-serif" },
   drawerClose: {
     background: "#f0f4f1",
     border: "none",
     borderRadius: "50%",
     width: "30px",
     height: "30px",
-    fontSize: "14px",
+    fontSize: "16px",
     cursor: "pointer",
     color: "#8aa898",
     display: "flex",
