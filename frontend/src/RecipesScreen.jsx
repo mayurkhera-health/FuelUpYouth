@@ -117,7 +117,7 @@ export default function RecipesScreen({ athlete }) {
                   {swapResult[recipe.id].reason && <div style={s.swapReason}>{swapResult[recipe.id].reason}</div>}
                   {swapResult[recipe.id].instructions && <div style={s.swapReason}>{swapResult[recipe.id].instructions}</div>}
                   {!swapResult[recipe.id].swap_recipe && !swapResult[recipe.id].reason && (
-                    <div style={{ fontSize: "12px", color: "#374151", whiteSpace: "pre-wrap" }}>{JSON.stringify(swapResult[recipe.id], null, 2)}</div>
+                    <div style={{ fontSize: "12px", color: "#4a6358", whiteSpace: "pre-wrap" }}>{JSON.stringify(swapResult[recipe.id], null, 2)}</div>
                   )}
                 </div>
               ) : (
@@ -135,31 +135,31 @@ export default function RecipesScreen({ athlete }) {
 }
 
 const s = {
-  title: { fontSize: "18px", fontWeight: "700", color: "#111827", margin: "0 0 4px" },
-  subtitle: { fontSize: "13px", color: "#6b7280", marginBottom: "20px" },
+  title: { fontSize: "18px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", margin: "0 0 4px" },
+  subtitle: { fontSize: "13px", color: "#8aa898", marginBottom: "20px" },
   filterRow: { display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "20px" },
-  chip: { padding: "6px 12px", border: "1.5px solid #d1d5db", borderRadius: "99px", background: "#fff", fontSize: "12px", fontWeight: "600", color: "#6b7280", cursor: "pointer" },
-  chipActive: { background: "#0f4c35", borderColor: "#0f4c35", color: "#fff" },
+  chip: { padding: "6px 12px", border: "1.5px solid #d1d5db", borderRadius: "99px", background: "#fff", fontSize: "12px", fontWeight: "600", color: "#8aa898", cursor: "pointer" },
+  chipActive: { background: "#2d6a4f", borderColor: "#2d6a4f", color: "#fff" },
   card: { border: "1.5px solid #e5e7eb", borderRadius: "12px", marginBottom: "10px", overflow: "hidden" },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", cursor: "pointer", background: "#fff" },
   cardLeft: { flex: 1 },
-  recipeName: { fontSize: "15px", fontWeight: "700", color: "#111827", marginBottom: "2px" },
-  recipeTiming: { fontSize: "12px", color: "#6b7280", marginBottom: "6px" },
+  recipeName: { fontSize: "15px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", marginBottom: "2px" },
+  recipeTiming: { fontSize: "12px", color: "#8aa898", marginBottom: "6px" },
   macroRow: { display: "flex", gap: "10px", flexWrap: "wrap" },
-  macro: { fontSize: "12px", fontWeight: "600", color: "#0f4c35", background: "#f0fdf4", padding: "2px 8px", borderRadius: "99px" },
-  chevron: { fontSize: "12px", color: "#9ca3af", marginLeft: "12px" },
+  macro: { fontSize: "12px", fontWeight: "600", color: "#2d6a4f", background: "#f0fdf4", padding: "2px 8px", borderRadius: "99px" },
+  chevron: { fontSize: "12px", color: "#8aa898", marginLeft: "12px" },
   detail: { padding: "0 16px 16px", background: "#fafafa", borderTop: "1px solid #e5e7eb" },
   detailSection: { marginTop: "12px" },
-  detailLabel: { fontSize: "11px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" },
-  detailText: { fontSize: "13px", color: "#374151" },
+  detailLabel: { fontSize: "11px", fontWeight: "700", color: "#8aa898", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" },
+  detailText: { fontSize: "13px", color: "#4a6358" },
   tagRow: { display: "flex", flexWrap: "wrap", gap: "6px" },
-  tag: { fontSize: "11px", padding: "3px 8px", background: "#f0fdf4", color: "#0f4c35", borderRadius: "99px", fontWeight: "600" },
+  tag: { fontSize: "11px", padding: "3px 8px", background: "#f0fdf4", color: "#2d6a4f", borderRadius: "99px", fontWeight: "600" },
   allergenTag: { fontSize: "11px", padding: "3px 8px", background: "#fef2f2", color: "#dc2626", borderRadius: "99px", fontWeight: "600" },
-  swapBtn: { marginTop: "14px", padding: "8px 16px", background: "#fff", border: "1.5px solid #0f4c35", color: "#0f4c35", borderRadius: "8px", fontSize: "13px", fontWeight: "600", cursor: "pointer", width: "100%" },
+  swapBtn: { marginTop: "14px", padding: "8px 16px", background: "#fff", border: "1.5px solid #0f4c35", color: "#2d6a4f", borderRadius: "8px", fontSize: "13px", fontWeight: "600", cursor: "pointer", width: "100%" },
   swapResult: { marginTop: "14px", background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "12px" },
-  swapTitle: { fontSize: "12px", fontWeight: "700", color: "#0f4c35", marginBottom: "6px" },
-  swapName: { fontSize: "14px", fontWeight: "700", color: "#0f4c35", marginBottom: "4px" },
-  swapReason: { fontSize: "13px", color: "#374151", marginBottom: "4px" },
-  empty: { textAlign: "center", color: "#9ca3af", padding: "40px 0" },
-  attribution: { fontSize: "11px", color: "#9ca3af", textAlign: "center", marginTop: "20px" },
+  swapTitle: { fontSize: "12px", fontWeight: "700", color: "#2d6a4f", marginBottom: "6px" },
+  swapName: { fontSize: "14px", fontWeight: "700", color: "#2d6a4f", marginBottom: "4px" },
+  swapReason: { fontSize: "13px", color: "#4a6358", marginBottom: "4px" },
+  empty: { textAlign: "center", color: "#8aa898", padding: "40px 0" },
+  attribution: { fontSize: "11px", color: "#8aa898", textAlign: "center", marginTop: "20px" },
 };

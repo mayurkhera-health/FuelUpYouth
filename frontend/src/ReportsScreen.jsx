@@ -4,10 +4,10 @@ const API = import.meta.env.VITE_API_URL ?? "";
 const TODAY = new Date().toISOString().split("T")[0];
 
 const SCORE_COLORS = {
-  "Elite Fueler": { bg: "#f0fdf4", border: "#bbf7d0", text: "#0f4c35", bar: "#0f4c35" },
-  "Game Ready":   { bg: "#fffbeb", border: "#fde68a", text: "#d97706", bar: "#d97706" },
-  "Getting There":{ bg: "#fff7ed", border: "#fed7aa", text: "#ea580c", bar: "#ea580c" },
-  "Needs Fuel":   { bg: "#fef2f2", border: "#fecaca", text: "#dc2626", bar: "#dc2626" },
+  "Elite Fueler": { bg: "#f0faf4", border: "#b0e8c8", text: "#2d6a4f", bar: "#2d6a4f" },
+  "Game Ready":   { bg: "#fdf5e7", border: "#f4d3a0", text: "#c8903a", bar: "#c8903a" },
+  "Getting There":{ bg: "#fdf5e7", border: "#f4d3a0", text: "#c8903a", bar: "#c8903a" },
+  "Needs Fuel":   { bg: "#fdf2f0", border: "#f4c0b8", text: "#c05a4a", bar: "#c05a4a" },
 };
 
 function ScoreGauge({ score, badge }) {
@@ -23,7 +23,7 @@ function ScoreGauge({ score, badge }) {
 const g = {
   wrap: { textAlign: "center", padding: "20px", borderRadius: "12px", marginBottom: "16px" },
   score: { fontSize: "52px", fontWeight: "800", lineHeight: 1 },
-  track: { height: "8px", background: "#e5e7eb", borderRadius: "99px", margin: "12px 0 8px" },
+  track: { height: "8px", background: "#dce8e0", borderRadius: "99px", margin: "12px 0 8px" },
   fill: { height: "100%", borderRadius: "99px", transition: "width 0.6s ease" },
   badge: { fontSize: "16px", fontWeight: "700" },
 };
@@ -179,33 +179,33 @@ export default function ReportsScreen({ athlete }) {
 }
 
 const s = {
-  title: { fontSize: "18px", fontWeight: "700", color: "#111827", margin: "0 0 20px" },
+  title: { fontSize: "18px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", margin: "0 0 20px" },
   section: { border: "1.5px solid #e5e7eb", borderRadius: "12px", padding: "18px 20px", marginBottom: "16px" },
   sectionHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" },
-  sectionTitle: { fontSize: "15px", fontWeight: "700", color: "#111827" },
-  sectionDesc: { fontSize: "12px", color: "#6b7280", marginTop: "2px" },
-  runBtn: { background: "#0f4c35", color: "#fff", border: "none", borderRadius: "8px", padding: "7px 16px", fontSize: "13px", fontWeight: "600", cursor: "pointer", whiteSpace: "nowrap" },
+  sectionTitle: { fontSize: "15px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a" },
+  sectionDesc: { fontSize: "12px", color: "#8aa898", marginTop: "2px" },
+  runBtn: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "8px", padding: "7px 16px", fontSize: "13px", fontWeight: "600", cursor: "pointer", whiteSpace: "nowrap" },
   error: { color: "#dc2626", fontSize: "13px", marginBottom: "8px" },
-  message: { fontSize: "14px", color: "#374151", marginBottom: "12px" },
+  message: { fontSize: "14px", color: "#4a6358", marginBottom: "12px" },
   list: { marginBottom: "12px" },
-  listTitle: { fontSize: "11px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" },
-  listItem: { fontSize: "13px", color: "#374151", marginBottom: "4px" },
+  listTitle: { fontSize: "11px", fontWeight: "700", color: "#8aa898", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" },
+  listItem: { fontSize: "13px", color: "#4a6358", marginBottom: "4px" },
   trafficRow: { display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "12px" },
   trafficItem: { display: "flex", alignItems: "center", gap: "6px" },
-  trafficLabel: { fontSize: "13px", color: "#374151", fontWeight: "600" },
+  trafficLabel: { fontSize: "13px", color: "#4a6358", fontWeight: "600" },
   alert: { background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", color: "#92400e", marginBottom: "8px" },
-  weeklyCard: { background: "#f9fafb", borderRadius: "8px", padding: "14px" },
-  weeklyText: { fontSize: "14px", color: "#374151", marginBottom: "12px" },
-  weekLabel: { fontSize: "11px", color: "#9ca3af", marginTop: "8px" },
+  weeklyCard: { background: "#f4f8f5", borderRadius: "8px", padding: "14px" },
+  weeklyText: { fontSize: "14px", color: "#4a6358", marginBottom: "12px" },
+  weekLabel: { fontSize: "11px", color: "#8aa898", marginTop: "8px" },
   dateRow: { marginBottom: "12px" },
-  dateLabel: { display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "4px" },
+  dateLabel: { display: "block", fontSize: "12px", fontWeight: "600", color: "#8aa898", marginBottom: "4px" },
   dateInput: { padding: "7px 10px", border: "1.5px solid #d1d5db", borderRadius: "8px", fontSize: "13px", outline: "none" },
-  tourneyCard: { background: "#f9fafb", borderRadius: "8px", padding: "14px" },
+  tourneyCard: { background: "#f4f8f5", borderRadius: "8px", padding: "14px" },
   tourneyRow: { display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "8px" },
-  tourneyLabel: { color: "#6b7280", fontWeight: "600" },
-  tourneyVal: { color: "#111827", fontWeight: "700" },
+  tourneyLabel: { color: "#8aa898", fontWeight: "600" },
+  tourneyVal: { color: "#1b3a2a", fontWeight: "700" },
   carbRow: { marginBottom: "8px" },
-  carbDay: { display: "block", fontSize: "11px", fontWeight: "700", color: "#0f4c35", textTransform: "uppercase", letterSpacing: "0.04em" },
-  carbPlan: { fontSize: "13px", color: "#374151" },
-  disclaimer: { fontSize: "11px", color: "#9ca3af", marginTop: "12px" },
+  carbDay: { display: "block", fontSize: "11px", fontWeight: "700", color: "#2d6a4f", textTransform: "uppercase", letterSpacing: "0.04em" },
+  carbPlan: { fontSize: "13px", color: "#4a6358" },
+  disclaimer: { fontSize: "11px", color: "#8aa898", marginTop: "12px" },
 };

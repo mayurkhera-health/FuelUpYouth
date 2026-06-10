@@ -4,10 +4,10 @@ const API = import.meta.env.VITE_API_URL ?? "";
 const TODAY = new Date().toISOString().split("T")[0];
 
 const EVENT_LABELS = {
-  game:       { label: "Game Day",        color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
-  tournament: { label: "Tournament Day",  color: "#9333ea", bg: "#faf5ff", border: "#d8b4fe" },
-  practice:   { label: "Practice Day",    color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
-  rest:       { label: "Rest Day",        color: "#0f4c35", bg: "#f0fdf4", border: "#bbf7d0" },
+  game:       { label: "Game Day",        color: "#c05a4a", bg: "#fdf2f0", border: "#f4c0b8" },
+  tournament: { label: "Tournament Day",  color: "#7e6ab5", bg: "#f4f1fb", border: "#c8bde8" },
+  practice:   { label: "Practice Day",    color: "#c8903a", bg: "#fdf5e7", border: "#f4d3a0" },
+  rest:       { label: "Rest Day",        color: "#2d6a4f", bg: "#f0faf4", border: "#b0e8c8" },
 };
 
 // ── SVG ring dial ─────────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ function MacroDial({ label, consumed, minVal, maxVal, unit, color, size = 110 })
     <div style={d.wrap}>
       <svg width={size} height={size} viewBox="0 0 100 100" style={{ display: "block", margin: "0 auto" }}>
         {/* Track */}
-        <circle cx="50" cy="50" r={R} fill="none" stroke="#e5e7eb" strokeWidth="9" />
+        <circle cx="50" cy="50" r={R} fill="none" stroke="#dce8e0" strokeWidth="9" />
         {/* Progress */}
         <circle
           cx="50" cy="50" r={R}
@@ -40,10 +40,10 @@ function MacroDial({ label, consumed, minVal, maxVal, unit, color, size = 110 })
         />
         {/* Center value */}
         <text x="50" y="47" textAnchor="middle" fontSize="15" fontWeight="800"
-          fill={over ? "#dc2626" : "#111827"} style={{ fontFamily: "inherit" }}>
+          fill={over ? "#dc2626" : "#1b3a2a"} style={{ fontFamily: "inherit" }}>
           {Math.round(consumed)}
         </text>
-        <text x="50" y="61" textAnchor="middle" fontSize="9" fill="#9ca3af"
+        <text x="50" y="61" textAnchor="middle" fontSize="9" fill="#8aa898"
           style={{ fontFamily: "inherit" }}>
           {unit}
         </text>
@@ -59,7 +59,7 @@ function CalorieDial({ consumed, target }) {
   const pct  = Math.min(1, consumed / (target || 1));
   const over = consumed > target * 1.1;
   const near = !over && pct >= 0.85;
-  const stroke = over ? "#dc2626" : near ? "#d97706" : "#0f4c35";
+  const stroke = over ? "#dc2626" : near ? "#d97706" : "#2d6a4f";
 
   const R    = 54;
   const circ = 2 * Math.PI * R;
@@ -74,7 +74,7 @@ function CalorieDial({ consumed, target }) {
         {/* Outer glow ring */}
         <circle cx="70" cy="70" r={R + 8} fill="none" stroke={stroke} strokeWidth="1" opacity="0.12" />
         {/* Track */}
-        <circle cx="70" cy="70" r={R} fill="none" stroke="#e5e7eb" strokeWidth="11" />
+        <circle cx="70" cy="70" r={R} fill="none" stroke="#dce8e0" strokeWidth="11" />
         {/* Progress */}
         <circle
           cx="70" cy="70" r={R}
@@ -87,12 +87,12 @@ function CalorieDial({ consumed, target }) {
           style={{ transition: "stroke-dasharray 0.6s cubic-bezier(.4,0,.2,1), stroke 0.3s" }}
         />
         {/* Center content */}
-        <text x="70" y="60" textAnchor="middle" fontSize="11" fill="#9ca3af" style={{ fontFamily: "inherit" }}>Calories</text>
+        <text x="70" y="60" textAnchor="middle" fontSize="11" fill="#8aa898" style={{ fontFamily: "inherit" }}>Calories</text>
         <text x="70" y="82" textAnchor="middle" fontSize="26" fontWeight="800"
-          fill={over ? "#dc2626" : "#111827"} style={{ fontFamily: "inherit" }}>
+          fill={over ? "#dc2626" : "#1b3a2a"} style={{ fontFamily: "inherit" }}>
           {Math.round(consumed)}
         </text>
-        <text x="70" y="97" textAnchor="middle" fontSize="10" fill="#9ca3af" style={{ fontFamily: "inherit" }}>
+        <text x="70" y="97" textAnchor="middle" fontSize="10" fill="#8aa898" style={{ fontFamily: "inherit" }}>
           of {target} kcal
         </text>
       </svg>
@@ -105,8 +105,8 @@ function CalorieDial({ consumed, target }) {
 
 const d = {
   wrap:  { textAlign: "center", flex: "1 1 0" },
-  label: { fontSize: "12px", fontWeight: "700", color: "#374151", marginTop: "4px" },
-  range: { fontSize: "10px", color: "#9ca3af", marginTop: "1px" },
+  label: { fontSize: "12px", fontWeight: "700", color: "#4a6358", marginTop: "4px" },
+  range: { fontSize: "10px", color: "#8aa898", marginTop: "1px" },
 };
 
 export default function NutritionDashboard({ athlete }) {
@@ -339,7 +339,7 @@ export default function NutritionDashboard({ athlete }) {
 
             {estimating && <div style={s.estimatingBanner}>Estimating nutrition values…</div>}
             {portionNote && !estimating && (
-              <div style={{ ...s.estimateBanner, borderColor: estimateConf === "low" ? "#fde68a" : "#bbf7d0", background: estimateConf === "low" ? "#fffbeb" : "#f0fdf4", color: estimateConf === "low" ? "#92400e" : "#166534" }}>
+              <div style={{ ...s.estimateBanner, borderColor: estimateConf === "low" ? "#fde68a" : "#b0e8c8", background: estimateConf === "low" ? "#fffbeb" : "#f0fdf4", color: estimateConf === "low" ? "#92400e" : "#1b5e42" }}>
                 {estimateConf === "low" ? "⚠️ " : "✓ "}Based on: <b>{portionNote}</b>
                 {estimateConf === "low" && " — description vague, please verify"}.
               </div>
@@ -397,7 +397,7 @@ export default function NutritionDashboard({ athlete }) {
                   <div key={k} style={s.macroField}>
                     <label style={s.inputLabel}>{lbl} <span style={s.unitLabel}>{unit}</span></label>
                     <input
-                      style={{ ...s.smallInput, background: baseMacros && k !== "water_oz" ? "#f0fdf4" : "#fff", borderColor: baseMacros && k !== "water_oz" ? "#bbf7d0" : "#d1d5db" }}
+                      style={{ ...s.smallInput, background: baseMacros && k !== "water_oz" ? "#f0fdf4" : "#fff", borderColor: baseMacros && k !== "water_oz" ? "#b0e8c8" : "#c8d8d0" }}
                       type="number" placeholder="0"
                       value={logForm[k] ?? ""}
                       onChange={e => { setLogForm(f => ({ ...f, [k]: e.target.value })); if (k !== "water_oz") setBaseMacros(null); }}
@@ -470,54 +470,54 @@ export default function NutritionDashboard({ athlete }) {
 }
 
 const s = {
-  center: { textAlign: "center", color: "#6b7280", padding: "40px 0" },
-  dateLabel: { fontSize: "14px", color: "#6b7280", marginBottom: "12px" },
+  center: { textAlign: "center", color: "#8aa898", padding: "40px 0" },
+  dateLabel: { fontSize: "14px", color: "#8aa898", marginBottom: "12px" },
   dayBadge: { display: "inline-block", padding: "6px 14px", borderRadius: "99px", fontSize: "13px", fontWeight: "700", marginBottom: "20px" },
   section: { marginBottom: "24px" },
   sectionHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" },
-  sectionTitle: { fontSize: "14px", fontWeight: "700", color: "#111827", paddingBottom: "8px", borderBottom: "1.5px solid #e5e7eb", marginBottom: "12px" },
+  sectionTitle: { fontSize: "14px", fontWeight: "700", color: "#1b3a2a", paddingBottom: "8px", borderBottom: "1.5px solid #e5e7eb", marginBottom: "12px" },
   dialRow: { display: "flex", gap: "4px", justifyContent: "space-around", marginBottom: "20px", padding: "8px 0", borderTop: "1.5px solid #f3f4f6", borderBottom: "1.5px solid #f3f4f6" },
   microRow: { display: "flex", gap: "12px", marginBottom: "24px" },
-  microCard: { flex: 1, background: "#f9fafb", borderRadius: "10px", padding: "14px", textAlign: "center" },
-  microVal: { fontSize: "20px", fontWeight: "800", color: "#0f4c35" },
-  microLabel: { fontSize: "12px", color: "#6b7280", marginTop: "2px" },
-  timingRow: { display: "flex", gap: "16px", marginBottom: "10px", padding: "10px 12px", background: "#f9fafb", borderRadius: "8px" },
-  timingTime: { fontSize: "12px", fontWeight: "700", color: "#0f4c35", minWidth: "80px" },
-  timingName: { fontSize: "13px", fontWeight: "600", color: "#111827" },
-  timingDesc: { fontSize: "12px", color: "#6b7280", marginTop: "2px" },
-  addBtn: { background: "#0f4c35", color: "#fff", border: "none", borderRadius: "8px", padding: "6px 14px", fontSize: "13px", fontWeight: "600", cursor: "pointer" },
-  logForm: { background: "#f9fafb", border: "1.5px solid #e5e7eb", borderRadius: "12px", padding: "18px", marginBottom: "14px" },
-  fieldLabel: { display: "block", fontSize: "12px", fontWeight: "700", color: "#374151", marginBottom: "7px", textTransform: "uppercase", letterSpacing: "0.05em" },
+  microCard: { flex: 1, background: "#f4f8f5", borderRadius: "10px", padding: "14px", textAlign: "center" },
+  microVal: { fontSize: "20px", fontWeight: "800", color: "#2d6a4f" },
+  microLabel: { fontSize: "12px", color: "#8aa898", marginTop: "2px" },
+  timingRow: { display: "flex", gap: "16px", marginBottom: "10px", padding: "10px 12px", background: "#f4f8f5", borderRadius: "8px" },
+  timingTime: { fontSize: "12px", fontWeight: "700", color: "#2d6a4f", minWidth: "80px" },
+  timingName: { fontSize: "13px", fontWeight: "600", color: "#1b3a2a" },
+  timingDesc: { fontSize: "12px", color: "#8aa898", marginTop: "2px" },
+  addBtn: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "8px", padding: "6px 14px", fontSize: "13px", fontWeight: "600", cursor: "pointer" },
+  logForm: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "12px", padding: "18px", marginBottom: "14px" },
+  fieldLabel: { display: "block", fontSize: "12px", fontWeight: "700", color: "#4a6358", marginBottom: "7px", textTransform: "uppercase", letterSpacing: "0.05em" },
   descRow: { display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px" },
   input: { width: "100%", padding: "9px 12px", border: "1.5px solid #d1d5db", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box", marginBottom: "0", outline: "none" },
-  lookupBtn: { flexShrink: 0, padding: "9px 14px", background: "#0f4c35", color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
-  estimatingBanner: { fontSize: "12px", color: "#0f4c35", fontWeight: "600", padding: "7px 10px", background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "7px", marginTop: "8px" },
+  lookupBtn: { flexShrink: 0, padding: "9px 14px", background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
+  estimatingBanner: { fontSize: "12px", color: "#2d6a4f", fontWeight: "600", padding: "7px 10px", background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "7px", marginTop: "8px" },
   estimateBanner: { fontSize: "12px", padding: "7px 10px", border: "1.5px solid", borderRadius: "7px", marginTop: "8px", lineHeight: 1.5 },
   chipRow: { display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "4px" },
-  chip: { padding: "6px 12px", background: "#fff", border: "1.5px solid #d1d5db", borderRadius: "99px", fontSize: "12px", fontWeight: "600", color: "#374151", cursor: "pointer" },
-  chipActive: { background: "#0f4c35", borderColor: "#0f4c35", color: "#fff" },
+  chip: { padding: "6px 12px", background: "#fff", border: "1.5px solid #d1d5db", borderRadius: "99px", fontSize: "12px", fontWeight: "600", color: "#4a6358", cursor: "pointer" },
+  chipActive: { background: "#2d6a4f", borderColor: "#2d6a4f", color: "#fff" },
   macroSummary: { background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "14px", marginTop: "14px", marginBottom: "12px" },
-  macroSummaryTitle: { fontSize: "12px", fontWeight: "700", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" },
-  aiTag: { fontSize: "11px", fontWeight: "600", color: "#0f4c35", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "99px", padding: "1px 8px", textTransform: "none", letterSpacing: 0 },
+  macroSummaryTitle: { fontSize: "12px", fontWeight: "700", color: "#4a6358", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" },
+  aiTag: { fontSize: "11px", fontWeight: "600", color: "#2d6a4f", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "99px", padding: "1px 8px", textTransform: "none", letterSpacing: 0 },
   macroGrid: { display: "flex", gap: "8px", flexWrap: "wrap" },
   macroField: { flex: "1 1 80px" },
-  unitLabel: { fontWeight: "400", color: "#9ca3af" },
-  inputLabel: { display: "block", fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "3px" },
+  unitLabel: { fontWeight: "400", color: "#8aa898" },
+  inputLabel: { display: "block", fontSize: "11px", fontWeight: "600", color: "#8aa898", marginBottom: "3px" },
   smallInput: { width: "100%", padding: "7px 8px", border: "1.5px solid #d1d5db", borderRadius: "6px", fontSize: "13px", boxSizing: "border-box", outline: "none" },
-  saveBtn: { width: "100%", padding: "10px", background: "#0f4c35", color: "#fff", border: "none", borderRadius: "8px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
-  mealRow: { display: "flex", alignItems: "flex-start", gap: "10px", padding: "10px 12px", background: "#f9fafb", borderRadius: "8px", marginBottom: "6px" },
-  mealTag: { fontSize: "10px", fontWeight: "800", color: "#0f4c35", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" },
-  mealDesc: { fontSize: "13px", fontWeight: "600", color: "#111827" },
-  mealMacros: { fontSize: "11px", color: "#6b7280", marginTop: "2px" },
-  deleteBtn: { background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "14px" },
-  empty: { fontSize: "14px", color: "#9ca3af", textAlign: "center", padding: "16px 0" },
+  saveBtn: { width: "100%", padding: "10px", background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
+  mealRow: { display: "flex", alignItems: "flex-start", gap: "10px", padding: "10px 12px", background: "#f4f8f5", borderRadius: "8px", marginBottom: "6px" },
+  mealTag: { fontSize: "10px", fontWeight: "800", color: "#2d6a4f", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" },
+  mealDesc: { fontSize: "13px", fontWeight: "600", color: "#1b3a2a" },
+  mealMacros: { fontSize: "11px", color: "#8aa898", marginTop: "2px" },
+  deleteBtn: { background: "none", border: "none", color: "#8aa898", cursor: "pointer", fontSize: "14px" },
+  empty: { fontSize: "14px", color: "#8aa898", textAlign: "center", padding: "16px 0" },
   errorTxt: { color: "#dc2626", fontSize: "13px", marginBottom: "8px" },
-  analysisDesc: { fontSize: "12px", color: "#6b7280", marginTop: "2px" },
+  analysisDesc: { fontSize: "12px", color: "#8aa898", marginTop: "2px" },
   analysisCard: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "10px", padding: "14px" },
   scoreRow: { display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "10px" },
-  scoreNum: { fontSize: "36px", fontWeight: "800", color: "#0f4c35" },
-  scoreLabel: { fontSize: "14px", color: "#6b7280" },
-  suggestion: { fontSize: "13px", color: "#374151", marginBottom: "4px" },
+  scoreNum: { fontSize: "36px", fontWeight: "800", color: "#2d6a4f" },
+  scoreLabel: { fontSize: "14px", color: "#8aa898" },
+  suggestion: { fontSize: "13px", color: "#4a6358", marginBottom: "4px" },
   alertBox: { background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: "8px", padding: "8px 12px", fontSize: "13px", color: "#92400e", marginTop: "8px" },
-  disclaimer: { textAlign: "center", fontSize: "11px", color: "#9ca3af", marginTop: "8px" },
+  disclaimer: { textAlign: "center", fontSize: "11px", color: "#8aa898", marginTop: "8px" },
 };

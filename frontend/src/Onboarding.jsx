@@ -52,10 +52,10 @@ function ReviewCard({ athlete }) {
 }
 
 const rv = {
-  card: { background: "#f9fafb", border: "1.5px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" },
+  card: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" },
   row: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 16px", borderBottom: "1px solid #f3f4f6", fontSize: "14px" },
-  label: { color: "#6b7280", fontWeight: "600", flexShrink: 0, marginRight: "12px" },
-  val: { color: "#111827", fontWeight: "500", textAlign: "right" },
+  label: { color: "#8aa898", fontWeight: "600", flexShrink: 0, marginRight: "12px" },
+  val: { color: "#1b3a2a", fontWeight: "500", textAlign: "right" },
   warn: { background: "#fffbeb", borderTop: "1.5px solid #fde68a", padding: "12px 16px", fontSize: "13px", color: "#92400e", lineHeight: "1.5" },
 };
 
@@ -396,7 +396,7 @@ export default function Onboarding({ onComplete }) {
             <ReviewCard athlete={athlete} />
             <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
               <button
-                style={{ ...styles.btn, background: "#fff", color: "#0f4c35", border: "1.5px solid #0f4c35", flex: "0 0 auto" }}
+                style={{ ...styles.btn, background: "#fff", color: "#2d6a4f", border: "1.5px solid #0f4c35", flex: "0 0 auto" }}
                 onClick={() => setStep(2)}
               >
                 ← Edit
@@ -440,39 +440,39 @@ export default function Onboarding({ onComplete }) {
 }
 
 const styles = {
-  wrapper: { minHeight: "100vh", background: "linear-gradient(135deg, #0f4c35 0%, #1a7a54 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", fontFamily: "'Inter', -apple-system, sans-serif" },
+  wrapper: { minHeight: "100vh", background: "linear-gradient(135deg, #0f4c35 0%, #1a7a54 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", fontFamily: "'Nunito, DM Sans, sans-serif" },
   card: { background: "#fff", borderRadius: "20px", padding: "40px", width: "100%", maxWidth: "600px", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" },
   header: { textAlign: "center", marginBottom: "28px" },
-  logo: { fontSize: "28px", fontWeight: "800", color: "#0f4c35" },
-  subtitle: { fontSize: "14px", color: "#6b7280", marginTop: "4px" },
+  logo: { fontSize: "28px", fontWeight: "800", color: "#2d6a4f" },
+  subtitle: { fontSize: "14px", color: "#8aa898", marginTop: "4px" },
   progressBar: { display: "flex", justifyContent: "space-between", marginBottom: "32px", position: "relative" },
   stepItem: { display: "flex", flexDirection: "column", alignItems: "center", flex: 1 },
-  stepDot: { width: "32px", height: "32px", borderRadius: "50%", background: "#e5e7eb", color: "#9ca3af", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "700", marginBottom: "6px" },
-  stepDotActive: { background: "#0f4c35", color: "#fff" },
-  stepLabel: { fontSize: "11px", color: "#9ca3af", textAlign: "center" },
-  stepLabelActive: { color: "#0f4c35", fontWeight: "600" },
+  stepDot: { width: "32px", height: "32px", borderRadius: "50%", background: "#dce8e0", color: "#8aa898", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "700", marginBottom: "6px" },
+  stepDotActive: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff" },
+  stepLabel: { fontSize: "11px", color: "#8aa898", textAlign: "center" },
+  stepLabelActive: { color: "#2d6a4f", fontWeight: "600" },
   section: { display: "flex", flexDirection: "column", gap: "16px" },
-  sectionTitle: { fontSize: "22px", fontWeight: "700", color: "#111827", margin: 0 },
-  sectionDesc: { fontSize: "14px", color: "#6b7280", lineHeight: "1.5", margin: 0 },
-  label: { fontSize: "13px", fontWeight: "600", color: "#374151" },
+  sectionTitle: { fontSize: "22px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", margin: 0 },
+  sectionDesc: { fontSize: "14px", color: "#8aa898", lineHeight: "1.5", margin: 0 },
+  label: { fontSize: "13px", fontWeight: "600", color: "#4a6358" },
   req: { color: "#ef4444" },
   input: { padding: "10px 14px", border: "1.5px solid #d1d5db", borderRadius: "8px", fontSize: "15px", outline: "none", width: "100%", boxSizing: "border-box" },
   select: { padding: "10px 14px", border: "1.5px solid #d1d5db", borderRadius: "8px", fontSize: "15px", background: "#fff", width: "100%", boxSizing: "border-box" },
   row: { display: "flex", gap: "12px" },
   col: { display: "flex", flexDirection: "column", flex: 1, gap: "6px" },
-  consentBox: { background: "#f9fafb", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "16px", maxHeight: "200px", overflowY: "auto", fontSize: "13px", lineHeight: "1.6", color: "#374151" },
+  consentBox: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "16px", maxHeight: "200px", overflowY: "auto", fontSize: "13px", lineHeight: "1.6", color: "#4a6358" },
   consentPara: { margin: "0 0 10px 0" },
-  checkboxRow: { display: "flex", alignItems: "flex-start", gap: "10px", fontSize: "14px", color: "#374151", cursor: "pointer" },
-  checkbox: { marginTop: "2px", accentColor: "#0f4c35", width: "16px", height: "16px", flexShrink: 0 },
-  checkGroup: { display: "flex", flexDirection: "column", gap: "8px", padding: "12px", background: "#f9fafb", borderRadius: "8px", border: "1.5px solid #e5e7eb" },
-  btn: { background: "#0f4c35", color: "#fff", border: "none", borderRadius: "10px", padding: "14px 24px", fontSize: "16px", fontWeight: "700", cursor: "pointer", marginTop: "8px" },
+  checkboxRow: { display: "flex", alignItems: "flex-start", gap: "10px", fontSize: "14px", color: "#4a6358", cursor: "pointer" },
+  checkbox: { marginTop: "2px", accentColor: "#2d6a4f", width: "16px", height: "16px", flexShrink: 0 },
+  checkGroup: { display: "flex", flexDirection: "column", gap: "8px", padding: "12px", background: "#f4f8f5", borderRadius: "8px", border: "1.5px solid #e5e7eb" },
+  btn: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "10px", padding: "14px 24px", fontSize: "16px", fontWeight: "700", cursor: "pointer", marginTop: "8px" },
   errorBanner: { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: "8px", padding: "12px 16px", color: "#dc2626", fontSize: "14px", marginBottom: "8px" },
   fieldError: { color: "#dc2626", fontSize: "13px", marginTop: "-8px" },
-  infoNote: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", color: "#166534" },
+  infoNote: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", color: "#1b5e42" },
   warningBox: { background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: "8px", padding: "14px 16px", fontSize: "13px", color: "#92400e", lineHeight: "1.5" },
   successIcon: { fontSize: "56px", marginBottom: "8px" },
   summaryBox: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", gap: "10px" },
-  summaryRow: { display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#374151" },
-  scienceNote: { fontSize: "12px", color: "#9ca3af" },
-  disclaimer: { fontSize: "12px", color: "#9ca3af", textAlign: "center", lineHeight: "1.5" },
+  summaryRow: { display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#4a6358" },
+  scienceNote: { fontSize: "12px", color: "#8aa898" },
+  disclaimer: { fontSize: "12px", color: "#8aa898", textAlign: "center", lineHeight: "1.5" },
 };

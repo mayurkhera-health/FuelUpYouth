@@ -1,58 +1,82 @@
+/* ── FuelUp Youth — Design Tokens ────────────────────────────────────────────── */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Brand greens */
+  --brand-deep:  #1b4332;
+  --brand:       #2d6a4f;
+  --brand-mid:   #52b788;
+  --brand-light: #95d5b2;
+  --brand-pale:  #d8f3dc;
+  --brand-ghost: #f0faf4;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Warm accent (CTAs / primary buttons) */
+  --warm:        #e9a84c;
+  --warm-light:  #fdf3e0;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
+  /* Text */
+  --text-1: #1b3a2a;
+  --text-2: #4a6358;
+  --text-3: #8aa898;
+
+  /* Surfaces */
+  --bg:      #f4f8f5;
+  --surface: #ffffff;
+  --surface-2: #f0f4f1;
+
+  /* Borders */
+  --border:  #dce8e0;
+  --border-2: #c8d8d0;
+
+  /* Event (muted) */
+  --game:           #c05a4a;
+  --game-bg:        #fdf2f0;
+  --game-border:    #f4c0b8;
+  --tournament:     #7e6ab5;
+  --tournament-bg:  #f4f1fb;
+  --tournament-border: #c8bde8;
+  --practice:       #c8903a;
+  --practice-bg:    #fdf5e7;
+  --practice-border: #f4d3a0;
+  --strength:       #4a8fc4;
+  --strength-bg:    #eef5fb;
+  --strength-border: #b8d8ef;
+  --rest:           #2d6a4f;
+  --rest-bg:        #f0faf4;
+  --rest-border:    #b0e8c8;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(27,67,50,0.07);
+  --shadow-md: 0 8px 24px rgba(27,67,50,0.11);
+  --shadow-lg: 0 20px 48px rgba(27,67,50,0.15);
+
+  /* Typography */
+  --font-display: 'Nunito', 'DM Sans', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
+
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  color: var(--text-1);
   background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  text-rendering: optimizeLegibility;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+body { margin: 0; }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+#root {
+  min-height: 100svh;
 }
 
-body {
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text-1);
   margin: 0;
 }
+
+p { margin: 0; }
 
 @keyframes slideIn {
   from { transform: translateX(100%); opacity: 0; }
@@ -61,60 +85,4 @@ body {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }

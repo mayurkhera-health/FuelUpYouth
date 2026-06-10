@@ -35,10 +35,10 @@ function ResultBar({ label, value, max, unit, color }) {
 const rb = {
   wrap: { marginBottom: "14px" },
   row: { display: "flex", justifyContent: "space-between", marginBottom: "5px" },
-  label: { fontSize: "13px", fontWeight: "600", color: "#374151" },
+  label: { fontSize: "13px", fontWeight: "600", color: "#4a6358" },
   value: { fontSize: "16px", fontWeight: "800" },
-  unit: { fontSize: "12px", fontWeight: "400", color: "#9ca3af", marginLeft: "2px" },
-  track: { height: "8px", background: "#e5e7eb", borderRadius: "99px", overflow: "hidden" },
+  unit: { fontSize: "12px", fontWeight: "400", color: "#8aa898", marginLeft: "2px" },
+  track: { height: "8px", background: "#dce8e0", borderRadius: "99px", overflow: "hidden" },
   fill: { height: "100%", borderRadius: "99px", transition: "width 0.5s ease" },
 };
 
@@ -250,14 +250,14 @@ export default function HydrationScreen({ athlete }) {
 
           {/* Bar visualization */}
           <ResultBar label="During Event" value={result.hydration_oz_during} max={64} unit=" oz" color="#0ea5e9" />
-          <ResultBar label="Pre-Event (2hrs before)" value={16} max={64} unit=" oz" color="#0f4c35" />
+          <ResultBar label="Pre-Event (2hrs before)" value={16} max={64} unit=" oz" color="#2d6a4f" />
           <ResultBar label="Post-Event Recovery" value={24} max={64} unit=" oz" color="#d97706" />
 
           {/* Electrolytes */}
-          <div style={{ ...s.electCard, background: result.electrolytes_needed ? "#fffbeb" : "#f0fdf4", borderColor: result.electrolytes_needed ? "#fde68a" : "#bbf7d0" }}>
+          <div style={{ ...s.electCard, background: result.electrolytes_needed ? "#fffbeb" : "#f0fdf4", borderColor: result.electrolytes_needed ? "#fde68a" : "#b0e8c8" }}>
             <div style={s.electHeader}>
               <span style={s.electIcon}>{result.electrolytes_needed ? "⚡" : "💧"}</span>
-              <span style={{ ...s.electTitle, color: result.electrolytes_needed ? "#92400e" : "#0f4c35" }}>
+              <span style={{ ...s.electTitle, color: result.electrolytes_needed ? "#92400e" : "#2d6a4f" }}>
                 {result.electrolytes_needed ? "Electrolytes Recommended" : "Water Only — No Sports Drink Needed"}
               </span>
             </div>
@@ -350,71 +350,71 @@ async function calcManual(athlete, event, tempF, humidity) {
 }
 
 const s = {
-  title: { fontSize: "18px", fontWeight: "700", color: "#111827", margin: "0 0 4px" },
-  subtitle: { fontSize: "13px", color: "#6b7280", marginBottom: "20px", lineHeight: 1.5 },
+  title: { fontSize: "18px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", margin: "0 0 4px" },
+  subtitle: { fontSize: "13px", color: "#8aa898", marginBottom: "20px", lineHeight: 1.5 },
 
   athleteCard: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "12px", padding: "14px 18px", marginBottom: "16px" },
   athleteRow: { display: "flex", gap: "24px", marginBottom: "6px" },
   athleteStat: { display: "flex", flexDirection: "column" },
-  athleteStatLabel: { fontSize: "11px", color: "#6b7280", marginTop: "2px" },
-  athleteNote: { fontSize: "11px", color: "#6b7280", margin: 0 },
+  athleteStatLabel: { fontSize: "11px", color: "#8aa898", marginTop: "2px" },
+  athleteNote: { fontSize: "11px", color: "#8aa898", margin: 0 },
 
-  section: { background: "#f9fafb", border: "1.5px solid #e5e7eb", borderRadius: "12px", padding: "16px 18px", marginBottom: "14px" },
+  section: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "12px", padding: "16px 18px", marginBottom: "14px" },
   sectionHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" },
-  sectionTitle: { fontSize: "13px", fontWeight: "700", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "12px" },
-  modeToggle: { background: "none", border: "1.5px solid #d1d5db", borderRadius: "6px", padding: "4px 10px", fontSize: "12px", fontWeight: "600", color: "#6b7280", cursor: "pointer" },
+  sectionTitle: { fontSize: "13px", fontWeight: "700", color: "#4a6358", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "12px" },
+  modeToggle: { background: "none", border: "1.5px solid #d1d5db", borderRadius: "6px", padding: "4px 10px", fontSize: "12px", fontWeight: "600", color: "#8aa898", cursor: "pointer" },
 
   eventGrid: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px" },
   eventChip: { background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "10px 12px", cursor: "pointer", textAlign: "left" },
-  eventChipActive: { background: "#f0fdf4", borderColor: "#0f4c35" },
-  eventChipType: { fontSize: "10px", fontWeight: "700", color: "#0f4c35", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "3px" },
-  eventChipName: { fontSize: "13px", fontWeight: "700", color: "#111827", marginBottom: "2px" },
-  eventChipDate: { fontSize: "11px", color: "#6b7280" },
-  noEvents: { fontSize: "13px", color: "#9ca3af", textAlign: "center", padding: "12px 0" },
+  eventChipActive: { background: "#f0fdf4", borderColor: "#2d6a4f" },
+  eventChipType: { fontSize: "10px", fontWeight: "700", color: "#2d6a4f", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "3px" },
+  eventChipName: { fontSize: "13px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", marginBottom: "2px" },
+  eventChipDate: { fontSize: "11px", color: "#8aa898" },
+  noEvents: { fontSize: "13px", color: "#8aa898", textAlign: "center", padding: "12px 0" },
 
-  label: { display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" },
+  label: { display: "block", fontSize: "12px", fontWeight: "600", color: "#8aa898", marginBottom: "6px" },
   input: { width: "100%", padding: "9px 12px", border: "1.5px solid #d1d5db", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box", outline: "none", background: "#fff" },
-  hint: { fontSize: "12px", color: "#9ca3af", marginTop: "6px" },
+  hint: { fontSize: "12px", color: "#8aa898", marginTop: "6px" },
 
   sliderRow: { display: "flex", gap: "20px", flexWrap: "wrap" },
   sliderGroup: { flex: "1 1 200px" },
-  sliderLabel: { display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" },
-  sliderVal: { color: "#0f4c35" },
-  slider: { width: "100%", accentColor: "#0f4c35" },
-  sliderEnds: { display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#9ca3af", marginTop: "2px" },
+  sliderLabel: { display: "flex", justifyContent: "space-between", fontSize: "13px", fontWeight: "600", color: "#4a6358", marginBottom: "6px" },
+  sliderVal: { color: "#2d6a4f" },
+  slider: { width: "100%", accentColor: "#2d6a4f" },
+  sliderEnds: { display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#8aa898", marginTop: "2px" },
 
-  calcBtn: { width: "100%", padding: "13px", background: "#0f4c35", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "700", cursor: "pointer", marginBottom: "16px" },
+  calcBtn: { width: "100%", padding: "13px", background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "700", cursor: "pointer", marginBottom: "16px" },
   errorBox: { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", color: "#dc2626", marginBottom: "12px" },
 
   results: { background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: "14px", padding: "20px", marginTop: "4px" },
   resultHeader: { marginBottom: "20px" },
-  resultTitle: { fontSize: "16px", fontWeight: "800", color: "#111827", marginBottom: "2px" },
-  resultEvent: { fontSize: "13px", color: "#6b7280", marginBottom: "6px" },
+  resultTitle: { fontSize: "16px", fontWeight: "800", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", marginBottom: "2px" },
+  resultEvent: { fontSize: "13px", color: "#8aa898", marginBottom: "6px" },
   weatherBadge: { display: "inline-block", background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "99px", padding: "3px 10px", fontSize: "12px", color: "#0369a1", fontWeight: "600" },
   weatherNote: { fontSize: "12px", color: "#d97706", marginTop: "6px" },
 
   numbersRow: { display: "flex", gap: "10px", marginBottom: "20px" },
   numberCard: { flex: 1, background: "#f0fdf4", borderRadius: "10px", padding: "14px", textAlign: "center" },
-  numberVal: { fontSize: "28px", fontWeight: "800", color: "#0f4c35", lineHeight: 1 },
-  numberLabel: { fontSize: "11px", color: "#6b7280", marginTop: "4px" },
+  numberVal: { fontSize: "28px", fontWeight: "800", color: "#2d6a4f", lineHeight: 1 },
+  numberLabel: { fontSize: "11px", color: "#8aa898", marginTop: "4px" },
 
   electCard: { border: "1.5px solid", borderRadius: "10px", padding: "14px 16px", marginBottom: "14px" },
   electHeader: { display: "flex", alignItems: "center", gap: "8px" },
   electIcon: { fontSize: "18px" },
   electTitle: { fontSize: "14px", fontWeight: "700" },
-  electReason: { fontSize: "12px", color: "#6b7280", marginTop: "6px" },
+  electReason: { fontSize: "12px", color: "#8aa898", marginTop: "6px" },
 
-  recsCard: { background: "#f9fafb", borderRadius: "10px", padding: "14px 16px", marginBottom: "14px" },
-  recsTitle: { fontSize: "13px", fontWeight: "700", color: "#111827", marginBottom: "10px" },
+  recsCard: { background: "#f4f8f5", borderRadius: "10px", padding: "14px 16px", marginBottom: "14px" },
+  recsTitle: { fontSize: "13px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", marginBottom: "10px" },
   recRow: { display: "flex", gap: "8px", marginBottom: "6px", alignItems: "flex-start" },
-  recDot: { color: "#0f4c35", fontWeight: "800", flexShrink: 0 },
-  recText: { fontSize: "13px", color: "#374151", lineHeight: 1.5 },
+  recDot: { color: "#2d6a4f", fontWeight: "800", flexShrink: 0 },
+  recText: { fontSize: "13px", color: "#4a6358", lineHeight: 1.5 },
 
-  timelineCard: { background: "#f9fafb", borderRadius: "10px", padding: "14px 16px", marginBottom: "14px" },
+  timelineCard: { background: "#f4f8f5", borderRadius: "10px", padding: "14px 16px", marginBottom: "14px" },
   timelineRow: { display: "flex", gap: "12px", marginBottom: "10px", alignItems: "flex-start" },
   timelineIcon: { fontSize: "18px", flexShrink: 0 },
-  timelineTime: { fontSize: "12px", fontWeight: "700", color: "#0f4c35", marginBottom: "2px" },
-  timelineTip: { fontSize: "12px", color: "#374151", lineHeight: 1.5 },
+  timelineTime: { fontSize: "12px", fontWeight: "700", color: "#2d6a4f", marginBottom: "2px" },
+  timelineTip: { fontSize: "12px", color: "#4a6358", lineHeight: 1.5 },
 
-  disclaimer: { fontSize: "11px", color: "#9ca3af", textAlign: "center", marginTop: "8px", lineHeight: 1.6 },
+  disclaimer: { fontSize: "11px", color: "#8aa898", textAlign: "center", marginTop: "8px", lineHeight: 1.6 },
 };

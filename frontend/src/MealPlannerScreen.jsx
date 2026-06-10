@@ -3,12 +3,12 @@ import { useState, useEffect, useCallback } from "react";
 const API = import.meta.env.VITE_API_URL ?? "";
 
 const EVENT_COLORS = {
-  game:       { bg: "#fef2f2", border: "#fecaca", text: "#dc2626", label: "🔴 Game" },
-  tournament: { bg: "#faf5ff", border: "#e9d5ff", text: "#7c3aed", label: "🟣 Tournament" },
-  practice:   { bg: "#fff7ed", border: "#fed7aa", text: "#ea580c", label: "🟠 Practice" },
-  training:   { bg: "#fff7ed", border: "#fed7aa", text: "#ea580c", label: "🟠 Training" },
-  strength:   { bg: "#eff6ff", border: "#bfdbfe", text: "#2563eb", label: "🔵 Strength" },
-  rest:       { bg: "#f9fafb", border: "#e5e7eb", text: "#6b7280", label: "⚪ Rest" },
+  game:       { bg: "#fdf2f0", border: "#f4c0b8", text: "#c05a4a", label: "⚽ Game" },
+  tournament: { bg: "#f4f1fb", border: "#c8bde8", text: "#7e6ab5", label: "🏆 Tournament" },
+  practice:   { bg: "#fdf5e7", border: "#f4d3a0", text: "#c8903a", label: "🏃 Practice" },
+  training:   { bg: "#fdf5e7", border: "#f4d3a0", text: "#c8903a", label: "💪 Training" },
+  strength:   { bg: "#eef5fb", border: "#b8d8ef", text: "#4a8fc4", label: "🏋️ Strength" },
+  rest:       { bg: "#f4f8f5", border: "#dce8e0", text: "#8aa898", label: "🌿 Rest" },
 };
 
 function getMondayOf(d) {
@@ -39,7 +39,7 @@ function formatWeekRange(monday) {
 function CalorieSummaryBar({ planned, target }) {
   if (!target) return null;
   const pct = Math.min(100, Math.round((planned / target) * 100));
-  const color = pct >= 90 ? "#0f4c35" : pct >= 70 ? "#d97706" : "#dc2626";
+  const color = pct >= 90 ? "#2d6a4f" : pct >= 70 ? "#d97706" : "#dc2626";
   return (
     <div style={csb.wrap}>
       <div style={csb.track}>
@@ -54,10 +54,10 @@ function CalorieSummaryBar({ planned, target }) {
 }
 const csb = {
   wrap: { marginBottom: "8px" },
-  track: { height: "5px", background: "#e5e7eb", borderRadius: "99px", overflow: "hidden", marginBottom: "3px" },
+  track: { height: "5px", background: "#dce8e0", borderRadius: "99px", overflow: "hidden", marginBottom: "3px" },
   fill: { height: "100%", borderRadius: "99px", transition: "width 0.4s ease" },
   label: { fontSize: "10px", textAlign: "center" },
-  target: { color: "#9ca3af" },
+  target: { color: "#8aa898" },
 };
 
 // ── RecipePicker ──────────────────────────────────────────────────────────────
@@ -99,15 +99,15 @@ function RecipePicker({ slot, allRecipes, athleteAllergens, onSelect, onClose })
 const rp = {
   panel: { background: "#fff", border: "2px solid #0f4c35", borderRadius: "12px", padding: "12px", marginTop: "6px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 10 },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" },
-  title: { fontSize: "12px", fontWeight: "700", color: "#0f4c35" },
-  close: { background: "none", border: "none", cursor: "pointer", color: "#9ca3af", fontSize: "14px", padding: "2px 6px" },
-  empty: { fontSize: "12px", color: "#9ca3af", textAlign: "center", padding: "12px 0" },
+  title: { fontSize: "12px", fontWeight: "700", color: "#2d6a4f" },
+  close: { background: "none", border: "none", cursor: "pointer", color: "#8aa898", fontSize: "14px", padding: "2px 6px" },
+  empty: { fontSize: "12px", color: "#8aa898", textAlign: "center", padding: "12px 0" },
   list: { display: "flex", flexDirection: "column", gap: "6px", maxHeight: "200px", overflowY: "auto" },
-  option: { background: "#f9fafb", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "8px 10px", cursor: "pointer", textAlign: "left" },
-  optName: { fontSize: "12px", fontWeight: "700", color: "#111827", marginBottom: "2px" },
-  optMeta: { fontSize: "11px", color: "#6b7280" },
+  option: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "8px 10px", cursor: "pointer", textAlign: "left" },
+  optName: { fontSize: "12px", fontWeight: "700", color: "#1b3a2a", marginBottom: "2px" },
+  optMeta: { fontSize: "11px", color: "#8aa898" },
   tags: { display: "flex", gap: "4px", marginTop: "4px", flexWrap: "wrap" },
-  tag: { background: "#f0fdf4", color: "#0f4c35", fontSize: "10px", fontWeight: "600", padding: "1px 6px", borderRadius: "99px" },
+  tag: { background: "#f0fdf4", color: "#2d6a4f", fontSize: "10px", fontWeight: "600", padding: "1px 6px", borderRadius: "99px" },
 };
 
 // ── SlotCard ──────────────────────────────────────────────────────────────────
@@ -155,17 +155,17 @@ function SlotCard({ slot, date, allRecipes, athleteAllergens, isActive, onOpenPi
 }
 const sc = {
   wrap: { marginBottom: "6px" },
-  label: { fontSize: "10px", fontWeight: "700", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "3px" },
-  emptyCard: { width: "100%", minHeight: "44px", background: "none", border: "1.5px dashed #d1d5db", borderRadius: "8px", color: "#9ca3af", fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" },
-  filledCard: { background: "#f9fafb", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "8px", position: "relative" },
-  aiCard: { background: "#f0fdf4", borderColor: "#bbf7d0" },
-  aiBadge: { fontSize: "9px", fontWeight: "800", color: "#0f4c35", marginBottom: "2px" },
-  recipeName: { fontSize: "11px", fontWeight: "700", color: "#111827", lineHeight: 1.3, marginBottom: "2px" },
-  recipeCal: { fontSize: "10px", color: "#6b7280", marginBottom: "6px" },
+  label: { fontSize: "10px", fontWeight: "700", color: "#8aa898", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "3px" },
+  emptyCard: { width: "100%", minHeight: "44px", background: "none", border: "1.5px dashed #d1d5db", borderRadius: "8px", color: "#8aa898", fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" },
+  filledCard: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "8px", position: "relative" },
+  aiCard: { background: "#f0fdf4", borderColor: "#b0e8c8" },
+  aiBadge: { fontSize: "9px", fontWeight: "800", color: "#2d6a4f", marginBottom: "2px" },
+  recipeName: { fontSize: "11px", fontWeight: "700", color: "#1b3a2a", lineHeight: 1.3, marginBottom: "2px" },
+  recipeCal: { fontSize: "10px", color: "#8aa898", marginBottom: "6px" },
   actions: { display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" },
-  eatBtn: { flex: 1, background: "#0f4c35", color: "#fff", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "10px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
-  eatenBadge: { flex: 1, fontSize: "10px", fontWeight: "700", color: "#0f4c35", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "6px", padding: "4px 6px", textAlign: "center" },
-  swapBtn: { background: "#f3f4f6", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "11px", cursor: "pointer" },
+  eatBtn: { flex: 1, background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "10px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
+  eatenBadge: { flex: 1, fontSize: "10px", fontWeight: "700", color: "#2d6a4f", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "6px", padding: "4px 6px", textAlign: "center" },
+  swapBtn: { background: "#f0f4f1", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "11px", cursor: "pointer" },
   clearBtn: { background: "#fef2f2", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "11px", cursor: "pointer", color: "#dc2626" },
 };
 
@@ -213,12 +213,12 @@ const dc = {
   col: { flex: "0 0 160px", minWidth: "140px", padding: "10px 8px", borderRight: "1px solid #f3f4f6" },
   colToday: { background: "#fafffe" },
   header: { textAlign: "center", marginBottom: "8px", paddingBottom: "8px", borderBottom: "1.5px solid #e5e7eb" },
-  dayLabel: { fontSize: "11px", fontWeight: "700", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" },
-  todayLabel: { color: "#0f4c35" },
-  dateNum: { fontSize: "20px", fontWeight: "800", color: "#111827", lineHeight: 1.1, marginBottom: "4px" },
-  todayNum: { color: "#0f4c35" },
+  dayLabel: { fontSize: "11px", fontWeight: "700", color: "#8aa898", textTransform: "uppercase", letterSpacing: "0.06em" },
+  todayLabel: { color: "#2d6a4f" },
+  dateNum: { fontSize: "20px", fontWeight: "800", color: "#1b3a2a", lineHeight: 1.1, marginBottom: "4px" },
+  todayNum: { color: "#2d6a4f" },
   eventBadge: { fontSize: "10px", fontWeight: "700", padding: "2px 6px", borderRadius: "99px", border: "1px solid", display: "inline-block", marginBottom: "2px" },
-  eventName: { fontSize: "10px", color: "#6b7280", marginTop: "2px" },
+  eventName: { fontSize: "10px", color: "#8aa898", marginTop: "2px" },
 };
 
 // ── MealPlannerScreen ─────────────────────────────────────────────────────────
@@ -379,7 +379,7 @@ export default function MealPlannerScreen({ athlete, onNavigate, freshImport = f
         </div>
       ) : (
         <button style={s.genBtn} onClick={() => handleGenerate(false)} disabled={generating}>
-          {generating ? "✨ Claude is building your week plan…" : "✨ Generate Week Plan with AI"}
+          {generating ? "✨ Building your week plan…" : "✨ Generate Week Plan"}
         </button>
       )}
 
@@ -415,8 +415,8 @@ export default function MealPlannerScreen({ athlete, onNavigate, freshImport = f
 
       {/* Legend */}
       <div style={s.legend}>
-        <span style={s.legendItem}><span style={{ ...s.legendDot, background: "#0f4c35" }} />AI generated</span>
-        <span style={s.legendItem}><span style={{ ...s.legendDot, background: "#6b7280" }} />Manual</span>
+        <span style={s.legendItem}><span style={{ ...s.legendDot, background: "#2d6a4f" }} />AI generated</span>
+        <span style={s.legendItem}><span style={{ ...s.legendDot, background: "#8aa898" }} />Manual</span>
         <span style={s.legendItem}>✅ = Logged to Nutrition tab</span>
       </div>
 
@@ -433,35 +433,35 @@ const s = {
   importBannerInner: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", background: "linear-gradient(135deg, #0f4c35 0%, #1a7a54 100%)", borderRadius: "13px", padding: "16px 18px" },
   importBannerText: { flex: 1 },
   importBannerTitle: { fontSize: "15px", fontWeight: "700", color: "#ffffff", marginBottom: "3px" },
-  importBannerSub: { fontSize: "13px", color: "#a7f3d0", lineHeight: 1.4 },
+  importBannerSub: { fontSize: "13px", color: "#b7e4c7", lineHeight: 1.4 },
   importBannerClose: { background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", cursor: "pointer", fontSize: "13px", flexShrink: 0 },
 
-  title: { fontSize: "18px", fontWeight: "700", color: "#111827", margin: "0 0 4px" },
-  subtitle: { fontSize: "13px", color: "#6b7280", marginBottom: "16px", lineHeight: 1.5 },
+  title: { fontSize: "18px", fontWeight: "700", color: "#1b3a2a", margin: "0 0 4px" },
+  subtitle: { fontSize: "13px", color: "#8aa898", marginBottom: "16px", lineHeight: 1.5 },
 
   navRow: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" },
-  navBtn: { background: "#f3f4f6", border: "1.5px solid #e5e7eb", borderRadius: "8px", width: "36px", height: "36px", fontSize: "18px", cursor: "pointer", color: "#374151", fontWeight: "700" },
-  weekLabel: { fontSize: "13px", fontWeight: "700", color: "#111827", textAlign: "center" },
+  navBtn: { background: "#f0f4f1", border: "1.5px solid #e5e7eb", borderRadius: "8px", width: "36px", height: "36px", fontSize: "18px", cursor: "pointer", color: "#4a6358", fontWeight: "700" },
+  weekLabel: { fontSize: "13px", fontWeight: "700", color: "#1b3a2a", textAlign: "center" },
 
   genBtn: { width: "100%", padding: "12px", background: "linear-gradient(135deg, #0f4c35, #1a7a54)", color: "#fff", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "700", cursor: "pointer", marginBottom: "12px", letterSpacing: "0.01em" },
 
   overwriteWarn: { background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: "10px", padding: "12px 16px", marginBottom: "12px", fontSize: "13px", color: "#92400e" },
   overwriteActions: { display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" },
   overwriteYes: { background: "#dc2626", color: "#fff", border: "none", borderRadius: "7px", padding: "6px 14px", fontSize: "12px", fontWeight: "700", cursor: "pointer" },
-  overwriteKeep: { background: "#0f4c35", color: "#fff", border: "none", borderRadius: "7px", padding: "6px 14px", fontSize: "12px", fontWeight: "700", cursor: "pointer" },
-  overwriteCancel: { background: "#f3f4f6", color: "#6b7280", border: "1.5px solid #e5e7eb", borderRadius: "7px", padding: "6px 14px", fontSize: "12px", fontWeight: "600", cursor: "pointer" },
+  overwriteKeep: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "7px", padding: "6px 14px", fontSize: "12px", fontWeight: "700", cursor: "pointer" },
+  overwriteCancel: { background: "#f0f4f1", color: "#8aa898", border: "1.5px solid #e5e7eb", borderRadius: "7px", padding: "6px 14px", fontSize: "12px", fontWeight: "600", cursor: "pointer" },
 
   errorBox: { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", color: "#dc2626", marginBottom: "12px" },
-  reasoningBox: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "10px 14px", fontSize: "12px", color: "#374151", marginBottom: "12px", lineHeight: 1.5 },
-  reasoningLabel: { fontWeight: "700", color: "#0f4c35" },
+  reasoningBox: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "10px 14px", fontSize: "12px", color: "#4a6358", marginBottom: "12px", lineHeight: 1.5 },
+  reasoningLabel: { fontWeight: "700", color: "#2d6a4f" },
 
-  loadingMsg: { textAlign: "center", color: "#9ca3af", padding: "40px 0", fontSize: "14px" },
+  loadingMsg: { textAlign: "center", color: "#8aa898", padding: "40px 0", fontSize: "14px" },
 
   weekGrid: { display: "flex", overflowX: "auto", border: "1.5px solid #e5e7eb", borderRadius: "12px", marginBottom: "16px", scrollbarWidth: "thin" },
 
-  legend: { display: "flex", gap: "16px", fontSize: "11px", color: "#6b7280", marginBottom: "8px", flexWrap: "wrap" },
+  legend: { display: "flex", gap: "16px", fontSize: "11px", color: "#8aa898", marginBottom: "8px", flexWrap: "wrap" },
   legendItem: { display: "flex", alignItems: "center", gap: "4px" },
   legendDot: { width: "8px", height: "8px", borderRadius: "50%", display: "inline-block" },
 
-  disclaimer: { fontSize: "11px", color: "#9ca3af", textAlign: "center", marginTop: "4px", lineHeight: 1.6 },
+  disclaimer: { fontSize: "11px", color: "#8aa898", textAlign: "center", marginTop: "4px", lineHeight: 1.6 },
 };

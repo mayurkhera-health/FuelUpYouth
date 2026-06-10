@@ -181,7 +181,7 @@ function Field({ label, children, style }) {
   );
 }
 const f = {
-  label: { display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" },
+  label: { display: "block", fontSize: "12px", fontWeight: "600", color: "#8aa898", marginBottom: "6px" },
 };
 
 function Chip({ label, active, onClick }) {
@@ -192,25 +192,25 @@ function Chip({ label, active, onClick }) {
   );
 }
 const ch = {
-  base: { padding: "6px 12px", border: "1.5px solid #d1d5db", borderRadius: "99px", background: "#fff", fontSize: "13px", fontWeight: "600", color: "#6b7280", cursor: "pointer", marginBottom: "4px" },
-  active: { background: "#0f4c35", borderColor: "#0f4c35", color: "#fff" },
+  base: { padding: "6px 12px", border: "1.5px solid #d1d5db", borderRadius: "99px", background: "#fff", fontSize: "13px", fontWeight: "600", color: "#8aa898", cursor: "pointer", marginBottom: "4px" },
+  active: { background: "#2d6a4f", borderColor: "#2d6a4f", color: "#fff" },
 };
 
 const s = {
   headerRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" },
-  title: { fontSize: "18px", fontWeight: "700", color: "#111827", margin: 0 },
-  saveBtn: { background: "#0f4c35", color: "#fff", border: "none", borderRadius: "8px", padding: "8px 18px", fontSize: "13px", fontWeight: "700", cursor: "pointer" },
-  saveBtnFull: { width: "100%", padding: "12px", background: "#0f4c35", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "700", cursor: "pointer", marginTop: "8px", marginBottom: "12px" },
-  success: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", fontWeight: "600", color: "#0f4c35", marginBottom: "16px" },
+  title: { fontSize: "18px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", margin: 0 },
+  saveBtn: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "8px", padding: "8px 18px", fontSize: "13px", fontWeight: "700", cursor: "pointer" },
+  saveBtnFull: { width: "100%", padding: "12px", background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "700", cursor: "pointer", marginTop: "8px", marginBottom: "12px" },
+  success: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", fontWeight: "600", color: "#2d6a4f", marginBottom: "16px" },
   error: { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", color: "#dc2626", marginBottom: "16px" },
-  section: { background: "#f9fafb", border: "1.5px solid #e5e7eb", borderRadius: "12px", padding: "18px 20px", marginBottom: "14px" },
-  sectionTitle: { fontSize: "13px", fontWeight: "700", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "14px" },
+  section: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "12px", padding: "18px 20px", marginBottom: "14px" },
+  sectionTitle: { fontSize: "13px", fontWeight: "700", color: "#4a6358", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "14px" },
   row2: { display: "flex", gap: "12px", marginBottom: "12px" },
   row3: { display: "flex", gap: "12px" },
   input: { width: "100%", padding: "9px 12px", border: "1.5px solid #d1d5db", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box", outline: "none", background: "#fff" },
   chipRow: { display: "flex", flexWrap: "wrap", gap: "6px" },
-  hint: { fontSize: "11px", color: "#9ca3af", marginTop: "6px" },
-  selected: { fontSize: "12px", color: "#0f4c35", marginTop: "6px", fontWeight: "600" },
+  hint: { fontSize: "11px", color: "#8aa898", marginTop: "6px" },
+  selected: { fontSize: "12px", color: "#2d6a4f", marginTop: "6px", fontWeight: "600" },
   warning: { background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: "8px", padding: "10px 14px", fontSize: "12px", color: "#92400e", marginTop: "10px", lineHeight: 1.5 },
-  disclaimer: { textAlign: "center", fontSize: "11px", color: "#9ca3af" },
+  disclaimer: { textAlign: "center", fontSize: "11px", color: "#8aa898" },
 };
