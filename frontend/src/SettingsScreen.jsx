@@ -23,7 +23,7 @@ export default function SettingsScreen({ athlete, parent, onSave, onSignOut, onC
   useEffect(() => {
     setLegalLoading(true);
     setLegalError(false);
-    fetch(`${API}/api/legal`)
+    fetch(`${API}/api/legal/`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => { setLegalDocs(data); setLegalLoading(false); })
       .catch(() => { setLegalError(true); setLegalLoading(false); });
