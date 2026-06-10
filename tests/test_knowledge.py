@@ -1,5 +1,6 @@
 import sqlite3
 import pytest
+import json
 from pathlib import Path
 import sys, os
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -40,3 +41,68 @@ def test_knowledge_chunks_schema():
     conn.close()
     required = {"id", "item_id", "chunk_index", "heading", "content", "created_at"}
     assert required.issubset(cols)
+
+
+def _get_conn():
+    import sqlite3
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def test_ingest_creates_knowledge_item():
+    """Ingesting an approved file creates a knowledge_items row."""
+    from api.services.knowledge.ingest import ingest_file
+    iron_path = Path(__file__).parent.parent / "knowledge" / "iron_magnesium.md"
+    ingest_file(str(iron_path))
+    conn = _get_conn()
+    row = conn.execute(
+        "SELECT * FROM knowledge_items WHERE slug = 'iron_magnesium'"
+    ).fetchone()
+    conn.close()
+    assert row is not None
+    assert row["title"] == "Iron and Magnesium Requirements for Youth Athletes"
+    assert row["review_status"] == "approved"
+
+def test_ingest_creates_chunks():
+    """Ingesting a file creates at least 3 chunks in knowledge_chunks."""
+    conn = _get_conn()
+    item = conn.execute(
+        "SELECT id FROM knowledge_items WHERE slug = 'iron_magnesium'"
+    ).fetchone()
+    if not item:
+        from api.services.knowledge.ingest import ingest_file
+        iron_path = Path(__file__).parent.parent / "knowledge" / "iron_magnesium.md"
+        ingest_file(str(iron_path))
+        conn = _get_conn()
+        item = conn.execute(
+            "SELECT id FROM knowledge_items WHERE slug = 'iron_magnesium'"
+        ).fetchone()
+    chunks = conn.execute(
+        "SELECT * FROM knowledge_chunks WHERE item_id = ?", (item["id"],)
+    ).fetchall()
+    conn.close()
+    assert len(chunks) >= 3
+
+def test_draft_file_not_ingested(tmp_path):
+    """A file with review_status: draft must not be ingested."""
+    draft = tmp_path / "draft_test.md"
+    draft.write_text("""---
+title: "Draft Test"
+category: "test"
+source: "test"
+source_urls: []
+last_reviewed_date: "2026-06-10"
+applicable_age_range: "9-17"
+tags: ["test"]
+review_status: "draft"
+version: 1
+---
+
+## Test Content
+
+This should never be ingested.
+""")
+    from api.services.knowledge.ingest import ingest_file
+    result = ingest_file(str(draft))
+    assert result["status"] == "skipped"
+    assert "draft" in result["reason"]
