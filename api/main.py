@@ -1,8 +1,10 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans
 
 app = FastAPI(
@@ -31,7 +33,7 @@ app.include_router(notifications.router, prefix="/api/notifications", tags=["12.
 app.include_router(meal_plans.router,   prefix="/api/meal-plans",   tags=["10. Meal Planner"])
 
 
-@app.get("/")
+@app.get("/api/info")
 def root():
     return {
         "app": "FuelUp Youth Soccer Nutrition Platform",
@@ -47,3 +49,9 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
+
+# Serve React frontend — must be last so API routes take precedence
+_static_dir = Path(__file__).parent.parent / "frontend" / "dist"
+if _static_dir.exists():
+    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="static")

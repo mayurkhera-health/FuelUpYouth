@@ -1,8 +1,11 @@
 # db/setup.py
+import os
 import sqlite3
+from pathlib import Path
 
 def init_db():
-    conn = sqlite3.connect("fuelup.db")
+    db_path = os.getenv("DB_PATH", str(Path(__file__).resolve().parent.parent / "fuelup.db"))
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     cursor.executescript("""
@@ -30,6 +33,7 @@ def init_db():
             allergies TEXT,
             dietary_restrictions TEXT,
             supplement_use TEXT,
+            blueprint_json TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
