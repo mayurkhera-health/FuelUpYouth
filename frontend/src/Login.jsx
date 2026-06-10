@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -9,21 +9,73 @@ const FEATURES = [
   { icon: "💧", title: "Hydration Calculator", desc: "Sweat-rate estimates based on age, competition level, and weather conditions." },
 ];
 
-export default function Login({ onLogin, onNewAccount }) {
-  const [email, setEmail]   = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError]   = useState("");
+const RESEND_COOLDOWN = 60; // seconds
 
-  async function handleSubmit(e) {
+export default function Login({ onLogin, onNewAccount }) {
+  const [step, setStep]       = useState("email"); // "email" | "code"
+  const [email, setEmail]     = useState("");
+  const [code, setCode]       = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState("");
+  const [cooldown, setCooldown] = useState(0);
+
+  // Countdown timer for resend cooldown
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  async function handleRequestCode(e) {
     e.preventDefault();
     if (!email.trim()) return setError("Please enter your email address.");
+    // Dev shortcut
     if (email.trim().toLowerCase() === "test@gmail.com") { onNewAccount(); return; }
     setLoading(true); setError("");
     try {
-      const res = await fetch(`${API}/api/parents/login?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+      const res = await fetch(`${API}/api/parents/request-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await res.json();
       if (res.status === 404) { setError("No account found with that email. Did you mean to create a new account?"); return; }
-      if (!res.ok) throw new Error("Something went wrong. Please try again.");
-      onLogin(await res.json());
+      if (res.status === 429) { setError(data.detail); return; }
+      if (!res.ok) throw new Error(data.detail || "Something went wrong. Please try again.");
+      setStep("code");
+      setCooldown(RESEND_COOLDOWN);
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  }
+
+  async function handleVerifyCode(e) {
+    e.preventDefault();
+    if (code.trim().length !== 6) return setError("Please enter the 6-digit code from your email.");
+    setLoading(true); setError("");
+    try {
+      const res = await fetch(`${API}/api/parents/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.detail || "Invalid code. Please try again."); return; }
+      onLogin(data);
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  }
+
+  async function handleResend() {
+    if (cooldown > 0) return;
+    setError(""); setLoading(true);
+    try {
+      const res = await fetch(`${API}/api/parents/request-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.detail); }
+      setCooldown(RESEND_COOLDOWN);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }
@@ -33,25 +85,15 @@ export default function Login({ onLogin, onNewAccount }) {
 
       {/* ── Left panel — hero copy ── */}
       <div style={s.hero}>
-        {/* Badge */}
-        <div style={s.badge}>RD-Approved · Ages 9–17 · Youth Soccer</div>
-
-        {/* Wordmark */}
         <div style={s.wordmark}>⚽ FuelUp<span style={s.wordmarkYouth}>Youth</span></div>
-
-        {/* Headline */}
         <h1 style={s.headline}>
           The complete nutrition platform for every competitive soccer athlete.
         </h1>
-
-        {/* Sub-headline */}
         <p style={s.subheadline}>
           AI-generated, RD-approved Nutrition Blueprints — personalized to every athlete's age,
           training schedule, game days, dietary needs, and performance goals.
           Built for youth soccer clubs, ages&nbsp;9–17.
         </p>
-
-        {/* Feature grid */}
         <div style={s.features}>
           {FEATURES.map(f => (
             <div key={f.title} style={s.featureCard}>
@@ -63,37 +105,85 @@ export default function Login({ onLogin, onNewAccount }) {
             </div>
           ))}
         </div>
-
       </div>
 
       {/* ── Right panel — sign-in card ── */}
       <div style={s.panel}>
         <div style={s.card}>
           <div style={s.cardLogo}>⚽ FuelUp</div>
-          <h2 style={s.cardTitle}>Welcome back</h2>
-          <p style={s.cardDesc}>Enter your parent email to access your athlete's nutrition plan.</p>
 
-          <form onSubmit={handleSubmit}>
-            <label style={s.label}>Parent Email</label>
-            <input
-              style={s.input}
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={e => { setEmail(e.target.value); setError(""); }}
-              autoFocus
-            />
-            {error && <p style={s.error}>{error}</p>}
-            <button style={s.btn} type="submit" disabled={loading}>
-              {loading ? "Looking up account…" : "Sign In →"}
-            </button>
-          </form>
+          {step === "email" ? (
+            <>
+              <h2 style={s.cardTitle}>Welcome back</h2>
+              <p style={s.cardDesc}>Enter your parent email and we'll send you a sign-in code.</p>
 
-          <div style={s.divider}><span style={s.dividerText}>or</span></div>
+              <form onSubmit={handleRequestCode}>
+                <label style={s.label}>Parent Email</label>
+                <input
+                  style={s.input}
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError(""); }}
+                  autoFocus
+                />
+                {error && <p style={s.error}>{error}</p>}
+                <button style={s.btn} type="submit" disabled={loading}>
+                  {loading ? "Sending code…" : "Send Sign-In Code →"}
+                </button>
+              </form>
 
-          <button style={s.newBtn} onClick={onNewAccount}>
-            Create a new account
-          </button>
+              <div style={s.divider}>
+                <div style={s.dividerLine} />
+                <span style={s.dividerText}>or</span>
+                <div style={s.dividerLine} />
+              </div>
+
+              <button style={s.newBtn} onClick={onNewAccount}>
+                Create a new account
+              </button>
+            </>
+          ) : (
+            <>
+              <h2 style={s.cardTitle}>Check your email</h2>
+              <p style={s.cardDesc}>
+                We sent a 6-digit code to<br />
+                <strong style={{ color: "#2d6a4f" }}>{email}</strong>
+              </p>
+
+              <form onSubmit={handleVerifyCode}>
+                <label style={s.label}>6-Digit Code</label>
+                <input
+                  style={{ ...s.input, ...s.codeInput }}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="000000"
+                  maxLength={6}
+                  value={code}
+                  onChange={e => { setCode(e.target.value.replace(/\D/g, "")); setError(""); }}
+                  autoFocus
+                />
+                {error && <p style={s.error}>{error}</p>}
+                <button style={s.btn} type="submit" disabled={loading}>
+                  {loading ? "Verifying…" : "Sign In →"}
+                </button>
+              </form>
+
+              <div style={s.resendRow}>
+                {cooldown > 0 ? (
+                  <span style={s.resendCooldown}>Resend code in {cooldown}s</span>
+                ) : (
+                  <button style={s.resendBtn} onClick={handleResend} disabled={loading}>
+                    Resend code
+                  </button>
+                )}
+                <span style={s.resendSep}>·</span>
+                <button style={s.backBtn} onClick={() => { setStep("email"); setCode(""); setError(""); }}>
+                  Change email
+                </button>
+              </div>
+            </>
+          )}
 
           <p style={s.disclaimer}>
             FuelUp provides educational food guidance — not medical nutrition therapy.
@@ -108,10 +198,10 @@ export default function Login({ onLogin, onNewAccount }) {
 const s = {
   wrapper: {
     minHeight: "100vh",
-    background: "linear-gradient(145deg, #0a3324 0%, #0f4c35 45%, #155e42 100%)",
+    background: "linear-gradient(145deg, #1b4332 0%, #2d6a4f 50%, #3a7d60 100%)",
     display: "flex",
     alignItems: "stretch",
-    fontFamily: "'Inter', -apple-system, sans-serif",
+    fontFamily: "'Nunito', 'DM Sans', sans-serif",
   },
 
   // ── Hero (left) ──
@@ -122,120 +212,196 @@ const s = {
     justifyContent: "center",
     padding: "60px 56px",
     maxWidth: "640px",
-  },
-  badge: {
-    display: "inline-block",
-    background: "rgba(255,255,255,0.12)",
-    border: "1px solid rgba(255,255,255,0.25)",
-    color: "#a7f3d0",
-    fontSize: "12px",
-    fontWeight: "700",
-    letterSpacing: "0.07em",
-    textTransform: "uppercase",
-    padding: "5px 14px",
-    borderRadius: "99px",
-    marginBottom: "24px",
-    width: "fit-content",
+    position: "relative",
+    overflow: "hidden",
   },
   wordmark: {
-    fontSize: "32px",
+    fontSize: "34px",
     fontWeight: "900",
     color: "#ffffff",
     letterSpacing: "-0.5px",
     marginBottom: "20px",
+    fontFamily: "'Nunito', sans-serif",
   },
-  wordmarkYouth: {
-    color: "#6ee7b7",
-    fontWeight: "400",
-    marginLeft: "6px",
-  },
+  wordmarkYouth: { color: "#95d5b2", fontWeight: "500", marginLeft: "6px" },
   headline: {
-    fontSize: "clamp(26px, 3vw, 38px)",
+    fontSize: "clamp(24px, 3vw, 36px)",
     fontWeight: "800",
     color: "#ffffff",
-    lineHeight: 1.2,
-    letterSpacing: "-0.5px",
-    margin: "0 0 18px",
+    lineHeight: 1.25,
+    letterSpacing: "-0.3px",
+    margin: "0 0 16px",
+    fontFamily: "'Nunito', sans-serif",
   },
   subheadline: {
-    fontSize: "16px",
-    color: "#a7f3d0",
+    fontSize: "15px",
+    color: "rgba(183,228,199,0.9)",
     lineHeight: 1.7,
-    marginBottom: "36px",
-    maxWidth: "520px",
+    marginBottom: "32px",
+    maxWidth: "500px",
   },
-  features: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "14px",
-    marginBottom: "36px",
-  },
+  features: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" },
   featureCard: {
     background: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: "12px",
-    padding: "16px",
+    border: "1px solid rgba(255,255,255,0.13)",
+    backdropFilter: "blur(4px)",
+    borderRadius: "14px",
+    padding: "15px",
     display: "flex",
-    gap: "12px",
+    gap: "10px",
     alignItems: "flex-start",
   },
-  featureIcon: { fontSize: "22px", flexShrink: 0, marginTop: "1px" },
-  featureTitle: { fontSize: "13px", fontWeight: "700", color: "#ffffff", marginBottom: "4px" },
-  featureDesc: { fontSize: "12px", color: "#86efac", lineHeight: 1.5 },
-  scienceLine: {
-    fontSize: "11px",
-    color: "rgba(255,255,255,0.4)",
-    letterSpacing: "0.03em",
-  },
+  featureIcon: { fontSize: "20px", flexShrink: 0, marginTop: "1px" },
+  featureTitle: { fontSize: "13px", fontWeight: "700", color: "#ffffff", marginBottom: "3px", fontFamily: "'Nunito', sans-serif" },
+  featureDesc: { fontSize: "11.5px", color: "rgba(183,228,199,0.85)", lineHeight: 1.5 },
 
   // ── Sign-in panel (right) ──
   panel: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "40px 40px",
+    padding: "40px",
     flexShrink: 0,
     width: "420px",
-    background: "rgba(0,0,0,0.15)",
-    backdropFilter: "blur(10px)",
+    background: "#f4f8f5",
   },
   card: {
     background: "#ffffff",
     borderRadius: "20px",
     padding: "36px 32px",
     width: "100%",
-    boxShadow: "0 32px 72px rgba(0,0,0,0.35)",
+    boxShadow: "0 16px 48px rgba(27,67,50,0.14)",
+    border: "1px solid #dce8e0",
   },
   cardLogo: {
     fontSize: "22px",
-    fontWeight: "800",
-    color: "#0f4c35",
+    fontWeight: "900",
+    color: "#2d6a4f",
     textAlign: "center",
-    marginBottom: "20px",
+    marginBottom: "18px",
+    fontFamily: "'Nunito', sans-serif",
   },
   cardTitle: {
     fontSize: "22px",
-    fontWeight: "700",
-    color: "#111827",
+    fontWeight: "800",
+    color: "#1b3a2a",
     margin: "0 0 6px",
     textAlign: "center",
+    fontFamily: "'Nunito', sans-serif",
   },
   cardDesc: {
     fontSize: "13px",
-    color: "#6b7280",
+    color: "#8aa898",
     textAlign: "center",
-    lineHeight: 1.5,
-    marginBottom: "24px",
+    lineHeight: 1.6,
+    marginBottom: "22px",
   },
-  label: { display: "block", fontSize: "12px", fontWeight: "700", color: "#374151", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" },
-  input: { width: "100%", padding: "11px 14px", border: "1.5px solid #d1d5db", borderRadius: "8px", fontSize: "15px", outline: "none", boxSizing: "border-box", marginBottom: "12px", transition: "border-color 0.2s" },
+  label: {
+    display: "block",
+    fontSize: "11px",
+    fontWeight: "700",
+    color: "#4a6358",
+    marginBottom: "6px",
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+    fontFamily: "'Nunito', sans-serif",
+  },
+  input: {
+    width: "100%",
+    padding: "11px 14px",
+    border: "1.5px solid #dce8e0",
+    borderRadius: "10px",
+    fontSize: "15px",
+    fontFamily: "'DM Sans', sans-serif",
+    outline: "none",
+    boxSizing: "border-box",
+    marginBottom: "12px",
+    background: "#f4f8f5",
+    color: "#1b3a2a",
+    transition: "border-color 0.2s, box-shadow 0.2s",
+  },
+  codeInput: {
+    fontSize: "28px",
+    fontFamily: "'Nunito', sans-serif",
+    fontWeight: "800",
+    letterSpacing: "10px",
+    textAlign: "center",
+    padding: "14px",
+  },
   error: { color: "#dc2626", fontSize: "13px", marginBottom: "10px", marginTop: "-6px" },
-  btn: { width: "100%", padding: "13px", background: "#0f4c35", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "700", cursor: "pointer", letterSpacing: "0.01em" },
+  btn: {
+    width: "100%",
+    padding: "13px",
+    background: "linear-gradient(135deg, #2d6a4f, #52b788)",
+    color: "#fff",
+    border: "none",
+    borderRadius: "10px",
+    fontSize: "15px",
+    fontWeight: "700",
+    fontFamily: "'Nunito', sans-serif",
+    cursor: "pointer",
+    letterSpacing: "0.01em",
+    boxShadow: "0 4px 14px rgba(45,106,79,0.28)",
+    transition: "opacity 0.2s",
+  },
 
-  divider: { display: "flex", alignItems: "center", margin: "20px 0", gap: "12px" },
-  dividerText: { fontSize: "12px", color: "#9ca3af", background: "#fff", padding: "0 4px", flexShrink: 0 },
+  divider: { display: "flex", alignItems: "center", margin: "18px 0", gap: "12px" },
+  dividerLine: { flex: 1, height: "1px", background: "#dce8e0" },
+  dividerText: { fontSize: "12px", color: "#8aa898", padding: "0 4px", flexShrink: 0 },
 
-  newBtn: { width: "100%", padding: "12px", background: "transparent", color: "#0f4c35", border: "1.5px solid #0f4c35", borderRadius: "10px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
+  newBtn: {
+    width: "100%",
+    padding: "12px",
+    background: "transparent",
+    color: "#2d6a4f",
+    border: "1.5px solid #95d5b2",
+    borderRadius: "10px",
+    fontSize: "14px",
+    fontWeight: "700",
+    fontFamily: "'Nunito', sans-serif",
+    cursor: "pointer",
+  },
 
-  disclaimer: { fontSize: "11px", color: "#9ca3af", textAlign: "center", marginTop: "20px", lineHeight: 1.6 },
+  resendRow: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "8px",
+    marginTop: "14px",
+  },
+  resendBtn: {
+    background: "none",
+    border: "none",
+    color: "#2d6a4f",
+    fontSize: "13px",
+    fontWeight: "700",
+    fontFamily: "'Nunito', sans-serif",
+    cursor: "pointer",
+    padding: 0,
+    textDecoration: "underline",
+  },
+  resendCooldown: {
+    fontSize: "13px",
+    color: "#8aa898",
+    fontFamily: "'DM Sans', sans-serif",
+  },
+  resendSep: { color: "#dce8e0", fontSize: "14px" },
+  backBtn: {
+    background: "none",
+    border: "none",
+    color: "#8aa898",
+    fontSize: "13px",
+    fontFamily: "'DM Sans', sans-serif",
+    cursor: "pointer",
+    padding: 0,
+    textDecoration: "underline",
+  },
+
+  disclaimer: {
+    fontSize: "11px",
+    color: "#8aa898",
+    textAlign: "center",
+    marginTop: "20px",
+    lineHeight: 1.6,
+  },
 };

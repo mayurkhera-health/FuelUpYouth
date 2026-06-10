@@ -129,3 +129,12 @@ class MealPlanGenerateRequest(BaseModel):
     athlete_id: int
     week_start: str
     overwrite_existing: bool = False
+
+
+class OTPRequest(BaseModel):
+    email: str
+
+
+class OTPVerify(BaseModel):
+    email: str
+    code: str

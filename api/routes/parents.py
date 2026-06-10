@@ -1,7 +1,10 @@
+import hashlib
+import random
+from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException
-from datetime import datetime
-from api.models import ParentCreate, ParentResponse
+from api.models import ParentCreate, ParentResponse, OTPRequest, OTPVerify
 from api.database import get_conn
+from api.services.email import send_otp_email
 
 router = APIRouter()
 
@@ -42,18 +45,71 @@ def confirm_consent(parent_id: int):
         conn.close()
 
 
-@router.get("/login", response_model=None)
-def login(email: str):
+@router.post("/request-otp")
+def request_otp(data: OTPRequest):
+    email = data.email.strip().lower()
     conn = get_conn()
     try:
-        parent = conn.execute("SELECT * FROM parents WHERE email = ?", (email.strip().lower(),)).fetchone()
+        parent = conn.execute("SELECT * FROM parents WHERE lower(email) = lower(?)", (email,)).fetchone()
         if not parent:
             raise HTTPException(404, "No account found with that email address.")
-        parent_dict = dict(parent)
+        parent_id = dict(parent)["id"]
+
+        # Rate limit: block if a code was issued in the last 60 seconds
+        cutoff = (datetime.utcnow() - timedelta(seconds=60)).isoformat()
+        recent = conn.execute(
+            "SELECT id FROM otp_codes WHERE parent_id = ? AND created_at > ? AND used = 0",
+            (parent_id, cutoff),
+        ).fetchone()
+        if recent:
+            raise HTTPException(429, "A code was already sent. Please wait 60 seconds before requesting another.")
+
+        code = f"{random.randint(0, 999999):06d}"
+        code_hash = hashlib.sha256(code.encode()).hexdigest()
+        expires_at = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+
+        conn.execute(
+            "INSERT INTO otp_codes (parent_id, code_hash, expires_at) VALUES (?, ?, ?)",
+            (parent_id, code_hash, expires_at),
+        )
+        conn.commit()
+
+        send_otp_email(email, code)
+        return {"message": "A 6-digit code has been sent to your email."}
+    finally:
+        conn.close()
+
+
+@router.post("/verify-otp")
+def verify_otp(data: OTPVerify):
+    email = data.email.strip().lower()
+    code_hash = hashlib.sha256(data.code.strip().encode()).hexdigest()
+    now = datetime.utcnow().isoformat()
+
+    conn = get_conn()
+    try:
+        parent = conn.execute("SELECT * FROM parents WHERE lower(email) = lower(?)", (email,)).fetchone()
+        if not parent:
+            raise HTTPException(404, "No account found with that email address.")
+        parent_id = dict(parent)["id"]
+
+        row = conn.execute(
+            """SELECT id FROM otp_codes
+               WHERE parent_id = ? AND code_hash = ? AND used = 0 AND expires_at > ?
+               ORDER BY created_at DESC LIMIT 1""",
+            (parent_id, code_hash, now),
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(401, "Invalid or expired code. Please request a new one.")
+
+        conn.execute("UPDATE otp_codes SET used = 1 WHERE id = ?", (dict(row)["id"],))
+        conn.commit()
+
         athletes = conn.execute(
-            "SELECT * FROM athletes WHERE parent_id = ?", (parent_dict["id"],)
+            "SELECT * FROM athletes WHERE parent_id = ?", (parent_id,)
         ).fetchall()
-        return {"parent": parent_dict, "athletes": [dict(a) for a in athletes]}
+        return {"parent": dict(parent), "athletes": [dict(a) for a in athletes]}
     finally:
         conn.close()
 
