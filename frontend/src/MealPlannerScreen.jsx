@@ -56,8 +56,8 @@ const csb = {
   wrap: { marginBottom: "8px" },
   track: { height: "5px", background: "#dce8e0", borderRadius: "99px", overflow: "hidden", marginBottom: "3px" },
   fill: { height: "100%", borderRadius: "99px", transition: "width 0.4s ease" },
-  label: { fontSize: "10px", textAlign: "center" },
-  target: { color: "#8aa898" },
+  label: { fontSize: "14px", textAlign: "center", color: "#4a6358", fontWeight: "500" },
+  target: { color: "#4a6358" },
 };
 
 // ── RecipePicker ──────────────────────────────────────────────────────────────
@@ -99,19 +99,19 @@ function RecipePicker({ slot, allRecipes, athleteAllergens, onSelect, onClose })
 const rp = {
   panel: { background: "#fff", border: "2px solid #0f4c35", borderRadius: "12px", padding: "12px", marginTop: "6px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 10 },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" },
-  title: { fontSize: "12px", fontWeight: "700", color: "#2d6a4f" },
-  close: { background: "none", border: "none", cursor: "pointer", color: "#8aa898", fontSize: "14px", padding: "2px 6px" },
-  empty: { fontSize: "12px", color: "#8aa898", textAlign: "center", padding: "12px 0" },
+  title: { fontSize: "14px", fontWeight: "700", color: "#2d6a4f" },
+  close: { background: "none", border: "none", cursor: "pointer", color: "#4a6358", fontSize: "16px", padding: "2px 6px" },
+  empty: { fontSize: "14px", color: "#4a6358", textAlign: "center", padding: "12px 0" },
   list: { display: "flex", flexDirection: "column", gap: "6px", maxHeight: "200px", overflowY: "auto" },
   option: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "8px 10px", cursor: "pointer", textAlign: "left" },
-  optName: { fontSize: "12px", fontWeight: "700", color: "#1b3a2a", marginBottom: "2px" },
-  optMeta: { fontSize: "11px", color: "#8aa898" },
+  optName: { fontSize: "14px", fontWeight: "700", color: "#1b3a2a", marginBottom: "2px" },
+  optMeta: { fontSize: "13px", color: "#4a6358" },
   tags: { display: "flex", gap: "4px", marginTop: "4px", flexWrap: "wrap" },
-  tag: { background: "#f0fdf4", color: "#2d6a4f", fontSize: "10px", fontWeight: "600", padding: "1px 6px", borderRadius: "99px" },
+  tag: { background: "#f0fdf4", color: "#2d6a4f", fontSize: "12px", fontWeight: "600", padding: "1px 6px", borderRadius: "99px" },
 };
 
 // ── SlotCard ──────────────────────────────────────────────────────────────────
-function SlotCard({ slot, date, allRecipes, athleteAllergens, isActive, onOpenPicker, onClosePicker, onAssign, onClear, onLogEaten }) {
+function SlotCard({ slot, date, allRecipes, athleteAllergens, isActive, onOpenPicker, onClosePicker, onAssign, onAutoSwap, onClear, onLogEaten }) {
   const filled = !!slot.recipe_id;
 
   return (
@@ -131,7 +131,7 @@ function SlotCard({ slot, date, allRecipes, athleteAllergens, isActive, onOpenPi
                 ✓ Mark as Eaten
               </button>
             )}
-            <button style={sc.swapBtn} onClick={() => onOpenPicker(date, slot.slot_name)} title="Swap recipe">🔄</button>
+            <button style={sc.swapBtn} onClick={() => onAutoSwap(date, slot.slot_name)} title="Get a different recipe">🔄</button>
             <button style={sc.clearBtn} onClick={() => onClear(date, slot.slot_name)} title="Remove">✕</button>
           </div>
         </div>
@@ -155,22 +155,22 @@ function SlotCard({ slot, date, allRecipes, athleteAllergens, isActive, onOpenPi
 }
 const sc = {
   wrap: { marginBottom: "6px" },
-  label: { fontSize: "10px", fontWeight: "700", color: "#8aa898", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "3px" },
-  emptyCard: { width: "100%", minHeight: "44px", background: "none", border: "1.5px dashed #d1d5db", borderRadius: "8px", color: "#8aa898", fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" },
+  label: { fontSize: "13px", fontWeight: "700", color: "#4a6358", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "3px" },
+  emptyCard: { width: "100%", minHeight: "44px", background: "none", border: "1.5px dashed #d1d5db", borderRadius: "8px", color: "#4a6358", fontSize: "14px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" },
   filledCard: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "8px", position: "relative" },
   aiCard: { background: "#f0fdf4", borderColor: "#b0e8c8" },
-  aiBadge: { fontSize: "9px", fontWeight: "800", color: "#2d6a4f", marginBottom: "2px" },
-  recipeName: { fontSize: "11px", fontWeight: "700", color: "#1b3a2a", lineHeight: 1.3, marginBottom: "2px" },
-  recipeCal: { fontSize: "10px", color: "#8aa898", marginBottom: "6px" },
+  aiBadge: { fontSize: "11px", fontWeight: "800", color: "#2d6a4f", marginBottom: "2px" },
+  recipeName: { fontSize: "13px", fontWeight: "700", color: "#1b3a2a", lineHeight: 1.6, marginBottom: "2px" },
+  recipeCal: { fontSize: "13px", color: "#4a6358", marginBottom: "6px" },
   actions: { display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" },
-  eatBtn: { flex: 1, background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "10px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
-  eatenBadge: { flex: 1, fontSize: "10px", fontWeight: "700", color: "#2d6a4f", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "6px", padding: "4px 6px", textAlign: "center" },
-  swapBtn: { background: "#f0f4f1", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "11px", cursor: "pointer" },
-  clearBtn: { background: "#fef2f2", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "11px", cursor: "pointer", color: "#dc2626" },
+  eatBtn: { flex: 1, background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "13px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
+  eatenBadge: { flex: 1, fontSize: "13px", fontWeight: "700", color: "#2d6a4f", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "6px", padding: "4px 6px", textAlign: "center" },
+  swapBtn: { background: "#f0f4f1", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "13px", cursor: "pointer" },
+  clearBtn: { background: "#fef2f2", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "13px", cursor: "pointer", color: "#dc2626" },
 };
 
 // ── DayColumn ─────────────────────────────────────────────────────────────────
-function DayColumn({ day, allRecipes, athleteAllergens, activeSlot, onOpenPicker, onClosePicker, onAssign, onClear, onLogEaten }) {
+function DayColumn({ day, allRecipes, athleteAllergens, activeSlot, onOpenPicker, onClosePicker, onAssign, onAutoSwap, onClear, onLogEaten }) {
   const evColor = EVENT_COLORS[day.event_type] || EVENT_COLORS.rest;
   const isToday = day.date === new Date().toISOString().split("T")[0];
 
@@ -202,6 +202,7 @@ function DayColumn({ day, allRecipes, athleteAllergens, activeSlot, onOpenPicker
           onOpenPicker={(date, slotName) => onOpenPicker(date, slotName)}
           onClosePicker={onClosePicker}
           onAssign={onAssign}
+          onAutoSwap={onAutoSwap}
           onClear={onClear}
           onLogEaten={onLogEaten}
         />
@@ -213,12 +214,12 @@ const dc = {
   col: { flex: "0 0 160px", minWidth: "140px", padding: "10px 8px", borderRight: "1px solid #f3f4f6" },
   colToday: { background: "#fafffe" },
   header: { textAlign: "center", marginBottom: "8px", paddingBottom: "8px", borderBottom: "1.5px solid #e5e7eb" },
-  dayLabel: { fontSize: "11px", fontWeight: "700", color: "#8aa898", textTransform: "uppercase", letterSpacing: "0.06em" },
+  dayLabel: { fontSize: "13px", fontWeight: "700", color: "#4a6358", textTransform: "uppercase", letterSpacing: "0.06em" },
   todayLabel: { color: "#2d6a4f" },
-  dateNum: { fontSize: "20px", fontWeight: "800", color: "#1b3a2a", lineHeight: 1.1, marginBottom: "4px" },
+  dateNum: { fontSize: "22px", fontWeight: "800", color: "#1b3a2a", lineHeight: 1.6, marginBottom: "4px" },
   todayNum: { color: "#2d6a4f" },
-  eventBadge: { fontSize: "10px", fontWeight: "700", padding: "2px 6px", borderRadius: "99px", border: "1px solid", display: "inline-block", marginBottom: "2px" },
-  eventName: { fontSize: "10px", color: "#8aa898", marginTop: "2px" },
+  eventBadge: { fontSize: "13px", fontWeight: "700", padding: "2px 6px", borderRadius: "99px", border: "1px solid", display: "inline-block", marginBottom: "2px" },
+  eventName: { fontSize: "13px", color: "#4a6358", marginTop: "2px" },
 };
 
 // ── MealPlannerScreen ─────────────────────────────────────────────────────────
@@ -268,6 +269,25 @@ export default function MealPlannerScreen({ athlete, onNavigate, freshImport = f
       const updated = await res.json();
       updateSlotInState(date, slotName, updated);
     }
+  }
+
+  // Auto-swap: pick a random different recipe from the same slot category
+  function handleAutoSwap(date, slotName) {
+    const day = weekData?.days.find(d => d.date === date);
+    const slot = day?.slots.find(s => s.slot_name === slotName);
+    if (!slot?.recipe_category) return;
+
+    const safe = allRecipes.filter(r => {
+      if (r.category !== slot.recipe_category) return false;
+      if (athleteAllergens.some(a => r.allergens.map(x => x.toLowerCase()).includes(a))) return false;
+      return true;
+    });
+
+    const alternatives = safe.filter(r => r.id !== slot.recipe_id);
+    if (alternatives.length === 0) return;
+
+    const pick = alternatives[Math.floor(Math.random() * alternatives.length)];
+    handleAssign(date, slotName, pick);
   }
 
   // Clear a slot
@@ -406,6 +426,7 @@ export default function MealPlannerScreen({ athlete, onNavigate, freshImport = f
               onOpenPicker={(date, slot) => setActiveSlot({ date, slot })}
               onClosePicker={() => setActiveSlot(null)}
               onAssign={handleAssign}
+              onAutoSwap={handleAutoSwap}
               onClear={handleClear}
               onLogEaten={handleLogEaten}
             />
@@ -432,36 +453,36 @@ const s = {
   importBanner: { margin: "0 0 16px", borderRadius: "14px", background: "linear-gradient(135deg, #0f4c35 0%, #1a7a54 100%)", padding: "1px" },
   importBannerInner: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", background: "linear-gradient(135deg, #0f4c35 0%, #1a7a54 100%)", borderRadius: "13px", padding: "16px 18px" },
   importBannerText: { flex: 1 },
-  importBannerTitle: { fontSize: "15px", fontWeight: "700", color: "#ffffff", marginBottom: "3px" },
-  importBannerSub: { fontSize: "13px", color: "#b7e4c7", lineHeight: 1.4 },
-  importBannerClose: { background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", cursor: "pointer", fontSize: "13px", flexShrink: 0 },
+  importBannerTitle: { fontSize: "17px", fontWeight: "700", color: "#ffffff", marginBottom: "3px" },
+  importBannerSub: { fontSize: "15px", color: "#b7e4c7", lineHeight: 1.6 },
+  importBannerClose: { background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", cursor: "pointer", fontSize: "15px", flexShrink: 0 },
 
-  title: { fontSize: "18px", fontWeight: "700", color: "#1b3a2a", margin: "0 0 4px" },
-  subtitle: { fontSize: "13px", color: "#8aa898", marginBottom: "16px", lineHeight: 1.5 },
+  title: { fontSize: "20px", fontWeight: "700", color: "#1b3a2a", margin: "0 0 4px" },
+  subtitle: { fontSize: "15px", color: "#4a6358", marginBottom: "16px", lineHeight: 1.5 },
 
   navRow: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" },
-  navBtn: { background: "#f0f4f1", border: "1.5px solid #e5e7eb", borderRadius: "8px", width: "36px", height: "36px", fontSize: "18px", cursor: "pointer", color: "#4a6358", fontWeight: "700" },
-  weekLabel: { fontSize: "13px", fontWeight: "700", color: "#1b3a2a", textAlign: "center" },
+  navBtn: { background: "#f0f4f1", border: "1.5px solid #e5e7eb", borderRadius: "8px", width: "36px", height: "36px", fontSize: "20px", cursor: "pointer", color: "#4a6358", fontWeight: "700" },
+  weekLabel: { fontSize: "15px", fontWeight: "700", color: "#1b3a2a", textAlign: "center" },
 
-  genBtn: { width: "100%", padding: "12px", background: "linear-gradient(135deg, #0f4c35, #1a7a54)", color: "#fff", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "700", cursor: "pointer", marginBottom: "12px", letterSpacing: "0.01em" },
+  genBtn: { width: "100%", padding: "12px", background: "linear-gradient(135deg, #0f4c35, #1a7a54)", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "700", cursor: "pointer", marginBottom: "12px", letterSpacing: "0.01em" },
 
-  overwriteWarn: { background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: "10px", padding: "12px 16px", marginBottom: "12px", fontSize: "13px", color: "#92400e" },
+  overwriteWarn: { background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: "10px", padding: "12px 16px", marginBottom: "12px", fontSize: "15px", color: "#92400e" },
   overwriteActions: { display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" },
-  overwriteYes: { background: "#dc2626", color: "#fff", border: "none", borderRadius: "7px", padding: "6px 14px", fontSize: "12px", fontWeight: "700", cursor: "pointer" },
-  overwriteKeep: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "7px", padding: "6px 14px", fontSize: "12px", fontWeight: "700", cursor: "pointer" },
-  overwriteCancel: { background: "#f0f4f1", color: "#8aa898", border: "1.5px solid #e5e7eb", borderRadius: "7px", padding: "6px 14px", fontSize: "12px", fontWeight: "600", cursor: "pointer" },
+  overwriteYes: { background: "#dc2626", color: "#fff", border: "none", borderRadius: "7px", padding: "6px 14px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
+  overwriteKeep: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "7px", padding: "6px 14px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
+  overwriteCancel: { background: "#f0f4f1", color: "#4a6358", border: "1.5px solid #e5e7eb", borderRadius: "7px", padding: "6px 14px", fontSize: "14px", fontWeight: "600", cursor: "pointer" },
 
-  errorBox: { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", color: "#dc2626", marginBottom: "12px" },
-  reasoningBox: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "10px 14px", fontSize: "12px", color: "#4a6358", marginBottom: "12px", lineHeight: 1.5 },
+  errorBox: { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: "8px", padding: "10px 14px", fontSize: "15px", color: "#dc2626", marginBottom: "12px" },
+  reasoningBox: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "10px 14px", fontSize: "14px", color: "#4a6358", marginBottom: "12px", lineHeight: 1.5 },
   reasoningLabel: { fontWeight: "700", color: "#2d6a4f" },
 
-  loadingMsg: { textAlign: "center", color: "#8aa898", padding: "40px 0", fontSize: "14px" },
+  loadingMsg: { textAlign: "center", color: "#4a6358", padding: "40px 0", fontSize: "16px" },
 
   weekGrid: { display: "flex", overflowX: "auto", border: "1.5px solid #e5e7eb", borderRadius: "12px", marginBottom: "16px", scrollbarWidth: "thin" },
 
-  legend: { display: "flex", gap: "16px", fontSize: "11px", color: "#8aa898", marginBottom: "8px", flexWrap: "wrap" },
+  legend: { display: "flex", gap: "16px", fontSize: "13px", color: "#4a6358", marginBottom: "8px", flexWrap: "wrap" },
   legendItem: { display: "flex", alignItems: "center", gap: "4px" },
   legendDot: { width: "8px", height: "8px", borderRadius: "50%", display: "inline-block" },
 
-  disclaimer: { fontSize: "11px", color: "#8aa898", textAlign: "center", marginTop: "4px", lineHeight: 1.6 },
+  disclaimer: { fontSize: "13px", color: "#8aa898", textAlign: "center", marginTop: "4px", lineHeight: 1.6 },
 };
