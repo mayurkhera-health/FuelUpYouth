@@ -72,7 +72,12 @@ Return JSON:
 {{"validated": true, "adjustments": [], "explanation": "2-3 sentence science-backed explanation", "parent_note": "One sentence for parent dashboard", "supplement_flag": null, "lea_alert": null}}"""}]
     )
     try:
-        return json.loads(msg.content[0].text)
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"): raw = raw[4:]
+            raw = raw.strip()
+        return json.loads(raw)
     except Exception:
         return {"validated": True, "explanation": msg.content[0].text, "adjustments": [], "parent_note": "", "supplement_flag": None, "lea_alert": None}
 
@@ -111,7 +116,12 @@ Return JSON:
 {{"fuel_score": 0, "overall_status": "elite/game-ready/getting-there/needs-fuel", "teen_message": "energetic encouraging message", "traffic_lights": [{{"nutrient": "Calories", "target_min": {targets['total_calories']}, "target_max": null, "logged": {totals['calories']:.0f}, "percentage": 0, "status": "green/yellow/red", "message": "short actionable message"}}], "gap_fix_suggestions": ["specific food fix 1", "food fix 2", "food fix 3"], "lea_alert": null, "iron_alert": null}}"""}]
     )
     try:
-        return json.loads(msg.content[0].text)
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"): raw = raw[4:]
+            raw = raw.strip()
+        return json.loads(raw)
     except Exception:
         return {"fuel_score": 50, "overall_status": "getting-there", "teen_message": "Keep fueling!", "traffic_lights": [], "gap_fix_suggestions": [], "lea_alert": None, "iron_alert": None}
 
@@ -132,7 +142,12 @@ Return JSON:
 {{"weekly_fuel_score": 0, "score_trend": "improving/stable/declining", "what_went_well": ["specific positive 1", "specific positive 2"], "nutrients_to_focus_on": [{{"nutrient": "Iron", "gap": "Xmg/day short", "food_fixes": ["food 1"], "recipe": "R020 Iron-Boost Hummus Plate"}}], "game_day_readiness": "assessment string", "hydration_report": {{"days_goal_met": 0, "avg_oz": 0}}, "iron_alert": null, "featured_recipe": {{"id": "R001", "name": "...", "reason": "..."}}, "report_text": "full warm professional 3-4 paragraph report for email/SMS", "legal_disclaimer": "FuelUp provides educational food guidance — not medical nutrition therapy. Consult your child's physician for medical concerns."}}"""}]
     )
     try:
-        return json.loads(msg.content[0].text)
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"): raw = raw[4:]
+            raw = raw.strip()
+        return json.loads(raw)
     except Exception:
         return {"report_text": msg.content[0].text, "weekly_fuel_score": 0}
 
@@ -157,7 +172,12 @@ Return JSON:
 {{"alternatives": [{{"name": "Recipe name", "description": "1-2 sentences", "ingredients": "main ingredients", "why_it_works": "brief science reason", "macros": {{"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0}}, "prep_time_min": 0, "dietary_tags": [], "allergens": []}}], "powered_by_note": "Nutrition data — Powered by Edamam"}}"""}]
     )
     try:
-        return json.loads(msg.content[0].text)
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"): raw = raw[4:]
+            raw = raw.strip()
+        return json.loads(raw)
     except Exception:
         return {"alternatives": [], "powered_by_note": "Powered by Edamam"}
 
@@ -180,7 +200,12 @@ Return JSON:
 {{"pre_event_oz": 0, "during_event_oz_per_20min": 0, "post_event_oz": 0, "total_day_oz": 0, "electrolytes_needed": false, "electrolyte_type": "natural sports drink/coconut water/water only", "sports_drink_warning": "Avoid artificial dyes (Red #40, Yellow #5, Yellow #6) — linked to behavioral changes in adolescents (Everett 2025). Choose clear/natural brands only.", "teen_message": "energetic hydration reminder", "parent_alert": null, "timing_reminders": [{{"when": "2hrs before", "action": "Drink Xoz water", "reason": "..."}}]}}"""}]
     )
     try:
-        return json.loads(msg.content[0].text)
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"): raw = raw[4:]
+            raw = raw.strip()
+        return json.loads(raw)
     except Exception:
         return {"total_day_oz": 80, "electrolytes_needed": sweat_output.get("electrolytes_needed", False), "sports_drink_warning": "Avoid artificial dyes — choose clear/natural brands only."}
 
@@ -238,7 +263,14 @@ Return ONLY valid JSON, no prose:
 }}"""}]
     )
     try:
-        return json.loads(msg.content[0].text)
+        text = msg.content[0].text.strip()
+        # Strip markdown code fences Claude sometimes wraps around JSON
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.strip()
+        return json.loads(text)
     except Exception:
         return {"plan": {}, "reasoning": "AI generation failed — please try again.", "variety_check": "failed"}
 
@@ -266,7 +298,12 @@ Return ONLY valid JSON:
 {{"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0, "iron_mg": 0, "calcium_mg": 0, "confidence": "high|medium|low", "portion_note": "brief note on portion assumption, e.g. '2 cups pasta + 4oz chicken'"}}"""}]
     )
     try:
-        return json.loads(msg.content[0].text)
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"): raw = raw[4:]
+            raw = raw.strip()
+        return json.loads(raw)
     except Exception:
         return {"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0, "iron_mg": 0, "calcium_mg": 0, "confidence": "low", "portion_note": "Could not parse"}
 
@@ -444,6 +481,11 @@ Return ONLY valid JSON matching this exact structure (no markdown):
             system=SCIENCE_SYSTEM,
             messages=[{"role": "user", "content": prompt_text}]
         )
-        return json.loads(msg.content[0].text)
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"): raw = raw[4:]
+            raw = raw.strip()
+        return json.loads(raw)
     except Exception:
         return MOCK
