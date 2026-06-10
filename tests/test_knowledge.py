@@ -133,3 +133,68 @@ def test_retrieval_respects_approved_only():
     results = retrieve("test draft content should never appear")
     for r in results:
         assert r.review_status == "approved"
+
+
+def test_iron_rda_female_14():
+    """Female age 14 iron RDA is 15mg per NIH."""
+    from api.services.knowledge.calculations import iron_rda
+    result = iron_rda(14, "female")
+    assert result["value"] == 15
+    assert result["unit"] == "mg/day"
+    assert "NIH" in result["source"]
+
+def test_iron_rda_male_14():
+    """Male age 14 iron RDA is 11mg per NIH."""
+    from api.services.knowledge.calculations import iron_rda
+    result = iron_rda(14, "male")
+    assert result["value"] == 11
+
+def test_iron_rda_child_9():
+    """Age 9 iron RDA is 8mg regardless of gender per NIH."""
+    from api.services.knowledge.calculations import iron_rda
+    assert iron_rda(9, "female")["value"] == 8
+    assert iron_rda(9, "male")["value"] == 8
+
+def test_calcium_rda_youth():
+    """Ages 9-18 calcium RDA is 1300mg per NIH."""
+    from api.services.knowledge.calculations import calcium_rda
+    result = calcium_rda(14)
+    assert result["value"] == 1300
+    assert result["unit"] == "mg/day"
+
+def test_protein_range_game_day():
+    """120 lb athlete on game day: 1.6-1.8 g/kg = 87-98g."""
+    from api.services.knowledge.calculations import protein_range
+    result = protein_range(120, "game")
+    assert result["min_g"] == 87
+    assert result["max_g"] == 98
+    assert result["unit"] == "g/day"
+
+def test_hydration_needs_game():
+    """120 lb athlete on game day without heat: 80-88 oz."""
+    from api.services.knowledge.calculations import hydration_needs
+    result = hydration_needs(120, "game", weather_hot=False)
+    assert result["min_oz"] == 80
+    assert result["max_oz"] == 88
+
+def test_hydration_needs_hot_weather():
+    """Hot weather adds 8-16 oz to baseline."""
+    from api.services.knowledge.calculations import hydration_needs
+    normal = hydration_needs(120, "rest", weather_hot=False)
+    hot = hydration_needs(120, "rest", weather_hot=True)
+    assert hot["min_oz"] == normal["min_oz"] + 8
+    assert hot["max_oz"] == normal["max_oz"] + 16
+
+def test_pre_training_meal_window():
+    """Event at 18:00 → full meal by 15:30, snack by 17:00."""
+    from api.services.knowledge.calculations import pre_training_meal_window
+    result = pre_training_meal_window("18:00")
+    assert result["full_meal_by"] == "15:30"
+    assert result["snack_by"] == "17:00"
+
+def test_post_training_recovery_window():
+    """Event ends at 20:00 → window open 20:00, closes 20:30."""
+    from api.services.knowledge.calculations import post_training_recovery_window
+    result = post_training_recovery_window("20:00")
+    assert result["window_opens"] == "20:00"
+    assert result["window_closes"] == "20:30"
