@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL ?? "";
 
 const EVENT_COLORS = {
   game:       { bg: "#fef2f2", border: "#fecaca", text: "#dc2626", label: "🔴 Game" },
@@ -222,7 +222,7 @@ const dc = {
 };
 
 // ── MealPlannerScreen ─────────────────────────────────────────────────────────
-export default function MealPlannerScreen({ athlete, onNavigate }) {
+export default function MealPlannerScreen({ athlete, onNavigate, freshImport = false, onFreshImportSeen }) {
   const [weekStart, setWeekStart]     = useState(getMondayOf(new Date()));
   const [weekData, setWeekData]       = useState(null);
   const [allRecipes, setAllRecipes]   = useState([]);
@@ -342,6 +342,18 @@ export default function MealPlannerScreen({ athlete, onNavigate }) {
 
   return (
     <div>
+      {freshImport && (
+        <div style={s.importBanner}>
+          <div style={s.importBannerInner}>
+            <div style={s.importBannerText}>
+              <div style={s.importBannerTitle}>🎉 Schedule loaded — meal slots are ready!</div>
+              <div style={s.importBannerSub}>Assign meals to each slot, or let AI generate the full week in one tap.</div>
+            </div>
+            <button style={s.importBannerClose} onClick={onFreshImportSeen}>✕</button>
+          </div>
+        </div>
+      )}
+
       <h2 style={s.title}>🍳 Meal Planner</h2>
       <p style={s.subtitle}>
         Plan {athlete.first_name}'s meals for the week. Slots adapt to each day's training schedule.
@@ -417,6 +429,13 @@ export default function MealPlannerScreen({ athlete, onNavigate }) {
 }
 
 const s = {
+  importBanner: { margin: "0 0 16px", borderRadius: "14px", background: "linear-gradient(135deg, #0f4c35 0%, #1a7a54 100%)", padding: "1px" },
+  importBannerInner: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", background: "linear-gradient(135deg, #0f4c35 0%, #1a7a54 100%)", borderRadius: "13px", padding: "16px 18px" },
+  importBannerText: { flex: 1 },
+  importBannerTitle: { fontSize: "15px", fontWeight: "700", color: "#ffffff", marginBottom: "3px" },
+  importBannerSub: { fontSize: "13px", color: "#a7f3d0", lineHeight: 1.4 },
+  importBannerClose: { background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", cursor: "pointer", fontSize: "13px", flexShrink: 0 },
+
   title: { fontSize: "18px", fontWeight: "700", color: "#111827", margin: "0 0 4px" },
   subtitle: { fontSize: "13px", color: "#6b7280", marginBottom: "16px", lineHeight: 1.5 },
 

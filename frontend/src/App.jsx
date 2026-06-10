@@ -3,10 +3,13 @@ import Login from "./Login";
 import Onboarding from "./Onboarding";
 import Dashboard from "./Dashboard";
 
+const API = import.meta.env.VITE_API_URL ?? "";
+
 export default function App() {
   const [view, setView] = useState("login"); // "login" | "onboarding" | "dashboard"
   const [session, setSession] = useState(null); // { parent, athletes }
   const [initialTab, setInitialTab] = useState("nutrition");
+  const [isNewAccount, setIsNewAccount] = useState(false);
 
   function handleLogin({ parent, athletes }) {
     setSession({ parent, athletes });
@@ -17,13 +20,14 @@ export default function App() {
   async function handleOnboardingComplete({ parentId, athleteId }) {
     try {
       const [parentRes, athleteRes] = await Promise.all([
-        fetch(`http://localhost:8000/api/parents/${parentId}`),
-        fetch(`http://localhost:8000/api/athletes/${athleteId}`),
+        fetch(`${API}/api/parents/${parentId}`),
+        fetch(`${API}/api/athletes/${athleteId}`),
       ]);
       const parent = await parentRes.json();
       const athlete = await athleteRes.json();
       setSession({ parent, athletes: [athlete] });
-      setInitialTab("schedule");
+      setInitialTab("blueprint");
+      setIsNewAccount(true);
       setView("dashboard");
     } catch {
       setView("login");
@@ -41,6 +45,8 @@ export default function App() {
         parent={session.parent}
         athletes={session.athletes}
         initialTab={initialTab}
+        isNewAccount={isNewAccount}
+        onUnlockApp={() => setIsNewAccount(false)}
         onSignOut={handleSignOut}
       />
     );

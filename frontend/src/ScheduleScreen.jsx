@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL ?? "";
 
 const EVENT_COLORS = {
   game:       { bg: "#dc2626", text: "#fff" },
@@ -206,7 +206,7 @@ const dp = {
 };
 
 // ── Main screen ───────────────────────────────────────────────────────────────
-export default function ScheduleScreen({ athlete }) {
+export default function ScheduleScreen({ athlete, onScheduleImported }) {
   const [events, setEvents]       = useState([]);
   const [loading, setLoading]     = useState(true);
   const [mode, setMode]           = useState(null);
@@ -308,6 +308,7 @@ export default function ScheduleScreen({ athlete }) {
     setParsed([]); setIcsText(""); setImportDone(true); setMode(null);
     await fetchEvents();
     setImporting(false);
+    onScheduleImported?.();
   }
 
   return (

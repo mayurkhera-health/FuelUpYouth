@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL ?? "";
 
 const CONSENT_TEXT = `I confirm my athlete is between 9 and 17 years of age.
 
@@ -16,19 +16,54 @@ I can request complete data deletion at any time by emailing purvi@dietsandlife.
 
 I will consult my child's physician or a licensed Registered Dietitian Nutritionist for any medical nutrition concerns.`;
 
-const SUPPLEMENT_WARNINGS = {
-  "protein powder": "⚠️ Protein powder is not recommended for adolescent athletes. Whole food protein sources are superior. (Boston Children's Hospital RDN)",
-  creatine: "⚠️ Creatine is NOT approved for athletes under 18. (Boston Children's Hospital RDN)",
-  "energy drink": "⚠️ Energy drinks contain caffeine levels dangerous for adolescents and are linked to cardiac events in youth. (Boston Children's Hospital RDN, AAP)",
-};
 
-const STEPS = ["Age Check", "Parent Consent", "Athlete Profile", "All Set!"];
+const STEPS = ["Age Check", "Parent Consent", "Athlete Profile", "Review", "All Set!"];
+
+
+function ReviewCard({ athlete }) {
+  const heightStr = athlete.height_ft && athlete.height_in !== ""
+    ? `${athlete.height_ft}' ${athlete.height_in}"`
+    : athlete.height_ft ? `${athlete.height_ft}'` : "—";
+  const allergies = Array.isArray(athlete.allergies)
+    ? (athlete.allergies.length ? athlete.allergies.join(", ") : "None")
+    : (athlete.allergies || "None");
+  const rows = [
+    ["Name", athlete.first_name || "—"],
+    ["Age", athlete.age || "—"],
+    ["Gender", athlete.gender || "—"],
+    ["Weight", athlete.weight_lbs ? `${athlete.weight_lbs} lbs` : "—"],
+    ["Height", heightStr],
+    ["Position", athlete.position || "—"],
+    ["Competition Level", athlete.competition_level || "—"],
+    ["Food Allergies", allergies],
+    ["Dietary Restrictions", athlete.dietary_restrictions || "None"],
+  ];
+
+  return (
+    <div style={rv.card}>
+      {rows.map(([label, val]) => (
+        <div key={label} style={rv.row}>
+          <span style={rv.label}>{label}</span>
+          <span style={rv.val}>{val}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const rv = {
+  card: { background: "#f9fafb", border: "1.5px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" },
+  row: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 16px", borderBottom: "1px solid #f3f4f6", fontSize: "14px" },
+  label: { color: "#6b7280", fontWeight: "600", flexShrink: 0, marginRight: "12px" },
+  val: { color: "#111827", fontWeight: "500", textAlign: "right" },
+  warn: { background: "#fffbeb", borderTop: "1.5px solid #fde68a", padding: "12px 16px", fontSize: "13px", color: "#92400e", lineHeight: "1.5" },
+};
 
 const initialParent = { full_name: "", email: "", consent_confirmed: false };
 const initialAthlete = {
   first_name: "", age: "", gender: "", weight_lbs: "",
   height_ft: "", height_in: "", position: "", competition_level: "",
-  sweat_profile: "", allergies: [], dietary_restrictions: "", supplement_use: [],
+  sweat_profile: "", allergies: [], dietary_restrictions: "",
 };
 
 export default function Onboarding({ onComplete }) {
@@ -80,9 +115,15 @@ export default function Onboarding({ onComplete }) {
     }
   }
 
-  // ── Step 2: Athlete Profile ─────────────────────────────────────────────────
-  async function handleAthleteSubmit(e) {
+  // ── Step 2: Athlete Profile — just advance to review ───────────────────────
+  function handleAthleteSubmit(e) {
     e.preventDefault();
+    setError("");
+    setStep(2.5);
+  }
+
+  // ── Step 2.5: Confirm & submit to API ──────────────────────────────────────
+  async function handleConfirmSubmit() {
     setLoading(true);
     setError("");
     try {
@@ -94,7 +135,7 @@ export default function Onboarding({ onComplete }) {
         height_ft: parseInt(athlete.height_ft),
         height_in: parseFloat(athlete.height_in),
         allergies: athlete.allergies.join(", ") || "None",
-        supplement_use: athlete.supplement_use.join(", ") || "None",
+        supplement_use: "None",
       };
       const res = await fetch(`${API}/api/athletes/`, {
         method: "POST",
@@ -104,7 +145,12 @@ export default function Onboarding({ onComplete }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to create athlete profile.");
       setAthleteId(data.id);
-      setStep(3);
+      // Go straight to Blueprint — skip the success screen
+      if (onComplete) {
+        onComplete({ parentId, athleteId: data.id });
+      } else {
+        setStep(3);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -121,9 +167,6 @@ export default function Onboarding({ onComplete }) {
     }));
   }
 
-  const supplementWarnings = athlete.supplement_use
-    .map((s) => SUPPLEMENT_WARNINGS[s.toLowerCase()])
-    .filter(Boolean);
 
   return (
     <div style={styles.wrapper}>
@@ -131,21 +174,26 @@ export default function Onboarding({ onComplete }) {
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.logo}>⚽ FuelUp</div>
-          <div style={styles.subtitle}>Youth Soccer Nutrition Platform</div>
+          <div style={styles.subtitle}>Youth Sports Performance Nutrition Platform</div>
         </div>
 
         {/* Progress bar */}
         <div style={styles.progressBar}>
-          {STEPS.map((label, i) => (
-            <div key={i} style={styles.stepItem}>
-              <div style={{ ...styles.stepDot, ...(i <= step ? styles.stepDotActive : {}) }}>
-                {i < step ? "✓" : i + 1}
+          {STEPS.map((label, i) => {
+            const displayStep = step === 2.5 ? 3 : step;
+            const active = i <= displayStep;
+            const done   = i < displayStep;
+            return (
+              <div key={i} style={styles.stepItem}>
+                <div style={{ ...styles.stepDot, ...(active ? styles.stepDotActive : {}) }}>
+                  {done ? "✓" : i + 1}
+                </div>
+                <div style={{ ...styles.stepLabel, ...(active ? styles.stepLabelActive : {}) }}>
+                  {label}
+                </div>
               </div>
-              <div style={{ ...styles.stepLabel, ...(i <= step ? styles.stepLabelActive : {}) }}>
-                {label}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {error && <div style={styles.errorBanner}>{error}</div>}
@@ -182,10 +230,6 @@ export default function Onboarding({ onComplete }) {
         {step === 1 && (
           <form onSubmit={handleParentSubmit} style={styles.section}>
             <h2 style={styles.sectionTitle}>Parent Account + Consent</h2>
-            <p style={styles.sectionDesc}>
-              Parents create an account first. This protects your family legally and ensures we follow COPPA and California privacy law.
-            </p>
-
             <label style={styles.label}>Parent Full Name <span style={styles.req}>*</span></label>
             <input
               style={styles.input}
@@ -336,27 +380,32 @@ export default function Onboarding({ onComplete }) {
               <option>Gluten-free</option>
             </select>
 
-            <label style={styles.label}>Supplement Use (select all that apply)</label>
-            <div style={styles.checkGroup}>
-              {["None", "Protein powder", "Creatine", "Iron", "Vitamin D", "Energy drink"].map((s) => (
-                <label key={s} style={styles.checkboxRow}>
-                  <input type="checkbox" checked={athlete.supplement_use.includes(s)}
-                    onChange={() => toggleCheckbox("supplement_use", s)} style={styles.checkbox} />
-                  <span>{s}</span>
-                </label>
-              ))}
-            </div>
-            {supplementWarnings.length > 0 && (
-              <div style={styles.warningBox}>
-                <strong>Safety Notice from Boston Children's Hospital RDN:</strong>
-                {supplementWarnings.map((w, i) => <p key={i} style={{ margin: "4px 0" }}>{w}</p>)}
-              </div>
-            )}
-
             <button style={styles.btn} type="submit" disabled={loading}>
-              {loading ? "Saving Profile…" : "Complete Setup →"}
+              Continue to Review →
             </button>
           </form>
+        )}
+
+        {/* ── Step 2.5: Review ── */}
+        {step === 2.5 && (
+          <div style={styles.section}>
+            <h2 style={styles.sectionTitle}>Review Athlete Profile</h2>
+            <p style={styles.sectionDesc}>
+              Please confirm everything looks correct. You can always edit this later in Settings.
+            </p>
+            <ReviewCard athlete={athlete} />
+            <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
+              <button
+                style={{ ...styles.btn, background: "#fff", color: "#0f4c35", border: "1.5px solid #0f4c35", flex: "0 0 auto" }}
+                onClick={() => setStep(2)}
+              >
+                ← Edit
+              </button>
+              <button style={{ ...styles.btn, flex: 1 }} onClick={handleConfirmSubmit} disabled={loading}>
+                {loading ? "Saving…" : "Submit Profile →"}
+              </button>
+            </div>
+          </div>
         )}
 
         {/* ── Step 3: Success ── */}

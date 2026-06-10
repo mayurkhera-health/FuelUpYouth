@@ -1,19 +1,12 @@
 import { useState } from "react";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL ?? "";
 
 const POSITIONS   = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
 const LEVELS      = ["Recreational", "Club", "Competitive", "Elite"];
 const GENDERS     = ["Girl", "Boy", "Prefer not to say"];
 const ALLERGIES   = ["Gluten", "Dairy", "Eggs", "Peanuts", "Tree Nuts", "Fish", "Shellfish", "Soy", "Sesame"];
 const DIETS       = ["Vegetarian", "Vegan", "Halal", "Kosher", "Gluten-Free", "Dairy-Free"];
-const SUPPLEMENTS = ["Protein Powder", "Creatine", "Energy Drink", "Multivitamin", "Iron Supplement", "Vitamin D", "None"];
-
-const SUPPLEMENT_WARNINGS = {
-  "protein powder": "⚠️ Not recommended for adolescent athletes — whole food protein is superior. (Boston Children's Hospital RDN)",
-  "creatine":       "⚠️ NOT approved for athletes under 18. (Boston Children's Hospital RDN)",
-  "energy drink":   "⚠️ Dangerous caffeine levels for adolescents — linked to cardiac events. (AAP)",
-};
 
 function toggleItem(list, item) {
   const arr = list ? list.split(",").map(s => s.trim()).filter(Boolean) : [];
@@ -36,7 +29,6 @@ export default function ProfileScreen({ athlete, onSave }) {
     competition_level:    athlete.competition_level|| "",
     allergies:            athlete.allergies        || "",
     dietary_restrictions: athlete.dietary_restrictions || "",
-    supplement_use:       athlete.supplement_use   || "",
   });
 
   const [saving, setSaving]   = useState(false);
@@ -80,9 +72,6 @@ export default function ProfileScreen({ athlete, onSave }) {
       setSaving(false);
     }
   }
-
-  const suppWarnings = (form.supplement_use || "").toLowerCase().split(",").map(s => s.trim())
-    .flatMap(s => Object.entries(SUPPLEMENT_WARNINGS).filter(([k]) => s.includes(k)).map(([,v]) => v));
 
   return (
     <form onSubmit={handleSave}>
@@ -172,22 +161,6 @@ export default function ProfileScreen({ athlete, onSave }) {
           </div>
           {form.dietary_restrictions && <div style={s.selected}>Selected: {form.dietary_restrictions}</div>}
         </Field>
-      </div>
-
-      {/* Supplements */}
-      <div style={s.section}>
-        <div style={s.sectionTitle}>Supplement Use</div>
-        <Field label="Current Supplements">
-          <div style={s.chipRow}>
-            {SUPPLEMENTS.map(sup => (
-              <Chip key={sup} label={sup} active={hasItem(form.supplement_use, sup)} onClick={() => set("supplement_use", toggleItem(form.supplement_use, sup))} />
-            ))}
-          </div>
-          {form.supplement_use && <div style={s.selected}>Selected: {form.supplement_use}</div>}
-        </Field>
-        {suppWarnings.map((w, i) => (
-          <div key={i} style={s.warning}>{w}</div>
-        ))}
       </div>
 
       {/* Save footer */}
