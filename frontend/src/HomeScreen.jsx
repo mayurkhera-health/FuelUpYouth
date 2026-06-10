@@ -197,12 +197,12 @@ const hero = {
   fade:      { position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 50%)" },
   content:   { position: "relative", zIndex: 1, padding: "16px 18px", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" },
   topRow:    { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" },
-  greeting:  { fontSize: "14px", fontWeight: "600", color: "rgba(255,255,255,0.85)" },
-  badge:     { fontSize: "11px", fontWeight: "800", color: "#fff", padding: "4px 10px", borderRadius: "99px", letterSpacing: "0.04em", flexShrink: 0 },
-  eventName: { fontSize: "22px", fontWeight: "800", color: "#fff", lineHeight: 1.2 },
-  eventMeta: { fontSize: "13px", color: "rgba(255,255,255,0.7)", marginTop: "2px" },
+  greeting:  { fontSize: "16px", fontWeight: "600", color: "rgba(255,255,255,0.85)" },
+  badge:     { fontSize: "13px", fontWeight: "800", color: "#fff", padding: "4px 10px", borderRadius: "99px", letterSpacing: "0.04em", flexShrink: 0 },
+  eventName: { fontSize: "22px", fontWeight: "800", color: "#fff", lineHeight: 1.6 },
+  eventMeta: { fontSize: "15px", color: "rgba(255,255,255,0.7)", marginTop: "2px" },
   chipRow:   { display: "flex", gap: "8px" },
-  chip:      { display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", fontSize: "13px", fontWeight: "600", padding: "6px 14px", borderRadius: "99px" },
+  chip:      { display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", fontSize: "15px", fontWeight: "600", padding: "6px 14px", borderRadius: "99px" },
 };
 
 // ── Fuel Score Card ───────────────────────────────────────────────────────────
@@ -269,19 +269,19 @@ const fc = {
   card:      { background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: "16px", padding: "16px", display: "flex", gap: "16px", alignItems: "flex-start", marginBottom: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" },
   ringWrap:  { display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, gap: "4px" },
   ringInner: { position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
-  scoreNum:  { fontSize: "20px", fontWeight: "900", lineHeight: 1 },
-  scoreOf:   { fontSize: "10px", color: "#8aa898" },
-  scoreDash: { fontSize: "22px", fontWeight: "800", color: "#8aa898" },
-  scoreLbl:  { fontSize: "11px", fontWeight: "700", textAlign: "center", marginTop: "2px" },
+  scoreNum:  { fontSize: "22px", fontWeight: "900", lineHeight: 1 },
+  scoreOf:   { fontSize: "12px", color: "#4a6358" },
+  scoreDash: { fontSize: "22px", fontWeight: "800", color: "#4a6358" },
+  scoreLbl:  { fontSize: "13px", fontWeight: "700", textAlign: "center", marginTop: "2px" },
   bars:      { flex: 1, minWidth: 0 },
   barRow:    { marginBottom: "10px" },
   barTop:    { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "4px" },
-  barLabel:  { fontSize: "11px", fontWeight: "700", color: "#8aa898", textTransform: "uppercase", letterSpacing: "0.04em" },
-  barVal:    { fontSize: "14px", fontWeight: "800" },
-  barUnit:   { fontSize: "10px", fontWeight: "400", color: "#8aa898", marginLeft: "1px" },
+  barLabel:  { fontSize: "13px", fontWeight: "700", color: "#4a6358", textTransform: "uppercase", letterSpacing: "0.04em" },
+  barVal:    { fontSize: "16px", fontWeight: "800" },
+  barUnit:   { fontSize: "12px", fontWeight: "400", color: "#4a6358", marginLeft: "1px" },
   track:     { height: "5px", background: "#f0f4f1", borderRadius: "99px", overflow: "hidden", marginBottom: "2px" },
   fill:      { height: "100%", borderRadius: "99px", transition: "width 0.6s ease" },
-  barTarget: { fontSize: "10px", color: "#8aa898" },
+  barTarget: { fontSize: "12px", color: "#4a6358" },
 };
 
 // ── Timeline row ──────────────────────────────────────────────────────────────
@@ -356,7 +356,7 @@ function TimelineRow({ item, status, accentColor, accentLight, onLog, logging, l
           <div style={tr.normalRow}>
             <div style={tr.normalMain}>
               <div style={tr.normalLabel}>
-                {isPast && <span style={{ color: "#8aa898" }}>✓ </span>}
+                {isPast && <span style={{ color: "#4a6358" }}>✓ </span>}
                 {item.icon} {item.label}
               </div>
               <div style={tr.normalMeal}>{item.meal}{item.kcal ? ` · ${item.kcal} kcal` : ""}</div>
@@ -388,7 +388,7 @@ function TimelineRow({ item, status, accentColor, accentLight, onLog, logging, l
 const tr = {
   row:        { display: "flex", alignItems: "flex-start" },
   timeCol:    { width: "76px", flexShrink: 0, textAlign: "right", paddingRight: "14px", paddingTop: "8px" },
-  timeText:   { fontSize: "12px", fontWeight: "700" },
+  timeText:   { fontSize: "14px", fontWeight: "700" },
   connector:  { display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: "20px" },
   dot:        { width: "11px", height: "11px", borderRadius: "50%", flexShrink: 0 },
   dotRing:    { width: "19px", height: "19px", borderRadius: "50%", border: "2px solid", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
@@ -398,25 +398,25 @@ const tr = {
   nextCard:   { border: "2px solid", borderRadius: "14px", padding: "14px", overflow: "hidden" },
   nextTop:    { display: "flex", justifyContent: "space-between", gap: "10px", marginBottom: "10px" },
   nextLeft:   { flex: 1, minWidth: 0 },
-  nextBadge:  c => ({ display: "inline-block", background: c, color: "#fff", fontSize: "10px", fontWeight: "800", letterSpacing: "0.08em", padding: "2px 8px", borderRadius: "99px", marginBottom: "6px" }),
-  nextTitle:  { fontSize: "15px", fontWeight: "800", color: "#1b3a2a", marginBottom: "2px" },
-  nextMealName:{ fontSize: "13px", fontWeight: "600", color: "#4a6358", marginBottom: "2px" },
-  nextKcal:   { fontSize: "12px", color: "#8aa898" },
+  nextBadge:  c => ({ display: "inline-block", background: c, color: "#fff", fontSize: "12px", fontWeight: "800", letterSpacing: "0.08em", padding: "2px 8px", borderRadius: "99px", marginBottom: "6px" }),
+  nextTitle:  { fontSize: "17px", fontWeight: "800", color: "#1b3a2a", marginBottom: "2px" },
+  nextMealName:{ fontSize: "15px", fontWeight: "600", color: "#4a6358", marginBottom: "2px" },
+  nextKcal:   { fontSize: "14px", color: "#4a6358" },
   nextPhoto:  { width: "72px", height: "72px", borderRadius: "12px", objectFit: "cover", flexShrink: 0, border: "2px solid" },
-  tip:        { fontSize: "12px", color: "#4a6358", borderLeft: "3px solid", paddingLeft: "8px", lineHeight: 1.5, marginBottom: "10px", background: "rgba(0,0,0,0.03)", padding: "6px 8px", borderRadius: "0 6px 6px 0" },
-  logBtn:     { width: "100%", padding: "10px", border: "none", borderRadius: "8px", color: "#fff", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
+  tip:        { fontSize: "14px", color: "#4a6358", borderLeft: "3px solid", paddingLeft: "8px", lineHeight: 1.5, marginBottom: "10px", background: "rgba(0,0,0,0.03)", padding: "6px 8px", borderRadius: "0 6px 6px 0" },
+  logBtn:     { width: "100%", padding: "10px", border: "none", borderRadius: "8px", color: "#fff", fontSize: "16px", fontWeight: "700", cursor: "pointer" },
   // normal row
   normalRow:  { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", paddingBottom: "2px" },
   normalMain: { flex: 1, minWidth: 0 },
-  normalLabel:{ fontSize: "13px", fontWeight: "700", color: "#4a6358", marginBottom: "1px" },
-  normalMeal: { fontSize: "12px", color: "#8aa898" },
-  lateLogBtn: { marginTop: "6px", padding: "5px 12px", background: "transparent", border: "1.5px solid", borderRadius: "8px", fontSize: "12px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", cursor: "pointer", display: "inline-block" },
-  urgentTip:  { fontSize: "11px", color: "#dc2626", marginTop: "2px", fontWeight: "600" },
+  normalLabel:{ fontSize: "15px", fontWeight: "700", color: "#4a6358", marginBottom: "1px" },
+  normalMeal: { fontSize: "14px", color: "#4a6358" },
+  lateLogBtn: { marginTop: "6px", padding: "5px 12px", background: "transparent", border: "1.5px solid", borderRadius: "8px", fontSize: "14px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", cursor: "pointer", display: "inline-block" },
+  urgentTip:  { fontSize: "13px", color: "#dc2626", marginTop: "2px", fontWeight: "600" },
   thumbPhoto: { width: "40px", height: "40px", borderRadius: "8px", objectFit: "cover", flexShrink: 0, border: "1.5px solid #e5e7eb" },
   // marker
   markerRow:  { display: "flex", alignItems: "center", gap: "8px", margin: "6px 0" },
   markerLine: { flex: 1, height: "1.5px" },
-  markerBadge:{ flexShrink: 0, color: "#fff", fontSize: "12px", fontWeight: "800", padding: "4px 14px", borderRadius: "99px" },
+  markerBadge:{ flexShrink: 0, color: "#fff", fontSize: "14px", fontWeight: "800", padding: "4px 14px", borderRadius: "99px" },
 };
 
 // ── Fueling guides per day type ───────────────────────────────────────────────
@@ -548,13 +548,13 @@ const fg = {
   header:      { width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", boxSizing: "border-box" },
   headerLeft:  { display: "flex", alignItems: "center", gap: "10px" },
   headerDot:   { width: "8px", height: "8px", borderRadius: "50%", flexShrink: 0 },
-  headerTitle: { fontSize: "13px", fontWeight: "800", fontFamily: "'Nunito', sans-serif", letterSpacing: "0.01em" },
-  chevron:     { fontSize: "18px", lineHeight: 1, transition: "transform 0.2s", flexShrink: 0 },
+  headerTitle: { fontSize: "15px", fontWeight: "800", fontFamily: "'Nunito', sans-serif", letterSpacing: "0.01em" },
+  chevron:     { fontSize: "20px", lineHeight: 1, transition: "transform 0.2s", flexShrink: 0 },
   body:        { padding: "4px 16px 16px" },
   step:        { marginBottom: "14px" },
-  stepTime:    { fontSize: "12px", fontWeight: "800", fontFamily: "'Nunito', sans-serif", marginBottom: "3px", letterSpacing: "0.01em" },
-  stepBody:    { fontSize: "13px", color: "#4a6358", lineHeight: 1.6 },
-  reminder:    { borderLeft: "3px solid", paddingLeft: "12px", fontSize: "13px", color: "#4a6358", lineHeight: 1.6, marginTop: "6px", fontStyle: "italic" },
+  stepTime:    { fontSize: "14px", fontWeight: "800", fontFamily: "'Nunito', sans-serif", marginBottom: "3px", letterSpacing: "0.01em" },
+  stepBody:    { fontSize: "15px", color: "#4a6358", lineHeight: 1.6 },
+  reminder:    { borderLeft: "3px solid", paddingLeft: "12px", fontSize: "15px", color: "#4a6358", lineHeight: 1.6, marginTop: "6px", fontStyle: "italic" },
 };
 
 // ── Quick action buttons ───────────────────────────────────────────────────────
@@ -714,22 +714,22 @@ const s = {
   page:        { fontFamily: "'Nunito, DM Sans, sans-serif", paddingBottom: "8px" },
   loadingWrap: { display: "flex", flexDirection: "column", alignItems: "center", gap: "14px", padding: "60px 0" },
   spinner:     { width: "30px", height: "30px", border: "3px solid #e5e7eb", borderTopColor: "#2d6a4f", borderRadius: "50%", animation: "spin 0.7s linear infinite" },
-  loadingText: { fontSize: "14px", color: "#8aa898" },
+  loadingText: { fontSize: "16px", color: "#4a6358" },
   nudge:       { display: "flex", alignItems: "center", gap: "12px", background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: "12px", padding: "14px 16px", marginBottom: "20px" },
-  nudgeHead:   { fontSize: "13px", fontWeight: "700", color: "#92400e", marginBottom: "2px" },
-  nudgeSub:    { fontSize: "12px", color: "#92400e", opacity: 0.8 },
-  nudgeBtn:    { flexShrink: 0, border: "none", color: "#fff", borderRadius: "8px", padding: "8px 14px", fontSize: "13px", fontWeight: "700", cursor: "pointer" },
+  nudgeHead:   { fontSize: "15px", fontWeight: "700", color: "#92400e", marginBottom: "2px" },
+  nudgeSub:    { fontSize: "14px", color: "#92400e", opacity: 0.8 },
+  nudgeBtn:    { flexShrink: 0, border: "none", color: "#fff", borderRadius: "8px", padding: "8px 14px", fontSize: "15px", fontWeight: "700", cursor: "pointer" },
   sectionHead: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" },
   sectionDot:  { width: "10px", height: "10px", borderRadius: "50%", flexShrink: 0 },
-  sectionTitle:{ fontSize: "14px", fontWeight: "700", color: "#1b3a2a" },
+  sectionTitle:{ fontSize: "16px", fontWeight: "700", color: "#1b3a2a" },
   timeline:    { marginBottom: "24px" },
   fixes:       { background: "#fff7ed", border: "1.5px solid #fed7aa", borderRadius: "12px", padding: "14px 16px", marginBottom: "24px" },
-  fixesTitle:  { fontSize: "13px", fontWeight: "700", color: "#92400e", marginBottom: "10px" },
-  fixRow:      { display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "6px", fontSize: "13px", color: "#4a6358" },
+  fixesTitle:  { fontSize: "15px", fontWeight: "700", color: "#92400e", marginBottom: "10px" },
+  fixRow:      { display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "6px", fontSize: "15px", color: "#4a6358" },
   fixDot:      { width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0, marginTop: "5px" },
   actionGrid:  { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "24px" },
   actionBtn:   { display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", borderRadius: "14px", padding: "18px 8px", cursor: "pointer" },
   actionIcon:  { width: "44px", height: "44px", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" },
-  actionLabel: { fontSize: "13px", fontWeight: "700" },
-  disclaimer:  { textAlign: "center", fontSize: "11px", color: "#8aa898", lineHeight: 1.6 },
+  actionLabel: { fontSize: "15px", fontWeight: "700" },
+  disclaimer:  { textAlign: "center", fontSize: "13px", color: "#8aa898", lineHeight: 1.6 },
 };

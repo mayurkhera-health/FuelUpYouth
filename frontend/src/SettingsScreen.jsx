@@ -96,31 +96,31 @@ function BackBar({ label, onBack }) {
 
 const bb = {
   bar: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", paddingBottom: "14px", borderBottom: "1.5px solid #e5e7eb" },
-  btn: { background: "none", border: "none", color: "#2d6a4f", fontSize: "15px", fontWeight: "700", cursor: "pointer", padding: "4px 0" },
-  title: { fontSize: "15px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a" },
+  btn: { background: "none", border: "none", color: "#2d6a4f", fontSize: "17px", fontWeight: "700", cursor: "pointer", padding: "4px 0" },
+  title: { fontSize: "17px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a" },
 };
 
 const s = {
   identityCard: { display: "flex", alignItems: "center", gap: "16px", background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "14px", padding: "18px 20px", marginBottom: "24px" },
-  avatar: { width: "52px", height: "52px", borderRadius: "50%", background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", fontSize: "18px", fontWeight: "800", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, letterSpacing: "0.5px" },
-  identityName: { fontSize: "16px", fontWeight: "800", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a" },
-  identityMeta: { fontSize: "13px", color: "#4a6358", marginTop: "2px" },
-  identityParent: { fontSize: "12px", color: "#8aa898", marginTop: "2px" },
+  avatar: { width: "52px", height: "52px", borderRadius: "50%", background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", fontSize: "20px", fontWeight: "800", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, letterSpacing: "0.5px" },
+  identityName: { fontSize: "18px", fontWeight: "800", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a" },
+  identityMeta: { fontSize: "15px", color: "#4a6358", marginTop: "2px" },
+  identityParent: { fontSize: "14px", color: "#4a6358", marginTop: "2px" },
 
-  sectionLabel: { fontSize: "11px", fontWeight: "700", color: "#8aa898", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "8px", marginTop: "8px" },
+  sectionLabel: { fontSize: "13px", fontWeight: "700", color: "#4a6358", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "8px", marginTop: "8px" },
 
   row: { display: "flex", alignItems: "center", gap: "14px", width: "100%", background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: "12px", padding: "14px 16px", marginBottom: "10px", cursor: "pointer", textAlign: "left" },
   rowIcon: { fontSize: "22px", flexShrink: 0 },
   rowBody: { flex: 1 },
-  rowLabel: { fontSize: "14px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", marginBottom: "2px" },
-  rowDesc: { fontSize: "12px", color: "#8aa898", lineHeight: 1.4 },
-  chevron: { fontSize: "20px", color: "#8aa898", fontWeight: "300" },
+  rowLabel: { fontSize: "16px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", marginBottom: "2px" },
+  rowDesc: { fontSize: "14px", color: "#4a6358", lineHeight: 1.6 },
+  chevron: { fontSize: "22px", color: "#4a6358", fontWeight: "400" },
 
   infoRow: { display: "flex", justifyContent: "space-between", padding: "10px 4px", borderBottom: "1px solid #f3f4f6" },
-  infoLabel: { fontSize: "13px", color: "#8aa898" },
-  infoVal: { fontSize: "13px", fontWeight: "600", color: "#4a6358" },
+  infoLabel: { fontSize: "15px", color: "#4a6358" },
+  infoVal: { fontSize: "15px", fontWeight: "600", color: "#4a6358" },
 
-  signOutBtn: { width: "100%", marginTop: "24px", padding: "12px", background: "#fef2f2", color: "#dc2626", border: "1.5px solid #fecaca", borderRadius: "10px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
+  signOutBtn: { width: "100%", marginTop: "24px", padding: "12px", background: "#fef2f2", color: "#dc2626", border: "1.5px solid #fecaca", borderRadius: "10px", fontSize: "16px", fontWeight: "700", cursor: "pointer" },
 
-  disclaimer: { fontSize: "11px", color: "#8aa898", textAlign: "center", marginTop: "16px", lineHeight: 1.6 },
+  disclaimer: { fontSize: "13px", color: "#8aa898", textAlign: "center", marginTop: "16px", lineHeight: 1.6 },
 };
