@@ -60,6 +60,27 @@ export default function SettingsScreen({ athlete, parent, onSave, onSignOut, onC
     );
   }
 
+  if (section?.startsWith("legal:")) {
+    const slug  = section.slice(6);
+    const title = legalDocs.find(d => d.slug === slug)?.title ?? "Legal Document";
+
+    return (
+      <div>
+        <BackBar label={title} onBack={() => setSection(null)} />
+        {legalDocLoading && <div style={s.legalPlaceholder}>Loading…</div>}
+        {legalDocError && (
+          <div>
+            <div style={{ ...s.legalPlaceholder, color: "#dc2626" }}>Could not load document.</div>
+            <button style={s.retryBtn} onClick={() => setRetryKey(k => k + 1)}>Retry</button>
+          </div>
+        )}
+        {legalDocContent && (
+          <div style={s.legalContent}>{legalDocContent}</div>
+        )}
+      </div>
+    );
+  }
+
   // Root settings menu
   return (
     <div>
@@ -174,4 +195,22 @@ const s = {
 
   disclaimer: { fontSize: "13px", color: "#8aa898", textAlign: "center", marginTop: "16px", lineHeight: 1.6 },
   legalPlaceholder: { padding: "10px 4px", fontSize: "14px", color: "#8aa898" },
+  legalContent: {
+    fontSize: "14px",
+    lineHeight: 1.75,
+    color: "#1b3a2a",
+    whiteSpace: "pre-wrap",
+    fontFamily: "'DM Sans', 'Nunito', sans-serif",
+  },
+  retryBtn: {
+    marginTop: "8px",
+    background: "none",
+    border: "1px solid #2d6a4f",
+    color: "#2d6a4f",
+    borderRadius: "8px",
+    padding: "6px 14px",
+    fontSize: "14px",
+    fontWeight: "700",
+    cursor: "pointer",
+  },
 };
