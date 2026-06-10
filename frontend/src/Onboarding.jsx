@@ -24,11 +24,17 @@ function ReviewCard({ athlete }) {
   const heightStr = athlete.height_ft && athlete.height_in !== ""
     ? `${athlete.height_ft}' ${athlete.height_in}"`
     : athlete.height_ft ? `${athlete.height_ft}'` : "—";
-  const allergies = Array.isArray(athlete.allergies)
-    ? (athlete.allergies.length ? athlete.allergies.join(", ") : "None")
-    : (athlete.allergies || "None");
+  const allergies = (() => {
+    if (!Array.isArray(athlete.allergies)) return athlete.allergies || "None";
+    const base = athlete.allergies.filter(a => a !== "Other");
+    const custom = athlete.allergies.includes("Other") && athlete.other_allergy?.trim()
+      ? [athlete.other_allergy.trim()]
+      : [];
+    const all = [...base, ...custom];
+    return all.length ? all.join(", ") : "None";
+  })();
   const rows = [
-    ["Name", athlete.first_name || "—"],
+    ["Full Name", athlete.first_name || "—"],
     ["Age", athlete.age || "—"],
     ["Gender", athlete.gender || "—"],
     ["Weight", athlete.weight_lbs ? `${athlete.weight_lbs} lbs` : "—"],
@@ -53,17 +59,17 @@ function ReviewCard({ athlete }) {
 
 const rv = {
   card: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" },
-  row: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 16px", borderBottom: "1px solid #f3f4f6", fontSize: "14px" },
-  label: { color: "#8aa898", fontWeight: "600", flexShrink: 0, marginRight: "12px" },
+  row: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 16px", borderBottom: "1px solid #f3f4f6", fontSize: "16px" },
+  label: { color: "#4a6358", fontWeight: "600", flexShrink: 0, marginRight: "12px" },
   val: { color: "#1b3a2a", fontWeight: "500", textAlign: "right" },
-  warn: { background: "#fffbeb", borderTop: "1.5px solid #fde68a", padding: "12px 16px", fontSize: "13px", color: "#92400e", lineHeight: "1.5" },
+  warn: { background: "#fffbeb", borderTop: "1.5px solid #fde68a", padding: "12px 16px", fontSize: "15px", color: "#92400e", lineHeight: "1.5" },
 };
 
 const initialParent = { full_name: "", email: "", consent_confirmed: false };
 const initialAthlete = {
   first_name: "", age: "", gender: "", weight_lbs: "",
   height_ft: "", height_in: "", position: "", competition_level: "",
-  sweat_profile: "", allergies: [], dietary_restrictions: "",
+  sweat_profile: "", allergies: [], other_allergy: "", dietary_restrictions: "",
 };
 
 export default function Onboarding({ onComplete }) {
@@ -134,7 +140,14 @@ export default function Onboarding({ onComplete }) {
         weight_lbs: parseFloat(athlete.weight_lbs),
         height_ft: parseInt(athlete.height_ft),
         height_in: parseFloat(athlete.height_in),
-        allergies: athlete.allergies.join(", ") || "None",
+        allergies: (() => {
+          const base = athlete.allergies.filter(a => a !== "Other");
+          const custom = athlete.allergies.includes("Other") && athlete.other_allergy.trim()
+            ? [athlete.other_allergy.trim()]
+            : [];
+          const all = [...base, ...custom];
+          return all.length ? all.join(", ") : "None";
+        })(),
         supplement_use: "None",
       };
       const res = await fetch(`${API}/api/athletes/`, {
@@ -283,8 +296,8 @@ export default function Onboarding({ onComplete }) {
 
             <div style={styles.row}>
               <div style={styles.col}>
-                <label style={styles.label}>First Name <span style={styles.req}>*</span></label>
-                <input style={styles.input} type="text" placeholder="Athlete's first name" value={athlete.first_name}
+                <label style={styles.label}>Full Name <span style={styles.req}>*</span></label>
+                <input style={styles.input} type="text" placeholder="Athlete's full name" value={athlete.first_name}
                   onChange={(e) => setAthlete({ ...athlete, first_name: e.target.value })} required />
               </div>
               <div style={styles.col}>
@@ -348,19 +361,9 @@ export default function Onboarding({ onComplete }) {
               </div>
             </div>
 
-            <label style={styles.label}>Sweat Profile</label>
-            <select style={styles.select} value={athlete.sweat_profile}
-              onChange={(e) => setAthlete({ ...athlete, sweat_profile: e.target.value })}>
-              <option value="">How much does your athlete sweat?</option>
-              <option value="Light">Light — barely visible</option>
-              <option value="Moderate">Moderate — noticeable</option>
-              <option value="Heavy">Heavy — drips during activity</option>
-              <option value="Very Heavy">Very Heavy — drenched every session</option>
-            </select>
-
             <label style={styles.label}>Food Allergies (select all that apply)</label>
             <div style={styles.checkGroup}>
-              {["None", "Peanuts", "Tree nuts", "Dairy", "Eggs", "Gluten", "Soy", "Shellfish"].map((a) => (
+              {["None", "Peanuts", "Tree nuts", "Dairy", "Eggs", "Gluten", "Soy", "Shellfish", "Other"].map((a) => (
                 <label key={a} style={styles.checkboxRow}>
                   <input type="checkbox" checked={athlete.allergies.includes(a)}
                     onChange={() => toggleCheckbox("allergies", a)} style={styles.checkbox} />
@@ -368,6 +371,15 @@ export default function Onboarding({ onComplete }) {
                 </label>
               ))}
             </div>
+            {athlete.allergies.includes("Other") && (
+              <input
+                style={{ ...styles.input, marginTop: "8px" }}
+                type="text"
+                placeholder="Please describe the allergy"
+                value={athlete.other_allergy}
+                onChange={e => setAthlete({ ...athlete, other_allergy: e.target.value })}
+              />
+            )}
 
             <label style={styles.label}>Dietary Restrictions</label>
             <select style={styles.select} value={athlete.dietary_restrictions}
@@ -444,35 +456,35 @@ const styles = {
   card: { background: "#fff", borderRadius: "20px", padding: "40px", width: "100%", maxWidth: "600px", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" },
   header: { textAlign: "center", marginBottom: "28px" },
   logo: { fontSize: "28px", fontWeight: "800", color: "#2d6a4f" },
-  subtitle: { fontSize: "14px", color: "#8aa898", marginTop: "4px" },
+  subtitle: { fontSize: "16px", color: "#4a6358", marginTop: "4px" },
   progressBar: { display: "flex", justifyContent: "space-between", marginBottom: "32px", position: "relative" },
   stepItem: { display: "flex", flexDirection: "column", alignItems: "center", flex: 1 },
-  stepDot: { width: "32px", height: "32px", borderRadius: "50%", background: "#dce8e0", color: "#8aa898", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "700", marginBottom: "6px" },
+  stepDot: { width: "32px", height: "32px", borderRadius: "50%", background: "#dce8e0", color: "#4a6358", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px", fontWeight: "700", marginBottom: "6px" },
   stepDotActive: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff" },
-  stepLabel: { fontSize: "11px", color: "#8aa898", textAlign: "center" },
+  stepLabel: { fontSize: "13px", color: "#4a6358", textAlign: "center" },
   stepLabelActive: { color: "#2d6a4f", fontWeight: "600" },
   section: { display: "flex", flexDirection: "column", gap: "16px" },
   sectionTitle: { fontSize: "22px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", color: "#1b3a2a", margin: 0 },
-  sectionDesc: { fontSize: "14px", color: "#8aa898", lineHeight: "1.5", margin: 0 },
-  label: { fontSize: "13px", fontWeight: "600", color: "#4a6358" },
+  sectionDesc: { fontSize: "16px", color: "#4a6358", lineHeight: "1.5", margin: 0 },
+  label: { fontSize: "15px", fontWeight: "600", color: "#4a6358" },
   req: { color: "#ef4444" },
-  input: { padding: "10px 14px", border: "1.5px solid #d1d5db", borderRadius: "8px", fontSize: "15px", outline: "none", width: "100%", boxSizing: "border-box" },
-  select: { padding: "10px 14px", border: "1.5px solid #d1d5db", borderRadius: "8px", fontSize: "15px", background: "#fff", width: "100%", boxSizing: "border-box" },
+  input: { padding: "10px 14px", border: "1.5px solid #d1d5db", borderRadius: "8px", fontSize: "17px", outline: "none", width: "100%", boxSizing: "border-box" },
+  select: { padding: "10px 14px", border: "1.5px solid #d1d5db", borderRadius: "8px", fontSize: "17px", background: "#fff", width: "100%", boxSizing: "border-box" },
   row: { display: "flex", gap: "12px" },
   col: { display: "flex", flexDirection: "column", flex: 1, gap: "6px" },
-  consentBox: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "16px", maxHeight: "200px", overflowY: "auto", fontSize: "13px", lineHeight: "1.6", color: "#4a6358" },
+  consentBox: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "16px", maxHeight: "200px", overflowY: "auto", fontSize: "15px", lineHeight: "1.6", color: "#4a6358" },
   consentPara: { margin: "0 0 10px 0" },
-  checkboxRow: { display: "flex", alignItems: "flex-start", gap: "10px", fontSize: "14px", color: "#4a6358", cursor: "pointer" },
+  checkboxRow: { display: "flex", alignItems: "flex-start", gap: "10px", fontSize: "16px", color: "#4a6358", cursor: "pointer" },
   checkbox: { marginTop: "2px", accentColor: "#2d6a4f", width: "16px", height: "16px", flexShrink: 0 },
   checkGroup: { display: "flex", flexDirection: "column", gap: "8px", padding: "12px", background: "#f4f8f5", borderRadius: "8px", border: "1.5px solid #e5e7eb" },
-  btn: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "10px", padding: "14px 24px", fontSize: "16px", fontWeight: "700", cursor: "pointer", marginTop: "8px" },
-  errorBanner: { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: "8px", padding: "12px 16px", color: "#dc2626", fontSize: "14px", marginBottom: "8px" },
-  fieldError: { color: "#dc2626", fontSize: "13px", marginTop: "-8px" },
-  infoNote: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "10px 14px", fontSize: "13px", color: "#1b5e42" },
-  warningBox: { background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: "8px", padding: "14px 16px", fontSize: "13px", color: "#92400e", lineHeight: "1.5" },
+  btn: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "10px", padding: "14px 24px", fontSize: "18px", fontWeight: "700", cursor: "pointer", marginTop: "8px" },
+  errorBanner: { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: "8px", padding: "12px 16px", color: "#dc2626", fontSize: "16px", marginBottom: "8px" },
+  fieldError: { color: "#dc2626", fontSize: "15px", marginTop: "-8px" },
+  infoNote: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "10px 14px", fontSize: "15px", color: "#1b5e42" },
+  warningBox: { background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: "8px", padding: "14px 16px", fontSize: "15px", color: "#92400e", lineHeight: "1.5" },
   successIcon: { fontSize: "56px", marginBottom: "8px" },
   summaryBox: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", gap: "10px" },
-  summaryRow: { display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#4a6358" },
-  scienceNote: { fontSize: "12px", color: "#8aa898" },
-  disclaimer: { fontSize: "12px", color: "#8aa898", textAlign: "center", lineHeight: "1.5" },
+  summaryRow: { display: "flex", justifyContent: "space-between", fontSize: "16px", color: "#4a6358" },
+  scienceNote: { fontSize: "14px", color: "#4a6358" },
+  disclaimer: { fontSize: "14px", color: "#8aa898", textAlign: "center", lineHeight: "1.5" },
 };
