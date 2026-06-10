@@ -106,3 +106,30 @@ This should never be ingested.
     result = ingest_file(str(draft))
     assert result["status"] == "skipped"
     assert "draft" in result["reason"]
+
+
+def test_retrieval_finds_iron_content():
+    """Query about iron needs should return chunks from iron_magnesium.md."""
+    from api.services.knowledge.ingest import ingest_file
+    iron_path = Path(__file__).parent.parent / "knowledge" / "iron_magnesium.md"
+    ingest_file(str(iron_path))
+
+    from api.services.knowledge.retrieval import retrieve
+    results = retrieve("how much iron does a teenage girl need per day")
+    assert len(results) > 0
+    titles = [r.title for r in results]
+    assert any("Iron" in t or "Magnesium" in t for t in titles)
+
+def test_retrieval_returns_empty_for_unknown_domain():
+    """Out-of-domain query should return results all below threshold."""
+    from api.services.knowledge.retrieval import retrieve
+    results = retrieve("what is the latest iPhone model price")
+    for r in results:
+        assert r.score < 0.05, f"Unexpected high score {r.score} for out-of-domain query"
+
+def test_retrieval_respects_approved_only():
+    """Only approved chunks are returned."""
+    from api.services.knowledge.retrieval import retrieve
+    results = retrieve("test draft content should never appear")
+    for r in results:
+        assert r.review_status == "approved"
