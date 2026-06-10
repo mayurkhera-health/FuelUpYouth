@@ -198,3 +198,80 @@ def test_post_training_recovery_window():
     result = post_training_recovery_window("20:00")
     assert result["window_opens"] == "20:00"
     assert result["window_closes"] == "20:30"
+
+
+from unittest.mock import patch
+
+def test_no_answer_when_empty_retrieval():
+    """When no chunks found, return safe fallback string."""
+    from api.services.knowledge.answer import answer_with_knowledge
+
+    with patch("api.services.knowledge.answer.retrieve", return_value=[]):
+        result = answer_with_knowledge(
+            "what is the stock price of Apple",
+            {"id": 1, "first_name": "Alex", "age": 14, "gender": "female",
+             "weight_lbs": 120, "event_type": "rest"}
+        )
+    assert "don't have enough approved information" in result["answer"]
+    assert result["citations"] == []
+
+def test_citations_included_in_answer():
+    """Answers from knowledge base must include at least one citation."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.retrieval import KnowledgeChunk
+
+    mock_chunk = KnowledgeChunk(
+        chunk_id=1, item_id=1, slug="iron_magnesium",
+        title="Iron and Magnesium Requirements",
+        category="micronutrients",
+        source="NIH Office of Dietary Supplements",
+        source_urls=["https://ods.od.nih.gov/factsheets/Iron-HealthProfessional/"],
+        applicable_age_range="9-17", tags=["iron"],
+        review_status="approved", heading="Daily Iron Requirements",
+        content="Female athletes age 14-18 need 15mg iron per day.",
+        score=0.7,
+    )
+
+    with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):
+        with patch("api.services.knowledge.answer._call_claude",
+                   return_value="Female athletes need 15mg iron. Source: Iron and Magnesium Requirements"):
+            result = answer_with_knowledge(
+                "how much iron does a girl need",
+                {"id": 1, "first_name": "Alex", "age": 14, "gender": "female",
+                 "weight_lbs": 120, "event_type": "rest"}
+            )
+    assert len(result["citations"]) >= 1
+    assert result["citations"][0]["title"] == "Iron and Magnesium Requirements"
+
+def test_safety_guardrail_in_system_prompt():
+    """Claude system prompt must contain safety guardrail instructions."""
+    from api.services.knowledge.answer import _build_system_prompt
+    prompt = _build_system_prompt(chunks=[], calc_result=None)
+    assert "medical" in prompt.lower()
+    assert "professional" in prompt.lower()
+    assert "eating" in prompt.lower()
+
+def test_calculation_included_when_relevant():
+    """Iron question for a known athlete should produce a non-None result."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.retrieval import KnowledgeChunk
+
+    mock_chunk = KnowledgeChunk(
+        chunk_id=1, item_id=1, slug="iron_magnesium",
+        title="Iron and Magnesium Requirements",
+        category="micronutrients",
+        source="NIH", source_urls=[],
+        applicable_age_range="9-17", tags=["iron"],
+        review_status="approved", heading="Iron RDA",
+        content="Female athletes age 14-18 need 15mg iron per day.",
+        score=0.6,
+    )
+
+    with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):
+        with patch("api.services.knowledge.answer._call_claude", return_value="15mg"):
+            result = answer_with_knowledge(
+                "how much iron does she need",
+                {"id": 1, "first_name": "Maya", "age": 15, "gender": "female",
+                 "weight_lbs": 115, "event_type": "rest"}
+            )
+    assert result["answer"] is not None
