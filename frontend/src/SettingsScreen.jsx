@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ProfileScreen from "./ProfileScreen";
 import NotificationsScreen from "./NotificationsScreen";
+
+const API = import.meta.env.VITE_API_URL ?? "";
 
 const SECTIONS = [
   { id: "profile",       icon: "👤", label: "Athlete Profile",        desc: "Edit name, position, age, dietary needs, allergies" },
@@ -8,7 +10,37 @@ const SECTIONS = [
 ];
 
 export default function SettingsScreen({ athlete, parent, onSave, onSignOut, onClose }) {
-  const [section, setSection] = useState(null);
+  const [section, setSection]                 = useState(null);
+  const [legalDocs, setLegalDocs]             = useState([]);
+  const [legalLoading, setLegalLoading]       = useState(true);
+  const [legalError, setLegalError]           = useState(false);
+  const [legalDocContent, setLegalDocContent] = useState(null);
+  const [legalDocLoading, setLegalDocLoading] = useState(false);
+  const [legalDocError, setLegalDocError]     = useState(false);
+  const [retryKey, setRetryKey]               = useState(0);
+
+  // Fetch document list on mount
+  useEffect(() => {
+    setLegalLoading(true);
+    setLegalError(false);
+    fetch(`${API}/api/legal`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => { setLegalDocs(data); setLegalLoading(false); })
+      .catch(() => { setLegalError(true); setLegalLoading(false); });
+  }, []);
+
+  // Fetch individual document whenever a legal section is selected or retried
+  useEffect(() => {
+    if (!section?.startsWith("legal:")) return;
+    const slug = section.slice(6);
+    setLegalDocContent(null);
+    setLegalDocLoading(true);
+    setLegalDocError(false);
+    fetch(`${API}/api/legal/${slug}`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => { setLegalDocContent(data.content); setLegalDocLoading(false); })
+      .catch(() => { setLegalDocError(true); setLegalDocLoading(false); });
+  }, [section, retryKey]);
 
   if (section === "profile") {
     return (
