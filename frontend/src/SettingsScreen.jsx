@@ -90,6 +90,24 @@ export default function SettingsScreen({ athlete, parent, onSave, onSignOut, onC
         </button>
       ))}
 
+      {/* Legal section */}
+      <div style={s.sectionLabel}>Legal</div>
+      {legalLoading && (
+        <div style={s.legalPlaceholder}>Loading…</div>
+      )}
+      {legalError && (
+        <div style={{ ...s.legalPlaceholder, color: "#dc2626" }}>Could not load documents.</div>
+      )}
+      {!legalLoading && !legalError && legalDocs.map(doc => (
+        <button key={doc.slug} style={s.row} onClick={() => setSection(`legal:${doc.slug}`)}>
+          <div style={s.rowIcon}>⚖️</div>
+          <div style={s.rowBody}>
+            <div style={s.rowLabel}>{doc.title}</div>
+          </div>
+          <div style={s.chevron}>›</div>
+        </button>
+      ))}
+
       {/* About section */}
       <div style={s.sectionLabel}>About</div>
       <div style={s.infoRow}>
@@ -155,4 +173,5 @@ const s = {
   signOutBtn: { width: "100%", marginTop: "24px", padding: "12px", background: "#fef2f2", color: "#dc2626", border: "1.5px solid #fecaca", borderRadius: "10px", fontSize: "16px", fontWeight: "700", cursor: "pointer" },
 
   disclaimer: { fontSize: "13px", color: "#8aa898", textAlign: "center", marginTop: "16px", lineHeight: 1.6 },
+  legalPlaceholder: { padding: "10px 4px", fontSize: "14px", color: "#8aa898" },
 };
