@@ -82,7 +82,7 @@ export default function Login({ onLogin, onNewAccount }) {
         <div style={s.hero}>
           <div style={s.wordmark}>⚽ FuelUp<span style={s.wordmarkYouth}>Youth</span></div>
           <h1 style={s.headline}>
-            The complete nutrition platform for every competitive soccer athlete.
+            The Complete Sports Performance platform for every competitive soccer Athlete
           </h1>
           <p style={s.subheadline}>
             AI-generated, RD-approved Nutrition Blueprints — personalized to every athlete's age,

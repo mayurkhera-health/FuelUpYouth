@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 const CARDS = [
   {
     id: "iron",
-    quote: (ironPct) => `<em>Iron</em> carries oxygen to your muscles. At ${ironPct}%, your legs will feel heavy in minute 70.`,
+    quote: (ironPct) => `<em>Iron</em> carries oxygen to your muscles. Boost it today and feel the difference in minute 70.`,
     detail: "Iron enables red blood cells to deliver oxygen during sustained running. When iron is low, your sprint recovery slows — you feel it as heavy legs in the second half, not the first.",
     fixes: [
       { food: "Lentil soup at lunch",           gain: "+4.2mg iron" },

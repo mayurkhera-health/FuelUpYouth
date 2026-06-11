@@ -30,9 +30,9 @@ function scoreColor(score) {
 
 function taglineContent(score) {
   if (score >= 85) return { emoji: "🏆", text: "Fueled for a career-best performance today." };
-  if (score >= 70) return { emoji: "⚡", text: "One snack away from game-ready — eat now" };
-  if (score >= 50) return { emoji: "📈", text: "Building toward peak — close the iron gap now." };
-  return { emoji: "🔴", text: "Your body is running on empty. Fix this now." };
+  if (score >= 70) return { emoji: "⚡", text: "One snack away from game-ready — grab something now!" };
+  if (score >= 50) return { emoji: "📈", text: "Building toward peak — an iron-rich meal will get you there." };
+  return { emoji: "🌱", text: "Let's power up — your next meal changes everything." };
 }
 
 // ── ReadinessDial ─────────────────────────────────────────────────────────

@@ -377,7 +377,7 @@ def prompt0_athlete_blueprint(athlete: dict, targets_by_event: dict) -> dict:
         "micronutrients": {
             "iron": {
                 "parent_explanation": f"{'Girls aged 9–17 have significantly higher iron needs due to menstruation onset and rapid growth. Iron deficiency is the leading nutritional deficiency in female youth athletes — affecting endurance, focus, and immune function.' if is_girl else f'Iron supports oxygen delivery to muscles via hemoglobin. Even mild deficiency impairs endurance and focus in male youth athletes.'}",
-                "athlete_explanation": f"Iron helps carry oxygen to your muscles. {'As a female athlete your iron needs are higher — spinach, lentils, and lean red meat are your best friends.' if is_girl else 'Low iron means tired legs and foggy thinking during games.'}",
+                "athlete_explanation": f"Iron helps carry oxygen to your muscles. {'As a female athlete your iron needs are higher — spinach, lentils, and lean red meat are your best friends.' if is_girl else 'Strong iron levels mean powerful legs and sharp focus all game long.'}",
                 "urgency_level": "critical" if is_girl else "important",
                 "food_sources": ["Lean red meat (grass-fed)", "Spinach + lemon juice (vitamin C boosts absorption)", "Lentils + hummus", "Fortified cereal (no artificial dyes)"],
                 "absorption_tip": "Pair iron-rich foods with vitamin C (orange juice, bell peppers, strawberries). Avoid calcium-rich foods within 1 hour of iron-rich meals."

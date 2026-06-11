@@ -1,0 +1,212 @@
+# Fuel Report Tab — Design Spec
+**Date:** 2026-06-11  
+**Status:** Approved by user  
+**Mockup:** `.superpowers/brainstorm/39800-1781198604/content/nutrition-tab-v2.html`
+
+---
+
+## What This Tab Is
+
+The **Fuel Report** tab (previously "Nutrition") is the clinical, analytical, parent-first view of how the athlete is fueling across the week. It is the counterpart to the Today tab.
+
+- **Today answers:** "What do I do right now?"
+- **Fuel Report answers:** "How are we doing overall this week?"
+
+**Primary audience:** Parent  
+**Primary time frame:** The week (today is secondary)  
+**Tone:** Celebration-first. Always lead with what the athlete did well before surfacing gaps. Never open with deficiencies.
+
+---
+
+## What This Tab Does NOT Do
+
+- No countdown timer
+- No mission checklist
+- No broadcast card
+- No performance forecast
+- No per-day nutrient breakdown (Zone 3 from original spec — removed as duplicate of Today tab)
+
+---
+
+## Screen Structure
+
+```
+TOP NAV (sticky)           logo + "Fuel Report · [name]" + Export PDF button
+WEEK NAV (sticky)          date range + ‹ › arrows + days-logged count
+─────────────────────────────────────────────────────
+ZONE 1: ATHLETE WIN HERO   celebration-first, gaps last
+ZONE 2: WEEKLY HEATMAP     6 nutrients × 7 days grid
+ZONE 3: PARENT REPORT      positives → one focus → actions → recipe → readiness
+DISCLAIMER
+─────────────────────────────────────────────────────
+BOTTOM NAV (fixed)
+```
+
+---
+
+## Component Breakdown
+
+### Top Nav
+- Sticky, z-index 40, height 52px, white bg, border-bottom `#dce8e0`
+- Left: `FUEL·UP` logo (existing site logo component)
+- Center: `"Fuel Report · [athlete.first_name]"` — small, secondary color `#8aa898`
+- Right: `"⬇ Export PDF"` ghost button → `GET /api/athletes/{id}/weekly-report?format=pdf`
+
+### Week Nav Strip
+- Sticky, top 52px, z-index 30, white bg, border-bottom
+- Left: week range label (`Jun 8 – Jun 14, 2026`) + sub-label (`Current week · X days logged`)
+- Right: ‹ › arrow buttons — › disabled on current week
+- Navigating to past week reloads all data for that `week_start`
+
+---
+
+### Zone 1: Athlete Win Hero
+
+**Always leads with celebration. Gaps appear only at the bottom of this card, framed softly.**
+
+#### A — Dark Green Banner (top of card)
+- Background: `linear-gradient(145deg, #1b3a2a, #2d6a4f, #40916c)`
+- Eyebrow: `"🏆 This week's performance"`
+- Headline: `"[Name] is building great habits."` — Nunito 900, 26px, white
+- Sub-text: personalised message referencing the logging streak
+- Three stat tiles (semi-transparent white cards):
+  - **Week fuel score** — numeric (0–100)
+  - **Day streak** — consecutive days logged + 🔥
+  - **vs last week** — delta with ↑ or ↓
+
+#### B — Wins List (white bg below banner)
+- Section label: `"What [Name] crushed this week"` — tiny uppercase secondary
+- Up to 4 wins, each: coloured icon box (34×34px rounded) + bold label + detail line
+- Win types to surface (in priority order):
+  1. Any nutrient hitting ≥90% avg → `"[Nutrient] nailed — every single day"`
+  2. Largest improvement trend (≥+15% vs first half of week) → `"[Nutrient] went from X% → Y%"`
+  3. Fuel score trending up → `"Fuel score trending up all week"`
+  4. Logging streak milestone → `"Best X-day logging streak ever"` / `"X days logged in a row"`
+- If fewer than 2 genuine wins exist, show streak and score as wins regardless of value (there is always something to celebrate)
+
+#### C — Focus Strip (bottom of Zone 1 card, muted bg `#fafcfb`)
+- Section label: `"Two areas to build on this week"` — tiny uppercase secondary
+- Two tiles side-by-side (never more than 2)
+- Each tile: nutrient emoji + name, weekly avg value, target, 2px progress bar, one-line friendly tip
+- Uses amber `#b45309` for values — never red, never "critical", never "gap"
+- Nutrient ranking: iron always first for girls when avg < 75%, then ranked by severity
+
+---
+
+### Zone 2: Weekly Nutrient Heatmap
+
+6 nutrients × 7 days grid. Parents read the week pattern in one glance.
+
+#### Header Row
+- First column 72px wide, then 7 equal columns
+- Day abbreviation (Mo Tu We Th Fr Sa Su)
+- Event type badge below each day (GAM / PRA / STR / PRE / RES) in event colours
+- Today's column header in accent green `#2d6a4f`
+
+#### Nutrient Rows (6)
+Order: Iron, Calcium, Carbs, Protein, Calories, Water
+
+Each cell (`dot` — 28×26px, border-radius 5px):
+- `≥80%` → green bg `rgba(45,106,79,.15)`, green text, shows `✓`
+- `50–79%` → amber bg `rgba(217,119,6,.12)`, amber text, shows percentage number
+- `<50%` → red bg `rgba(184,58,58,.12)`, red text, shows percentage number
+- Not logged → subtle `#f4f8f5` bg, muted `#c8d8d0` text, shows `—`
+- Today's column cells get green outline `2px solid #2d6a4f`
+
+#### Fuel Score Summary Row
+- Below the 6 nutrient rows, separated by border-top
+- Shows daily fuel score (0–100) per day, coloured green/amber/red by threshold
+- Today's score slightly larger/bolder
+- `—` for unlogged days
+
+---
+
+### Zone 3: Parent Report
+
+Generated by Claude Prompt 3 (weekly). Reads like a clinician's progress note.
+
+#### Header
+- Left: `"Weekly Fuel Report"` title + `"Generated [date] · Next: [date]"` sub
+- Right: Letter grade (`Elite / Pro Level / Game Ready / On Track / Building / Getting Started / Early Days / Just Starting`) — using the updated non-shame scale from `calc_letter_grade()`
+
+#### Sections (in this order — never reorder)
+
+1. **What went well** — always first, always ≥1 item, green check boxes
+2. **One thing to focus on** — single amber alert box, solution-oriented headline, specific numbers + fix instruction
+3. **Simple actions — next 7 days** — max 2 action items, background `#f4f8f5`, each with science citation
+4. **This week's featured recipe** — tappable green chip, fixes the biggest gap
+5. **Upcoming game readiness** — next game event, readiness %, 2px progress bar, explanation that leads with what's already good
+
+---
+
+## Data Sources
+
+```
+GET /api/athletes/{id}/weekly-summary?week_start=YYYY-MM-DD
+  Returns: week_start, week_end, days[], heatmap{}, scores[], weekly_traffic_light{}, ranked_gaps[]
+
+GET /api/athletes/{id}/weekly-report
+  Returns: Claude Prompt 3 output (what_went_well, focus_areas, featured_recipe, game_readiness, etc.)
+
+GET /api/athletes/{id}/weekly-report?format=pdf
+  Returns: downloadable PDF
+
+POST /api/meal-plan/add-food
+  Body: { athlete_id, food_name, meal_type, date }
+```
+
+---
+
+## New Backend Work Required
+
+### `api/services/nutrition_analysis.py` (new file)
+```python
+calculate_weekly_traffic_light(athlete_id, week_start, conn) -> dict
+rank_weekly_gaps(weekly_traffic_light, gender) -> list  # iron always first for girls
+compute_trend(pcts) -> str  # "improving" | "declining" | "stable"
+get_week_dates(week_start) -> list[str]  # 7 ISO date strings
+build_wins_list(weekly_tl, streak, gender) -> list  # up to 4 wins
+```
+
+### `api/routes/reports.py` (extend existing)
+- `GET /api/athletes/{id}/weekly-summary` — extend to include `heatmap`, `weekly_traffic_light`, `ranked_gaps`, `wins`
+- `GET /api/athletes/{id}/weekly-report` — Claude Prompt 3 wrapper (may already exist, verify)
+
+### `db/setup.py`
+- Verify `water_logs` table exists (needed for hydration heatmap)
+
+---
+
+## New Frontend Work Required
+
+```
+frontend/src/NutritionDashboard.jsx  →  replace entirely with new Fuel Report
+frontend/src/components/nutrition/
+  WinHero.jsx          Zone 1 banner + wins + focus strip
+  WeeklyHeatmap.jsx    Zone 2 grid
+  ParentReport.jsx     Zone 3 report card
+  WeekNav.jsx          sticky week navigation strip
+```
+
+---
+
+## Design Tokens (from existing site)
+- Font: `'Nunito', 'DM Sans', sans-serif`
+- Primary: `#2d6a4f` · Secondary: `#52b788`
+- Card bg: `#fff` · Page bg: `#f4f8f5`
+- Border: `#dce8e0`
+- Text primary: `#1b3a2a` · Text secondary: `#4a6358` · Text muted: `#8aa898`
+- Error: `#b83a3a` · Warning: `#b45309` · Success light: `#f0faf4`
+- Card border-radius: `14px` · Progress bar height: `2px`
+
+---
+
+## Critical Rules
+1. All math (pct, averages, trends, gaps) computed in Python. Claude writes narrative only.
+2. Iron is always the first focus area for girls when weekly avg < 75%.
+3. Weekly view is the primary frame — today's data is not shown separately.
+4. Nothing duplicates the Today tab (no countdown, no mission, no broadcast card, no forecast).
+5. Zone 1 always leads with celebration. Wins list always has ≥1 item.
+6. Focus strip shows max 2 areas. Parent report shows max 2 action items.
+7. When issue is missing data (athlete didn't log), show a gentle nudge — never alarming red.
+8. Legal disclaimer at bottom of every page view.

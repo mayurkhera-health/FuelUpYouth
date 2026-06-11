@@ -40,14 +40,14 @@ def compute_traffic_light(targets: dict, logged: dict) -> dict:
 
 
 def calc_letter_grade(score: int) -> str:
-    if score >= 90: return "A"
-    if score >= 83: return "B+"
-    if score >= 75: return "B"
-    if score >= 67: return "B-"
-    if score >= 57: return "C+"
-    if score >= 47: return "C"
-    if score >= 37: return "D"
-    return "F"
+    if score >= 90: return "Elite"
+    if score >= 83: return "Pro Level"
+    if score >= 75: return "Game Ready"
+    if score >= 67: return "On Track"
+    if score >= 57: return "Building"
+    if score >= 47: return "Getting Started"
+    if score >= 37: return "Early Days"
+    return "Just Starting"
 
 
 def get_positive_rows(tl: dict, event_type: str, gender: str) -> list:
@@ -74,8 +74,8 @@ def get_gap_rows(tl: dict, gender: str, event_type: str) -> list:
     if iron_pct < 75 and gender.lower() in ("girl", "female"):
         gaps.append({
             "key": "iron_mg", "icon": "🩸",
-            "name": "Iron — critical gap" if iron_pct < 40 else "Iron — below target",
-            "detail": "Add lean beef or lentils to recovery lunch. Pair with vitamin C. 52% of female athletes are deficient. — Everett MD 2025",
+            "name": "Iron — boost opportunity" if iron_pct < 40 else "Iron — let's build this up",
+            "detail": "Add lean beef or lentils to your next meal and pair with vitamin C — your body will thank you on the field. — Everett MD 2025",
             "pct": iron_pct, "target": f"of {round(tl['iron_mg']['target'])}mg",
         })
     calcium_pct = tl.get("calcium_mg", {}).get("pct_met", 100)
@@ -226,9 +226,9 @@ def get_urgent_action(events: list, tl: dict, meal_logs: list) -> dict:
     iron_pct = tl.get("iron_mg", {}).get("pct_met", 100)
     if iron_pct < 35:
         return {
-            "icon": "🩸", "title": "Iron is critically low today",
-            "sub": f"Need {round(tl['iron_mg']['gap'])}mg more · Add lentils or beef",
-            "window": "52% of female athletes are iron deficient · Everett MD 2025",
+            "icon": "🩸", "title": "Iron boost needed today",
+            "sub": f"{round(tl['iron_mg']['gap'])}mg to go · Lentils or beef at lunch will get you there",
+            "window": "Iron carries oxygen to your muscles — strong levels mean strong legs all game",
             "window_duration_secs": None, "action": "log_meal", "meal_type": "lunch",
         }
 
@@ -320,14 +320,14 @@ def get_mission_items(
             return None
 
     def _item(item_type, label, sub, time, state):
-        tag = {"done": "DONE", "urgent": "NOW", "critical": "FIX THIS", "pending": "UPCOMING"}[state]
+        tag = {"done": "DONE", "urgent": "NOW", "critical": "BOOST", "pending": "UPCOMING"}[state]
         return {"label": label, "sub": sub, "time": time, "state": state, "tag": tag, "item_type": item_type}
 
     def iron_item():
         if is_female and iron_pct < 50:
-            return _item("iron_lunch", "Close the iron gap at lunch",
-                         f"Add lean beef or lentils · <em>{iron_gap}mg needed</em>",
-                         "1:00 PM", "critical")
+            return _item("iron_lunch", "Boost your iron at lunch",
+                         f"Lean beef or lentils + vitamin C · <em>{iron_gap}mg to go</em>",
+                         "1:00 PM", "urgent")
         return _item("iron_lunch", "Iron-rich lunch today",
                      "Lentils, lean beef, or fortified cereal", "1:00 PM", "pending")
 
@@ -391,9 +391,9 @@ def get_mission_items(
                 _item("pre_practice_snack", "Fast carb snack 30 min before",
                       "Banana or rice cakes · <em>fast glucose</em>",
                       _fmt_time(start, -0.5) if start else "30 min before", "pending"),
-                _item("protein_recovery", "CRITICAL: Protein recovery within 30 min",
+                _item("protein_recovery", "Protein recovery — 30-min window open",
                       "Chocolate milk or Greek yogurt + banana · <em>30-min window</em>",
-                      recovery_time, "critical"),
+                      recovery_time, "urgent"),
                 _item("casein_snack", "Bedtime casein snack tonight",
                       "Cottage cheese or Greek yogurt · <em>overnight muscle repair</em>",
                       "9:30 PM", "pending"),
@@ -427,9 +427,9 @@ def get_mission_items(
             _item("afternoon_snack", "Afternoon snack — keep carbs high all day",
                   "Toast + honey or rice cakes · no heavy protein",
                   "3:00 PM", "pending"),
-            _item("pregame_dinner", "MOST IMPORTANT: Pre-game dinner tonight",
-                  "Pasta + lean protein · <em>biggest carb meal of the week</em>",
-                  "6:30 PM", "critical"),
+            _item("pregame_dinner", "Tonight's pre-game dinner — biggest carb meal of the week",
+                  "Pasta + lean protein · <em>this meal fills tomorrow's tank</em>",
+                  "6:30 PM", "urgent"),
             _item("low_fiber", "Limit fiber and fat today",
                   "Easy digestion for tomorrow · no salads or heavy sauces",
                   "All day", "pending"),
@@ -437,14 +437,14 @@ def get_mission_items(
 
     # ── REST / RECOVERY DAY (default) ─────────────────────────────────────────
     return [
-        _item("active_recovery", "Active recovery nutrition — don't undereat",
-              "Rest days need 80%+ of normal calories to repair muscle",
+        _item("active_recovery", "Rest day fueling — keep your energy up",
+              "Your muscles are rebuilding today — 80%+ of normal calories keeps recovery on track",
               "All day", "pending"),
         iron_item(),
         _item("calcium", "2 glasses of milk for calcium restoration",
               "Ages 9–17 is the bone-building window · <em>+600mg calcium</em>",
               "With meals",
-              "critical" if (traffic_light.get("calcium_mg", {}).get("pct_met") or 0) < 50 else "pending"),
+              "urgent" if (traffic_light.get("calcium_mg", {}).get("pct_met") or 0) < 50 else "pending"),
         _item("anti_inflammatory", "Anti-inflammatory dinner tonight",
               "Salmon, leafy greens, or olive oil · reduces muscle soreness",
               "7:00 PM", "pending"),

@@ -12,7 +12,7 @@ import Blueprint from "./Blueprint";
 
 const TABS = [
   { id: "home",      label: "Today"       },
-  { id: "nutrition", label: "Nutrition"   },
+  { id: "nutrition", label: "Fuel Report"   },
   { id: "schedule",  label: "Schedule"    },
   { id: "meal-plan", label: "🍳 Meal Plan" },
   { id: "blueprint", label: "🏅 Blueprint" },
