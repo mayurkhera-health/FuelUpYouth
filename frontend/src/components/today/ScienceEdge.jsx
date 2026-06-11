@@ -99,9 +99,9 @@ const s = {
   dotInactive:{ background: "#f4f8f5", border: "1px solid #dce8e0" },
   body:       { padding: "14px" },
   quote:      { fontFamily: "'Nunito', sans-serif", fontSize: "17px", fontWeight: "700", letterSpacing: "-.01em", color: "#1b3a2a", lineHeight: "1.4", marginBottom: "8px" },
-  detail:     { fontSize: "14px", color: "#8aa898", fontWeight: "300", lineHeight: "1.6", marginBottom: "10px" },
+  detail:     { fontSize: "14px", color: "#4a6358", fontWeight: "400", lineHeight: "1.6", marginBottom: "10px" },
   fix:        { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "#f4f8f5", border: "1px solid #dce8e0", borderRadius: "7px", marginBottom: "6px", cursor: "pointer" },
   fixName:    { fontSize: "14px", color: "#1b3a2a" },
   fixGain:    { fontSize: "13px", fontWeight: "700", color: "#2d6a4f" },
-  source:     { marginTop: "10px", paddingTop: "10px", borderTop: "1px solid #dce8e0", fontSize: "12px", color: "#8aa898", fontWeight: "300" },
+  source:     { marginTop: "10px", paddingTop: "10px", borderTop: "1px solid #dce8e0", fontSize: "12px", color: "#4a6358", fontWeight: "400" },
 };

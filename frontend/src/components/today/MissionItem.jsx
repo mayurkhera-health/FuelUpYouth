@@ -13,7 +13,7 @@ export default function MissionItem({ item, isDone, onToggle }) {
     DONE:       { background: "rgba(45,106,79,.10)",  color: "#2d6a4f" },
     NOW:        { background: "rgba(180,83,9,.12)",   color: "#b45309", animation: "fuelup-pulse 1.4s infinite" },
     "FIX THIS": { background: "rgba(184,58,58,.10)", color: "#b83a3a" },
-    UPCOMING:   { background: "#f4f8f5",              color: "#8aa898" },
+    UPCOMING:   { background: "#f4f8f5",              color: "#4a6358" },
   };
 
   return (
@@ -43,9 +43,9 @@ const s = {
   checkBox:  { width: "20px", height: "20px", borderRadius: "5px", flexShrink: 0, marginTop: "1px" },
   body:      { flex: 1 },
   label:     { fontSize: "15px", fontWeight: "500", color: "#1b3a2a", lineHeight: "1.3", marginBottom: "2px" },
-  labelDone: { textDecoration: "line-through", color: "#8aa898" },
-  sub:       { fontSize: "12px", color: "#8aa898", fontWeight: "300", lineHeight: "1.4" },
+  labelDone: { textDecoration: "line-through", color: "#4a6358" },
+  sub:       { fontSize: "12px", color: "#4a6358", fontWeight: "400", lineHeight: "1.4" },
   right:     { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px", flexShrink: 0 },
-  time:      { fontSize: "12px", color: "#8aa898", fontWeight: "300" },
+  time:      { fontSize: "12px", color: "#4a6358", fontWeight: "400" },
   tag:       { fontSize: "11px", fontWeight: "600", letterSpacing: ".04em", padding: "2px 7px", borderRadius: "3px" },
 };
