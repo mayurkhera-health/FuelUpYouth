@@ -256,3 +256,20 @@ def get_urgent_action(events: list, tl: dict, meal_logs: list) -> dict:
         "window": "Every logged meal improves your fuel score",
         "window_duration_secs": None, "action": "view_plan",
     }
+
+
+def get_mission_items(tl: dict, events: list, gender: str, event_type: str) -> list:
+    """Returns prioritized mission items for today's dashboard. Placeholder for future implementation."""
+    return []
+
+
+def calculate_performance_forecast(traffic_light: dict) -> dict:
+    """Derives 4 performance metrics from nutrition traffic light. Pure math."""
+    def pct(key): return min(traffic_light.get(key, {}).get("pct_met", 0), 100)
+
+    return {
+        "sprint_capacity":   round(pct("carbs_g")   * 0.40 + pct("iron_mg")   * 0.35 + pct("protein_g") * 0.25),
+        "energy_reserves":   round(pct("calories")  * 0.60 + pct("carbs_g")   * 0.40),
+        "second_half_power": round(pct("iron_mg")   * 0.50 + pct("carbs_g")   * 0.30 + pct("water_oz")  * 0.20),
+        "mental_focus":      round(pct("calories")  * 0.40 + pct("water_oz")  * 0.35 + pct("protein_g") * 0.25),
+    }
