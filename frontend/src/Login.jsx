@@ -66,9 +66,12 @@ export default function Login({ onLogin, onNewAccount }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
+      if (res.status === 404) { setError("No account found with that email. Create a new account to get started."); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || "Something went wrong. Please try again.");
+      }
       const data = await res.json();
-      if (res.status === 404) { setError("No account found with that email. Did you mean to create a new account?"); return; }
-      if (!res.ok) throw new Error(data.detail || "Something went wrong. Please try again.");
       onLogin(data);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
