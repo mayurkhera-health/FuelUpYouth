@@ -3,6 +3,7 @@ import Login from "./Login";
 import Onboarding from "./Onboarding";
 import Dashboard from "./Dashboard";
 import LibraryAdmin from "./pages/LibraryAdmin";
+import PhoneFrame from "./components/PhoneFrame";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -45,25 +46,33 @@ export default function App() {
 
   if (view === "dashboard" && session) {
     return (
-      <Dashboard
-        parent={session.parent}
-        athletes={session.athletes}
-        initialTab={initialTab}
-        isNewAccount={isNewAccount}
-        onUnlockApp={() => setIsNewAccount(false)}
-        onSignOut={handleSignOut}
-      />
+      <PhoneFrame>
+        <Dashboard
+          parent={session.parent}
+          athletes={session.athletes}
+          initialTab={initialTab}
+          isNewAccount={isNewAccount}
+          onUnlockApp={() => setIsNewAccount(false)}
+          onSignOut={handleSignOut}
+        />
+      </PhoneFrame>
     );
   }
 
   if (view === "onboarding") {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
+    return (
+      <PhoneFrame>
+        <Onboarding onComplete={handleOnboardingComplete} />
+      </PhoneFrame>
+    );
   }
 
   return (
-    <Login
-      onLogin={handleLogin}
-      onNewAccount={() => setView("onboarding")}
-    />
+    <PhoneFrame>
+      <Login
+        onLogin={handleLogin}
+        onNewAccount={() => setView("onboarding")}
+      />
+    </PhoneFrame>
   );
 }
