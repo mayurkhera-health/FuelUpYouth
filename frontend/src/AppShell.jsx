@@ -126,6 +126,7 @@ export default function AppShell({ athlete: initialAthlete, parent, initialTab =
         {/* Main content */}
         <div style={s.content}>
           {tab === "home"      && <Today               athlete={athlete} onNavigate={setTab} />}
+          {tab === "meal-log"  && <HomeScreen          athlete={athlete} onNavigate={setTab} />}
           {tab === "nutrition" && <NutritionDashboard athlete={athlete} />}
           {tab === "library"   && <Library            athlete={athlete} />}
           {tab === "schedule"  && <ScheduleScreen     athlete={athlete} onScheduleImported={handleScheduleImported} />}

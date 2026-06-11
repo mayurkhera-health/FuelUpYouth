@@ -98,7 +98,7 @@ export default function Today({ athlete, onNavigate }) {
         />
 
         <div style={s.logWrap}>
-          <button style={s.logBtn} onClick={() => { showToast("Opening meal logger →"); onNavigate("nutrition"); }}>
+          <button style={s.logBtn} onClick={() => onNavigate("meal-log")}>
             📸 Log a meal — 2 seconds
           </button>
         </div>
