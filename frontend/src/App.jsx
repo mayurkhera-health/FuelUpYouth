@@ -2,10 +2,14 @@ import { useState } from "react";
 import Login from "./Login";
 import Onboarding from "./Onboarding";
 import Dashboard from "./Dashboard";
+import LibraryAdmin from "./pages/LibraryAdmin";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
 export default function App() {
+  if (window.location.pathname === "/admin/library") {
+    return <LibraryAdmin />;
+  }
   const [view, setView] = useState("login"); // "login" | "onboarding" | "dashboard"
   const [session, setSession] = useState(null); // { parent, athletes }
   const [initialTab, setInitialTab] = useState("nutrition");

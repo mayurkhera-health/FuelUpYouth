@@ -178,6 +178,31 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_knowledge_items_status
             ON knowledge_items(review_status);
+
+        CREATE TABLE IF NOT EXISTS articles (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            title            TEXT NOT NULL,
+            summary          TEXT NOT NULL,
+            body_markdown    TEXT NOT NULL,
+            category         TEXT NOT NULL,
+            audience         TEXT DEFAULT 'both',
+            read_time_min    INTEGER NOT NULL,
+            author           TEXT DEFAULT 'Purvi Shah MS RDN',
+            science_source   TEXT,
+            published_date   TEXT NOT NULL,
+            is_active        INTEGER DEFAULT 1,
+            created_at       TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS athlete_article_picks (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id       INTEGER NOT NULL REFERENCES athletes(id),
+            article_id       INTEGER NOT NULL REFERENCES articles(id),
+            week_start       TEXT NOT NULL,
+            alex_reason      TEXT NOT NULL,
+            generated_at     TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(athlete_id, article_id, week_start)
+        );
     """)
 
     conn.commit()

@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, today, water, knowledge, legal
+from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, today, water, knowledge, legal, library
 
 app = FastAPI(
     title="FuelUp Youth Soccer Nutrition API",
@@ -35,6 +35,7 @@ app.include_router(today.router,        prefix="/api/athletes",     tags=["13. T
 app.include_router(water.router,        prefix="/api/water-log",    tags=["14. Water Log"])
 app.include_router(knowledge.router,    prefix="/api/knowledge",    tags=["15. Knowledge Base"])
 app.include_router(legal.router,        prefix="/api/legal",        tags=["16. Legal Documents"])
+app.include_router(library.router,      prefix="/api/library",      tags=["17. Content Library"])
 
 
 @app.get("/api/info")

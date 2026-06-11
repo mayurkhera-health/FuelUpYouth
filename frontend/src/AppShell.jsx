@@ -9,10 +9,12 @@ import HydrationScreen from "./HydrationScreen";
 import MealPlannerScreen from "./MealPlannerScreen";
 import SettingsScreen from "./SettingsScreen";
 import Blueprint from "./Blueprint";
+import Library from "./pages/Library";
 
 const TABS = [
   { id: "home",      label: "Today"       },
-  { id: "nutrition", label: "Fuel Report"   },
+  { id: "nutrition", label: "Fuel Report"  },
+  { id: "library",   label: "📚 Library"   },
   { id: "schedule",  label: "Schedule"    },
   { id: "meal-plan", label: "🍳 Meal Plan" },
   { id: "blueprint", label: "🏅 Blueprint" },
@@ -125,6 +127,7 @@ export default function AppShell({ athlete: initialAthlete, parent, initialTab =
         <div style={s.content}>
           {tab === "home"      && <Today               athlete={athlete} onNavigate={setTab} />}
           {tab === "nutrition" && <NutritionDashboard athlete={athlete} />}
+          {tab === "library"   && <Library            athlete={athlete} />}
           {tab === "schedule"  && <ScheduleScreen     athlete={athlete} onScheduleImported={handleScheduleImported} />}
           {tab === "recipes"   && <RecipesScreen      athlete={athlete} />}
           {tab === "meal-plan" && <MealPlannerScreen   athlete={athlete} onNavigate={setTab} freshImport={freshImport} onFreshImportSeen={() => setFreshImport(false)} />}
