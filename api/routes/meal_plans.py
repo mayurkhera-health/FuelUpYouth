@@ -3,7 +3,6 @@ from datetime import date, timedelta
 from api.models import MealPlanSlotUpdate, MealPlanLogSlot, MealPlanGenerateRequest
 from api.database import get_conn
 from api.services import recipe_db, claude_ai
-from api.routes.nutrition import get_targets
 from api.services.meal_timing import compute_meal_slots
 
 router = APIRouter()
