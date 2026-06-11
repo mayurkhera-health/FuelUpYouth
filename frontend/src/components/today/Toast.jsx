@@ -34,7 +34,7 @@ const s = {
     background: "#2d6a4f",
     color: "#d4ead8",
     fontFamily: "'Nunito', sans-serif",
-    fontSize: "13px",
+    fontSize: "16px",
     fontWeight: "700",
     padding: "10px 20px",
     borderRadius: "8px",

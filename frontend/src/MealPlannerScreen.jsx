@@ -83,15 +83,15 @@ function RecipePicker({ slot, allRecipes, athleteAllergens, onSelect, onClose })
 const rp = {
   panel: { background: "#fff", border: "2px solid #0f4c35", borderRadius: "12px", padding: "12px", marginTop: "6px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 10 },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" },
-  title: { fontSize: "14px", fontWeight: "700", color: "#2d6a4f" },
-  close: { background: "none", border: "none", cursor: "pointer", color: "#4a6358", fontSize: "16px", padding: "2px 6px" },
-  empty: { fontSize: "14px", color: "#4a6358", textAlign: "center", padding: "12px 0" },
+  title: { fontSize: "17px", fontWeight: "700", color: "#2d6a4f" },
+  close: { background: "none", border: "none", cursor: "pointer", color: "#4a6358", fontSize: "19px", padding: "2px 6px" },
+  empty: { fontSize: "17px", color: "#4a6358", textAlign: "center", padding: "12px 0" },
   list: { display: "flex", flexDirection: "column", gap: "6px", maxHeight: "200px", overflowY: "auto" },
   option: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "8px 10px", cursor: "pointer", textAlign: "left" },
-  optName: { fontSize: "14px", fontWeight: "700", color: "#1b3a2a", marginBottom: "2px" },
-  optMeta: { fontSize: "13px", color: "#4a6358" },
+  optName: { fontSize: "17px", fontWeight: "700", color: "#1b3a2a", marginBottom: "2px" },
+  optMeta: { fontSize: "16px", color: "#4a6358" },
   tags: { display: "flex", gap: "4px", marginTop: "4px", flexWrap: "wrap" },
-  tag: { background: "#f0fdf4", color: "#2d6a4f", fontSize: "12px", fontWeight: "600", padding: "1px 6px", borderRadius: "99px" },
+  tag: { background: "#f0fdf4", color: "#2d6a4f", fontSize: "15px", fontWeight: "600", padding: "1px 6px", borderRadius: "99px" },
 };
 
 // ── WeekDots ────────────────────────────────────────────────────────────────

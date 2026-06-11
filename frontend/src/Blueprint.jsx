@@ -35,9 +35,9 @@ function SectionHeader({ icon, title, subtitle }) {
 }
 const sh = {
   wrap: { display: "flex", alignItems: "center", gap: "14px", marginBottom: "16px" },
-  iconCircle: { width: "48px", height: "48px", borderRadius: "14px", background: "linear-gradient(135deg, #1b4332, #52b788)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", flexShrink: 0, boxShadow: "0 4px 12px rgba(27,67,50,0.22)" },
-  title: { fontSize: "19px", fontWeight: "800", color: "#1b3a2a", margin: 0 },
-  sub: { fontSize: "14px", color: "#4a6358", margin: "2px 0 0" },
+  iconCircle: { width: "48px", height: "48px", borderRadius: "14px", background: "linear-gradient(135deg, #1b4332, #52b788)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "25px", flexShrink: 0, boxShadow: "0 4px 12px rgba(27,67,50,0.22)" },
+  title: { fontSize: "22px", fontWeight: "800", color: "#1b3a2a", margin: 0 },
+  sub: { fontSize: "17px", color: "#4a6358", margin: "2px 0 0" },
 };
 
 
@@ -128,32 +128,32 @@ function MacroTabs({ macros }) {
 
 const mt = {
   tabRow: { display: "flex", gap: "8px", marginBottom: "0" },
-  tab: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", padding: "9px 6px", border: "1.5px solid #d1d5db", borderRadius: "10px 10px 0 0", background: "#f4f8f5", fontSize: "15px", fontWeight: "700", color: "#4a6358", cursor: "pointer", transition: "all 0.15s" },
+  tab: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", padding: "9px 6px", border: "1.5px solid #d1d5db", borderRadius: "10px 10px 0 0", background: "#f4f8f5", fontSize: "18px", fontWeight: "700", color: "#4a6358", cursor: "pointer", transition: "all 0.15s" },
   tabActive: { color: "#fff", borderBottomColor: "transparent" },
-  tabEmoji: { fontSize: "18px" },
+  tabEmoji: { fontSize: "21px" },
   panel: { border: "1.5px solid #e5e7eb", borderTop: "3px solid", borderRadius: "0 0 14px 14px", overflow: "hidden", marginTop: "-1px" },
   photoStrip: { position: "relative", height: "110px", overflow: "hidden" },
   photo: { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" },
   photoOverlay: { position: "absolute", inset: 0 },
-  photoBadge: { position: "absolute", bottom: "10px", left: "12px", color: "#fff", fontSize: "15px", fontWeight: "800", padding: "3px 10px", borderRadius: "6px" },
+  photoBadge: { position: "absolute", bottom: "10px", left: "12px", color: "#fff", fontSize: "18px", fontWeight: "800", padding: "3px 10px", borderRadius: "6px" },
   body: { padding: "14px", display: "flex", flexDirection: "column", gap: "8px" },
-  voiceText: { fontSize: "15px", color: "#4a6358", lineHeight: 1.6, margin: 0, background: "#f4f8f5", padding: "12px", borderRadius: "10px" },
-  athleteText: { fontSize: "15px", color: "#1b5e42", lineHeight: 1.6, margin: 0, background: "#f0fdf4", padding: "12px", borderRadius: "10px", fontStyle: "italic" },
+  voiceText: { fontSize: "18px", color: "#4a6358", lineHeight: 1.6, margin: 0, background: "#f4f8f5", padding: "12px", borderRadius: "10px" },
+  athleteText: { fontSize: "18px", color: "#1b5e42", lineHeight: 1.6, margin: 0, background: "#f0fdf4", padding: "12px", borderRadius: "10px", fontStyle: "italic" },
   whyBox: { background: "#fff", border: "1px solid #e5e7eb", borderLeft: "3px solid", borderRadius: "8px", padding: "10px 12px" },
-  whyLabel: { fontSize: "13px", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: "4px" },
-  whyText: { fontSize: "14px", color: "#4a6358", margin: 0, lineHeight: 1.5 },
+  whyLabel: { fontSize: "16px", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: "4px" },
+  whyText: { fontSize: "17px", color: "#4a6358", margin: 0, lineHeight: 1.5 },
 
   // Micro tab extras (photo top-right overlay, stat pill, food grid, tip)
   photoTopRight: { position: "absolute", top: "10px", right: "10px", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "5px" },
   statPill: { background: "rgba(255,255,255,0.92)", border: "1.5px solid", borderRadius: "8px", padding: "3px 9px", backdropFilter: "blur(4px)" },
-  statPillVal: { fontSize: "16px", fontWeight: "900" },
-  statPillUnit: { fontSize: "13px", color: "#4a6358", fontWeight: "400" },
-  foodLabel: { fontSize: "13px", fontWeight: "700", color: "#4a6358", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "8px" },
+  statPillVal: { fontSize: "19px", fontWeight: "900" },
+  statPillUnit: { fontSize: "16px", color: "#4a6358", fontWeight: "400" },
+  foodLabel: { fontSize: "16px", fontWeight: "700", color: "#4a6358", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "8px" },
   foodGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))", gap: "8px" },
   foodCard: { background: "#fff", border: "1px solid #e5e7eb", borderRadius: "10px", padding: "8px 6px", textAlign: "center" },
-  foodEmoji: { fontSize: "22px", marginBottom: "4px" },
-  foodText: { fontSize: "13px", color: "#4a6358", lineHeight: 1.6, fontWeight: "500" },
-  tipBox: { background: "#fefce8", border: "1px solid #fde68a", borderLeft: "3px solid", borderRadius: "8px", padding: "8px 12px", fontSize: "14px", color: "#92400e", lineHeight: 1.5 },
+  foodEmoji: { fontSize: "25px", marginBottom: "4px" },
+  foodText: { fontSize: "16px", color: "#4a6358", lineHeight: 1.6, fontWeight: "500" },
+  tipBox: { background: "#fefce8", border: "1px solid #fde68a", borderLeft: "3px solid", borderRadius: "8px", padding: "8px 12px", fontSize: "17px", color: "#92400e", lineHeight: 1.5 },
 };
 
 // ── Micro tab data ────────────────────────────────────────────────────────────
@@ -325,7 +325,7 @@ export default function Blueprint({ athlete, onAddSchedule }) {
           <h1 style={s.heroHeadline}>{bp.hero?.headline}</h1>
           <p style={s.heroSub}>{bp.hero?.parent_subtext}</p>
           <div style={s.heroAthleteBox}>
-            <span style={{ fontSize: "22px" }}>⚽</span>
+            <span style={{ fontSize: "25px" }}>⚽</span>
             <p style={s.heroAthleteMsg}>{bp.hero?.athlete_message}</p>
           </div>
           {/* Stat strip */}
@@ -424,75 +424,75 @@ const s = {
   wrapper: { display: "flex", flexDirection: "column", gap: "16px", paddingBottom: "32px" },
   center: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", gap: "16px" },
   spinner: { width: "40px", height: "40px", border: "3px solid #e5e7eb", borderTopColor: "#2d6a4f", borderRadius: "50%", animation: "spin 0.8s linear infinite" },
-  loadingText: { color: "#4a6358", fontSize: "16px", margin: 0 },
+  loadingText: { color: "#4a6358", fontSize: "19px", margin: 0 },
   card: { background: "#fff", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "20px", overflow: "hidden" },
 
   // First-run banner
   firstRunBanner: { background: "linear-gradient(135deg, #0f4c35 0%, #1a7a54 100%)", borderRadius: "16px", padding: "20px", display: "flex", gap: "16px", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" },
   bannerLeft: { flex: 1, minWidth: "200px" },
-  bannerTitle: { fontSize: "19px", fontWeight: "800", color: "#fff", marginBottom: "6px" },
-  bannerText: { fontSize: "15px", color: "#b7e4c7", lineHeight: 1.6, margin: 0 },
-  bannerBtn: { background: "#fff", color: "#2d6a4f", border: "none", borderRadius: "10px", padding: "12px 20px", fontSize: "16px", fontWeight: "800", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 },
+  bannerTitle: { fontSize: "22px", fontWeight: "800", color: "#fff", marginBottom: "6px" },
+  bannerText: { fontSize: "18px", color: "#b7e4c7", lineHeight: 1.6, margin: 0 },
+  bannerBtn: { background: "#fff", color: "#2d6a4f", border: "none", borderRadius: "10px", padding: "12px 20px", fontSize: "19px", fontWeight: "800", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 },
 
   // Hero
   heroOuter: { position: "relative", borderRadius: "16px", overflow: "hidden", minHeight: "340px", display: "flex", alignItems: "flex-end" },
   heroPhoto: { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" },
   heroOverlay: { position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(5,30,20,0.35) 0%, rgba(5,30,20,0.88) 100%)" },
   heroContent: { position: "relative", zIndex: 1, padding: "24px", width: "100%", boxSizing: "border-box" },
-  heroBadge: { display: "inline-block", background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#b7e4c7", fontSize: "13px", fontWeight: "700", letterSpacing: "0.07em", textTransform: "uppercase", padding: "4px 12px", borderRadius: "99px", marginBottom: "10px" },
+  heroBadge: { display: "inline-block", background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#b7e4c7", fontSize: "16px", fontWeight: "700", letterSpacing: "0.07em", textTransform: "uppercase", padding: "4px 12px", borderRadius: "99px", marginBottom: "10px" },
   heroHeadline: { fontSize: "clamp(20px,3vw,26px)", fontWeight: "800", color: "#fff", margin: "0 0 8px", lineHeight: 1.6 },
-  heroSub: { fontSize: "14px", color: "#b7e4c7", lineHeight: 1.6, margin: "0 0 12px", maxWidth: "480px" },
+  heroSub: { fontSize: "17px", color: "#b7e4c7", lineHeight: 1.6, margin: "0 0 12px", maxWidth: "480px" },
   heroAthleteBox: { display: "flex", gap: "8px", alignItems: "flex-start", background: "rgba(255,255,255,0.1)", borderRadius: "10px", padding: "10px 12px", marginBottom: "16px", border: "1px solid rgba(255,255,255,0.15)" },
-  heroAthleteMsg: { margin: 0, fontSize: "14px", color: "#ecfdf5", fontStyle: "italic", lineHeight: 1.5 },
+  heroAthleteMsg: { margin: 0, fontSize: "17px", color: "#ecfdf5", fontStyle: "italic", lineHeight: 1.5 },
   heroStats: { display: "flex", gap: "0", background: "rgba(0,0,0,0.35)", borderRadius: "12px", overflow: "hidden", backdropFilter: "blur(4px)" },
   heroStat: { flex: 1, padding: "10px 8px", textAlign: "center" },
-  heroStatVal: { fontSize: "18px", fontWeight: "900", color: "#fff" },
-  heroStatLabel: { fontSize: "13px", color: "rgba(255,255,255,0.85)", marginTop: "2px", letterSpacing: "0.03em" },
+  heroStatVal: { fontSize: "21px", fontWeight: "900", color: "#fff" },
+  heroStatLabel: { fontSize: "16px", color: "rgba(255,255,255,0.85)", marginTop: "2px", letterSpacing: "0.03em" },
   heroStatDivider: { width: "1px", background: "rgba(255,255,255,0.15)", margin: "8px 0" },
 
   // RMR
   rmrRow: { display: "flex", gap: "16px", alignItems: "flex-start", marginBottom: "14px" },
   rmrLeft: { flex: 1 },
   rmrPhoto: { width: "90px", height: "90px", borderRadius: "12px", objectFit: "cover", flexShrink: 0 },
-  bigNumber: { fontSize: "44px", fontWeight: "900", color: "#2d6a4f", lineHeight: 1 },
-  bigUnit: { fontSize: "16px", color: "#4a6358", fontWeight: "600", marginBottom: "4px" },
-  formulaNote: { fontSize: "13px", color: "#4a6358", fontStyle: "italic", margin: 0 },
+  bigNumber: { fontSize: "47px", fontWeight: "900", color: "#2d6a4f", lineHeight: 1 },
+  bigUnit: { fontSize: "19px", color: "#4a6358", fontWeight: "600", marginBottom: "4px" },
+  formulaNote: { fontSize: "16px", color: "#4a6358", fontStyle: "italic", margin: 0 },
 
   // Event cards
   eventGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "10px", marginTop: "14px" },
   eventCard: { border: "1px solid #e5e7eb", borderTop: "3px solid", borderRadius: "12px", padding: "12px 10px" },
-  eventIcon: { fontSize: "22px", marginBottom: "4px" },
-  eventLabel: { fontSize: "13px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" },
-  eventCal: { fontSize: "22px", fontWeight: "900", lineHeight: 1 },
-  eventCalUnit: { fontSize: "13px", color: "#4a6358", marginBottom: "6px" },
+  eventIcon: { fontSize: "25px", marginBottom: "4px" },
+  eventLabel: { fontSize: "16px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" },
+  eventCal: { fontSize: "25px", fontWeight: "900", lineHeight: 1 },
+  eventCalUnit: { fontSize: "16px", color: "#4a6358", marginBottom: "6px" },
   eventMacros: { display: "flex", flexDirection: "column", gap: "3px" },
-  macroChip: { fontSize: "13px", color: "#4a6358", background: "rgba(0,0,0,0.06)", borderRadius: "4px", padding: "2px 5px" },
+  macroChip: { fontSize: "16px", color: "#4a6358", background: "rgba(0,0,0,0.06)", borderRadius: "4px", padding: "2px 5px" },
 
 
-  badge: { fontSize: "13px", fontWeight: "800", padding: "3px 10px", borderRadius: "99px", letterSpacing: "0.04em" },
+  badge: { fontSize: "16px", fontWeight: "800", padding: "3px 10px", borderRadius: "99px", letterSpacing: "0.04em" },
 
   // Voice text
   bothVoices: { display: "flex", flexDirection: "column", gap: "8px" },
-  voiceText: { fontSize: "15px", color: "#4a6358", lineHeight: 1.6, margin: 0, background: "#f4f8f5", padding: "12px", borderRadius: "10px" },
-  athleteText: { fontSize: "15px", color: "#1b5e42", lineHeight: 1.6, margin: 0, background: "#f0fdf4", padding: "12px", borderRadius: "10px", fontStyle: "italic" },
+  voiceText: { fontSize: "18px", color: "#4a6358", lineHeight: 1.6, margin: 0, background: "#f4f8f5", padding: "12px", borderRadius: "10px" },
+  athleteText: { fontSize: "18px", color: "#1b5e42", lineHeight: 1.6, margin: 0, background: "#f0fdf4", padding: "12px", borderRadius: "10px", fontStyle: "italic" },
 
   // Why box
   whyBox: { background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "10px 12px" },
-  whyLabel: { fontSize: "13px", fontWeight: "800", color: "#2d6a4f", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: "4px" },
-  whyText: { fontSize: "14px", color: "#15803d", margin: 0, lineHeight: 1.5 },
+  whyLabel: { fontSize: "16px", fontWeight: "800", color: "#2d6a4f", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: "4px" },
+  whyText: { fontSize: "17px", color: "#15803d", margin: 0, lineHeight: 1.5 },
 
   // Context note
-  contextNote: { fontSize: "14px", color: "#4a6358", background: "#f4f8f5", padding: "8px 12px", borderRadius: "8px", marginTop: "10px", lineHeight: 1.5 },
+  contextNote: { fontSize: "17px", color: "#4a6358", background: "#f4f8f5", padding: "8px 12px", borderRadius: "8px", marginTop: "10px", lineHeight: 1.5 },
 
   // LEA
   leaCard: { background: "#fff7ed", border: "2px solid #f97316" },
   leaHeader: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" },
-  leaIconWrap: { fontSize: "28px" },
-  leaTitle: { fontSize: "18px", fontWeight: "800", color: "#c2410c", margin: 0 },
+  leaIconWrap: { fontSize: "31px" },
+  leaTitle: { fontSize: "21px", fontWeight: "800", color: "#c2410c", margin: 0 },
   leaPills: { display: "flex", gap: "8px", marginBottom: "12px", flexWrap: "wrap" },
-  leaMsg: { fontSize: "15px", color: "#7c2d12", lineHeight: 1.6, marginBottom: "10px" },
-  leaAction: { background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "10px 12px", fontSize: "15px", fontWeight: "600", color: "#dc2626" },
+  leaMsg: { fontSize: "18px", color: "#7c2d12", lineHeight: 1.6, marginBottom: "10px" },
+  leaAction: { background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "10px 12px", fontSize: "18px", fontWeight: "600", color: "#dc2626" },
 
 
-  disclaimer: { fontSize: "12px", color: "#8aa898", textAlign: "center", lineHeight: 1.6, padding: "0 8px" },
+  disclaimer: { fontSize: "15px", color: "#8aa898", textAlign: "center", lineHeight: 1.6, padding: "0 8px" },
 };

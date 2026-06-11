@@ -201,7 +201,7 @@ export default function Login({ onLogin, onNewAccount }) {
 
             {selectedRole === "athlete" && (
               <div style={s.infoBox}>
-                <span style={{ fontSize: "18px", flexShrink: 0, lineHeight: 1 }}>ℹ️</span>
+                <span style={{ fontSize: "21px", flexShrink: 0, lineHeight: 1 }}>ℹ️</span>
                 <p style={s.infoText}>
                   FuelUp is built for young athletes, but a parent or guardian needs to create
                   the main account first.
@@ -315,7 +315,7 @@ const s = {
     animation: "fadeUp 0.32s ease",
   },
   cLogo: {
-    fontSize: "22px",
+    fontSize: "25px",
     fontWeight: "900",
     color: "#2d6a4f",
     textAlign: "center",
@@ -342,7 +342,7 @@ const s = {
     fontFamily: "'Nunito', sans-serif",
   },
   heroSub: {
-    fontSize: "17px",
+    fontSize: "20px",
     fontWeight: "600",
     color: "#2d6a4f",
     textAlign: "center",
@@ -350,7 +350,7 @@ const s = {
     marginBottom: "14px",
   },
   heroBody: {
-    fontSize: "15px",
+    fontSize: "18px",
     color: "#4a6358",
     textAlign: "center",
     lineHeight: 1.65,
@@ -359,7 +359,7 @@ const s = {
 
   // Screen 2 / 3 headings
   screenHeading: {
-    fontSize: "24px",
+    fontSize: "27px",
     fontWeight: "800",
     color: "#1b3a2a",
     textAlign: "center",
@@ -369,7 +369,7 @@ const s = {
     fontFamily: "'Nunito', sans-serif",
   },
   screenSub: {
-    fontSize: "15px",
+    fontSize: "18px",
     color: "#4a6358",
     textAlign: "center",
     lineHeight: 1.6,
@@ -403,12 +403,12 @@ const s = {
     border: "2px solid #2d6a4f",
   },
   roleEmoji: {
-    fontSize: "30px",
+    fontSize: "33px",
     display: "block",
     marginBottom: "4px",
   },
   roleTitle: {
-    fontSize: "14px",
+    fontSize: "17px",
     fontWeight: "800",
     color: "#1b3a2a",
     lineHeight: 1.2,
@@ -416,7 +416,7 @@ const s = {
     display: "block",
   },
   roleDesc: {
-    fontSize: "12px",
+    fontSize: "15px",
     color: "#4a6358",
     lineHeight: 1.4,
     fontFamily: "'DM Sans', sans-serif",
@@ -431,7 +431,7 @@ const s = {
     background: "#2d6a4f",
     borderRadius: "50%",
     color: "#fff",
-    fontSize: "11px",
+    fontSize: "14px",
     fontWeight: "800",
     display: "flex",
     alignItems: "center",
@@ -450,7 +450,7 @@ const s = {
     marginBottom: "18px",
   },
   infoText: {
-    fontSize: "14px",
+    fontSize: "17px",
     color: "#1b3a2a",
     lineHeight: 1.55,
     fontFamily: "'DM Sans', sans-serif",
@@ -463,7 +463,7 @@ const s = {
     border: "1px solid #b0e8c8",
     borderRadius: "8px",
     padding: "10px 14px",
-    fontSize: "13px",
+    fontSize: "16px",
     color: "#2d6a4f",
     fontFamily: "'DM Sans', sans-serif",
     marginBottom: "14px",
@@ -476,7 +476,7 @@ const s = {
     color: "#1b3a2a",
     border: "1.5px solid #dce8e0",
     borderRadius: "10px",
-    fontSize: "16px",
+    fontSize: "19px",
     fontWeight: "700",
     fontFamily: "'Nunito', sans-serif",
     cursor: "pointer",
@@ -489,7 +489,7 @@ const s = {
     transition: "box-shadow 0.15s",
   },
   gIcon: {
-    fontSize: "18px",
+    fontSize: "21px",
     fontWeight: "900",
     color: "#4285f4",
     fontFamily: "Arial, sans-serif",
@@ -502,7 +502,7 @@ const s = {
     color: "#ffffff",
     border: "none",
     borderRadius: "10px",
-    fontSize: "16px",
+    fontSize: "19px",
     fontWeight: "700",
     fontFamily: "'Nunito', sans-serif",
     cursor: "pointer",
@@ -513,7 +513,7 @@ const s = {
     marginBottom: "4px",
   },
   appleIcon: {
-    fontSize: "19px",
+    fontSize: "22px",
     lineHeight: 1,
   },
 
@@ -522,7 +522,7 @@ const s = {
     background: "none",
     border: "none",
     color: "#4a6358",
-    fontSize: "14px",
+    fontSize: "17px",
     fontWeight: "600",
     fontFamily: "'DM Sans', sans-serif",
     cursor: "pointer",
@@ -535,7 +535,7 @@ const s = {
   // Footer links
   centerNote: {
     textAlign: "center",
-    fontSize: "14px",
+    fontSize: "17px",
     color: "#4a6358",
     marginTop: "16px",
     fontFamily: "'DM Sans', sans-serif",
@@ -566,7 +566,7 @@ const s = {
     overflow: "hidden",
   },
   wordmark: {
-    fontSize: "34px",
+    fontSize: "37px",
     fontWeight: "900",
     color: "#ffffff",
     letterSpacing: "-0.5px",
@@ -584,7 +584,7 @@ const s = {
     fontFamily: "'Nunito', sans-serif",
   },
   subheadline: {
-    fontSize: "17px",
+    fontSize: "20px",
     color: "rgba(183,228,199,0.9)",
     lineHeight: 1.7,
     marginBottom: "32px",
@@ -601,9 +601,9 @@ const s = {
     gap: "10px",
     alignItems: "flex-start",
   },
-  featureIcon: { fontSize: "22px", flexShrink: 0, marginTop: "1px" },
-  featureTitle: { fontSize: "15px", fontWeight: "700", color: "#ffffff", marginBottom: "3px", fontFamily: "'Nunito', sans-serif" },
-  featureDesc: { fontSize: "13px", color: "rgba(183,228,199,0.85)", lineHeight: 1.5 },
+  featureIcon: { fontSize: "25px", flexShrink: 0, marginTop: "1px" },
+  featureTitle: { fontSize: "18px", fontWeight: "700", color: "#ffffff", marginBottom: "3px", fontFamily: "'Nunito', sans-serif" },
+  featureDesc: { fontSize: "16px", color: "rgba(183,228,199,0.85)", lineHeight: 1.5 },
 
   panel: {
     display: "flex",
@@ -623,7 +623,7 @@ const s = {
     border: "1px solid #dce8e0",
   },
   cardLogo: {
-    fontSize: "22px",
+    fontSize: "25px",
     fontWeight: "900",
     color: "#2d6a4f",
     textAlign: "center",
@@ -631,7 +631,7 @@ const s = {
     fontFamily: "'Nunito', sans-serif",
   },
   cardTitle: {
-    fontSize: "24px",
+    fontSize: "27px",
     fontWeight: "800",
     color: "#1b3a2a",
     margin: "0 0 6px",
@@ -639,7 +639,7 @@ const s = {
     fontFamily: "'Nunito', sans-serif",
   },
   cardDesc: {
-    fontSize: "15px",
+    fontSize: "18px",
     color: "#4a6358",
     textAlign: "center",
     lineHeight: 1.6,
@@ -647,7 +647,7 @@ const s = {
   },
   label: {
     display: "block",
-    fontSize: "13px",
+    fontSize: "16px",
     fontWeight: "700",
     color: "#4a6358",
     marginBottom: "6px",
@@ -660,7 +660,7 @@ const s = {
     padding: "11px 14px",
     border: "1.5px solid #dce8e0",
     borderRadius: "10px",
-    fontSize: "17px",
+    fontSize: "20px",
     fontFamily: "'DM Sans', sans-serif",
     outline: "none",
     boxSizing: "border-box",
@@ -669,7 +669,7 @@ const s = {
     color: "#1b3a2a",
     transition: "border-color 0.2s, box-shadow 0.2s",
   },
-  error: { color: "#dc2626", fontSize: "15px", marginBottom: "10px", marginTop: "-6px" },
+  error: { color: "#dc2626", fontSize: "18px", marginBottom: "10px", marginTop: "-6px" },
 
   // ── Shared buttons ─────────────────────────────────────────────────────────
   primaryBtn: {
@@ -679,7 +679,7 @@ const s = {
     color: "#fff",
     border: "none",
     borderRadius: "10px",
-    fontSize: "17px",
+    fontSize: "20px",
     fontWeight: "700",
     fontFamily: "'Nunito', sans-serif",
     cursor: "pointer",
@@ -694,7 +694,7 @@ const s = {
     color: "#2d6a4f",
     border: "1.5px solid #95d5b2",
     borderRadius: "10px",
-    fontSize: "16px",
+    fontSize: "19px",
     fontWeight: "700",
     fontFamily: "'Nunito', sans-serif",
     cursor: "pointer",
@@ -702,17 +702,17 @@ const s = {
 
   divider: { display: "flex", alignItems: "center", margin: "18px 0", gap: "12px" },
   dividerLine: { flex: 1, height: "1px", background: "#dce8e0" },
-  dividerText: { fontSize: "14px", color: "#4a6358", padding: "0 4px", flexShrink: 0 },
+  dividerText: { fontSize: "17px", color: "#4a6358", padding: "0 4px", flexShrink: 0 },
 
   footerNote: {
     textAlign: "center",
-    fontSize: "14px",
+    fontSize: "17px",
     color: "#4a6358",
     marginTop: "14px",
     fontFamily: "'DM Sans', sans-serif",
   },
   disclaimer: {
-    fontSize: "13px",
+    fontSize: "16px",
     color: "#4a6358",
     textAlign: "center",
     marginTop: "20px",
