@@ -1,0 +1,51 @@
+export default function MissionItem({ item, isDone, onToggle }) {
+  const state = isDone ? "done" : item.state;
+  const tag   = isDone ? "DONE" : item.tag;
+
+  const boxStyle = {
+    done:     { border: "1px solid rgba(45,106,79,.3)", background: "rgba(45,106,79,.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", color: "#2d6a4f" },
+    urgent:   { border: "1.5px solid rgba(180,83,9,.5)", background: "rgba(180,83,9,.08)" },
+    critical: { border: "1.5px solid rgba(184,58,58,.4)", background: "rgba(184,58,58,.08)" },
+    pending:  { border: "1.5px solid #dce8e0", background: "transparent" },
+  };
+
+  const tagStyle = {
+    DONE:       { background: "rgba(45,106,79,.10)",  color: "#2d6a4f" },
+    NOW:        { background: "rgba(180,83,9,.12)",   color: "#b45309", animation: "fuelup-pulse 1.4s infinite" },
+    "FIX THIS": { background: "rgba(184,58,58,.10)", color: "#b83a3a" },
+    UPCOMING:   { background: "#f4f8f5",              color: "#8aa898" },
+  };
+
+  return (
+    <div style={{ ...s.row, opacity: isDone ? 0.55 : 1 }} onClick={onToggle}>
+      <div style={{ ...s.checkBox, ...(boxStyle[state] || boxStyle.pending) }}>
+        {state === "done" ? "✓" : null}
+      </div>
+      <div style={s.body}>
+        <div style={{ ...s.label, ...(isDone ? s.labelDone : {}) }}>{item.label}</div>
+        {item.sub && (
+          <div
+            style={s.sub}
+            dangerouslySetInnerHTML={{ __html: item.sub }}
+          />
+        )}
+      </div>
+      <div style={s.right}>
+        <span style={s.time}>{item.time}</span>
+        <span style={{ ...s.tag, ...(tagStyle[tag] || tagStyle.UPCOMING) }}>{tag}</span>
+      </div>
+    </div>
+  );
+}
+
+const s = {
+  row:       { display: "flex", alignItems: "flex-start", gap: "10px", padding: "11px 14px", borderBottom: "1px solid #dce8e0", cursor: "pointer" },
+  checkBox:  { width: "20px", height: "20px", borderRadius: "5px", flexShrink: 0, marginTop: "1px" },
+  body:      { flex: 1 },
+  label:     { fontSize: "13px", fontWeight: "500", color: "#1b3a2a", lineHeight: "1.3", marginBottom: "2px" },
+  labelDone: { textDecoration: "line-through", color: "#8aa898" },
+  sub:       { fontSize: "10px", color: "#8aa898", fontWeight: "300", lineHeight: "1.4" },
+  right:     { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "3px", flexShrink: 0 },
+  time:      { fontSize: "10px", color: "#8aa898", fontWeight: "300" },
+  tag:       { fontSize: "9px", fontWeight: "600", letterSpacing: ".04em", padding: "2px 7px", borderRadius: "3px" },
+};
