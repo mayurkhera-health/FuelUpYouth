@@ -133,7 +133,7 @@ def _slot_sort_key(slot):
     if slot.get("double_day_alert"):
         return (0, 0, 0)
     t = slot.get("eat_by_time", "")
-    if not t or t == "All day" or slot.get("is_hydration"):
+    if not t or t == "All day":
         return (99, 0, 0)
     match = re.search(r'(\d+):(\d+)\s*(AM|PM)', t)
     if not match:

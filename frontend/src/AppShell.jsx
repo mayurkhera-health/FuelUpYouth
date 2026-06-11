@@ -16,7 +16,6 @@ const TABS = [
   { id: "schedule",  label: "Schedule"    },
   { id: "meal-plan", label: "🍳 Meal Plan" },
   { id: "blueprint", label: "🏅 Blueprint" },
-  { id: "reports",   label: "Reports"     },
   { id: "hydration", label: "💧 Hydration" },
 ];
 
@@ -25,6 +24,31 @@ export default function AppShell({ athlete: initialAthlete, parent, initialTab =
   const [athlete, setAthlete]   = useState(initialAthlete);
   const [showSettings, setShowSettings] = useState(false);
   const [newAccount, setNewAccount] = useState(isNewAccount);
+
+  // Prevent the popstate handler from triggering another pushState
+  const isPoppingRef = useRef(false);
+
+  // Push a history entry whenever the active tab changes
+  useEffect(() => {
+    if (!isPoppingRef.current) {
+      window.history.pushState({ appTab: tab }, "");
+    }
+    isPoppingRef.current = false;
+  }, [tab]);
+
+  // Handle browser/phone back button — return to previous tab
+  useEffect(() => {
+    function onPop(e) {
+      const prevTab = e.state?.appTab;
+      if (prevTab) {
+        isPoppingRef.current = true;
+        setShowSettings(false);
+        setTab(prevTab);
+      }
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   function handleUnlockAndNavigate(tabId) {
     setNewAccount(false);

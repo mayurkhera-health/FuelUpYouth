@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -17,6 +17,30 @@ export default function Login({ onLogin, onNewAccount }) {
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState("");
   const [socialMsg, setSocialMsg]     = useState("");
+
+  // Prevent the popstate handler from triggering another pushState
+  const isPoppingRef = useRef(false);
+
+  // Push a history entry whenever the screen changes
+  useEffect(() => {
+    if (!isPoppingRef.current) {
+      window.history.pushState({ loginScreen: screen }, "");
+    }
+    isPoppingRef.current = false;
+  }, [screen]);
+
+  // Handle browser/phone back button
+  useEffect(() => {
+    function onPop(e) {
+      const s = e.state?.loginScreen || "welcome";
+      isPoppingRef.current = true;
+      setScreen(s);
+      setError("");
+      setSocialMsg("");
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   function go(s) {
     setError("");
@@ -101,10 +125,6 @@ export default function Login({ onLogin, onNewAccount }) {
               </button>
             </form>
 
-            <p style={s.footerNote}>
-              New to FuelUp?{" "}
-              <button style={s.inlineLink} onClick={() => go("welcome")}>Get Started</button>
-            </p>
             <p style={s.disclaimer}>
               FuelUp provides educational food guidance — not medical nutrition therapy.
             </p>
