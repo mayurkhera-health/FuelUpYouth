@@ -55,12 +55,12 @@ export default function PerformanceForecast({ forecast }) {
 const s = {
   card:       { background: "#fff", borderRadius: "14px", border: "1px solid #dce8e0", padding: "13px 14px", marginTop: "10px" },
   headerRow:  { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" },
-  eyebrow:    { fontSize: "19px", textTransform: "uppercase", letterSpacing: ".1em", color: "#4a6358" },
-  right:      { fontSize: "19px", color: "#4a6358", fontWeight: "400" },
+  eyebrow:    { fontSize: "11px", textTransform: "uppercase", letterSpacing: ".1em", color: "#4a6358" },
+  right:      { fontSize: "11px", color: "#4a6358", fontWeight: "400" },
   grid:       { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" },
   itemHeader: { display: "flex", justifyContent: "space-between", marginBottom: "5px" },
-  name:       { fontSize: "21px", color: "#1b3a2a" },
-  pct:        { fontSize: "21px", fontWeight: "700" },
+  name:       { fontSize: "13px", color: "#1b3a2a" },
+  pct:        { fontSize: "13px", fontWeight: "700" },
   track:      { height: "2px", background: "#f4f8f5", borderRadius: "2px", overflow: "hidden" },
   fill:       { height: "100%", borderRadius: "2px", transition: "width 0.7s ease" },
 };
