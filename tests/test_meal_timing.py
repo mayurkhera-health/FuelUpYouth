@@ -123,3 +123,41 @@ def test_double_day_adds_between_games_slot():
 def test_double_day_calorie_boost_flag():
     slots = compute_meal_slots("game", "10:00", 1.5, double_day=True, second_start_time="14:00")
     assert any(s.get("double_day_alert") for s in slots)
+
+
+def test_double_day_without_second_time_omits_between_games():
+    slots = compute_meal_slots("game", "10:00", 1.5, double_day=True, second_start_time=None)
+    assert slot_by_name(slots, "between-games") is None
+    assert any(s.get("double_day_alert") for s in slots)
+
+
+def test_tournament_has_no_halftime_slot():
+    slots = compute_meal_slots("tournament", "10:00", 1.5)
+    assert slot_by_name(slots, "halftime-fueling") is None
+
+
+def test_early_game_power_snack_before_6am_omitted():
+    # 06:30 start -> power_snack at 05:45 (before 06:00) -> should be omitted
+    slots = compute_meal_slots("game", "06:30", 1.5)
+    assert slot_by_name(slots, "power-snack") is None
+    assert slot_by_name(slots, "pre-game-fuel") is None
+
+
+def test_morning_event_slots_sorted_chronologically():
+    # 09:00 start: power snack at 08:15, breakfast fixed at 08:30
+    # After sort, power snack (08:15) should come before breakfast (08:30)
+    slots = compute_meal_slots("game", "09:00", 1.5)
+    names = slot_names(slots)
+    power_idx = names.index("power-snack")
+    breakfast_idx = names.index("breakfast")
+    assert power_idx < breakfast_idx
+
+
+def test_rest_day_tags_not_shared_with_module_constant():
+    slots1 = compute_meal_slots(None, None, None)
+    slots2 = compute_meal_slots(None, None, None)
+    # Mutating one should not affect the other
+    slot1_breakfast = next(s for s in slots1 if s["slot_name"] == "breakfast")
+    slot1_breakfast["tags"].append("MUTATED")
+    slot2_breakfast = next(s for s in slots2 if s["slot_name"] == "breakfast")
+    assert "MUTATED" not in slot2_breakfast["tags"]

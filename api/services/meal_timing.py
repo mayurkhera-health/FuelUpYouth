@@ -1,3 +1,5 @@
+import re
+import copy
 from datetime import datetime, timedelta
 
 
@@ -121,6 +123,28 @@ def _hour(t: str) -> float:
     return dt.hour + dt.minute / 60
 
 
+def _slot_sort_key(slot):
+    """Sort key for chronological ordering of meal slots.
+
+    double_day_alert slots sort first (0).
+    Real meal times sort by their parsed time (1, h24, m).
+    is_hydration=True, empty eat_by_time, or 'All day' sort last (99, 0).
+    """
+    if slot.get("double_day_alert"):
+        return (0, 0, 0)
+    t = slot.get("eat_by_time", "")
+    if not t or t == "All day" or slot.get("is_hydration"):
+        return (99, 0, 0)
+    match = re.search(r'(\d+):(\d+)\s*(AM|PM)', t)
+    if not match:
+        return (50, 0, 0)
+    h = int(match.group(1))
+    m = int(match.group(2))
+    period = match.group(3)
+    h24 = h % 12 + (12 if period == "PM" else 0)
+    return (1, h24, m)
+
+
 _REST_SLOTS = [
     {"slot_name": "breakfast",         "display_label": "Breakfast",                          "eat_by_time": "8:30 AM",  "time_note": "Morning meal",             "tags": ["Complex Carbs", "Protein", "Healthy Fats"],     "icon": "🍳", "is_hydration": False, "is_merged": False, "note": "", "recipe_category": "practice",          "double_day_alert": False},
     {"slot_name": "mid-morning-snack", "display_label": "Mid-Morning Snack",                  "eat_by_time": "11:00 AM", "time_note": "~10-11 AM",                "tags": ["Quick Carbs", "Light"],                         "icon": "🍎", "is_hydration": False, "is_merged": False, "note": "", "recipe_category": "pre-game-snack",    "double_day_alert": False},
@@ -156,16 +180,14 @@ def compute_meal_slots(
     All slot dicts have keys: slot_name, display_label, eat_by_time, time_note,
     tags, icon, is_hydration, is_merged, note, recipe_category, double_day_alert.
     """
-    import copy
-
     if not event_type or event_type.lower() == "rest":
-        return [copy.copy(s) for s in _REST_SLOTS]
+        return [copy.deepcopy(s) for s in _REST_SLOTS]
 
     norm = event_type.lower()
     is_game = "game" in norm or "tournament" in norm
 
     if not start_time:
-        return [copy.copy(s) for s in _REST_SLOTS]
+        return [copy.deepcopy(s) for s in _REST_SLOTS]
 
     dur = duration_hours or 1.5
     event_end = _add(start_time, dur)
@@ -195,14 +217,17 @@ def compute_meal_slots(
         ["High Protein", "Complex Carbs", "Iron-Rich"], "🥗", recipe_category="meal-prep"))
 
     if is_early_event:
-        slots.append(_make_slot(
-            "power-snack", "Power Snack",
-            _fmt(power_snack_time),
-            f"45 min before {'kick-off' if is_game else 'training'}",
-            ["Quick Carbs"], "🍌",
-            note="Early event — light snack only before kick-off",
-            recipe_category="pre-game-snack",
-        ))
+        # Only emit power snack if it's not before 06:00
+        if _hour(power_snack_time) >= 6.0:
+            slots.append(_make_slot(
+                "power-snack", "Power Snack",
+                _fmt(power_snack_time),
+                f"45 min before {'kick-off' if is_game else 'training'}",
+                ["Quick Carbs"], "🍌",
+                note="Early event — light snack only before kick-off",
+                recipe_category="pre-game-snack",
+            ))
+        # else: both pre-event fuel and power snack are before 06:00 — no pre-event fueling
     else:
         label    = "Pre-Game Fuel" if is_game else "Pre-Training Fuel"
         note_str = "3 hrs before kick-off" if is_game else "3 hrs before training"
@@ -230,7 +255,7 @@ def compute_meal_slots(
         is_hydration=True,
     ))
 
-    if is_game:
+    if is_game and "tournament" not in norm:
         slots.append(_make_slot(
             "halftime-fueling", "Halftime Fueling",
             _fmt(halftime_time), "At halftime",
@@ -281,5 +306,11 @@ def compute_meal_slots(
         "Water target for the day", [], "💧",
         is_hydration=True,
     ))
+
+    # Sort slots chronologically:
+    # - double_day_alert first
+    # - real meal times in chronological order
+    # - is_hydration / "All day" / empty eat_by_time last
+    slots.sort(key=_slot_sort_key)
 
     return slots
