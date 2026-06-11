@@ -93,3 +93,193 @@ def _rest_day(event_date: str) -> list:
         {"timing": "Iron focus (girls)", "when": event_date, "what": "Iron-rich foods — lean red meat, spinach, lentils, fortified cereal", "why": "52% of female adolescent athletes are iron deficient. Daily target: 15mg (Everett 2025)", "recipe": "Iron-Boost Hummus Plate (R020)", "recipient": "both"},
         {"timing": "Calcium — every day", "when": event_date, "what": "3 servings dairy or fortified alternatives", "why": "1,300mg/day during peak bone mass window — cannot recover later (AAP)", "recipe": None, "recipient": "both"},
     ]
+
+
+# ── compute_meal_slots ─────────────────────────────────────────────────────────
+
+def _time_from_str(t: str) -> datetime:
+    return datetime.strptime(t, "%H:%M")
+
+
+def _add(t: str, hours: float) -> str:
+    """Return HH:MM 24h string offset by hours from t."""
+    dt = _time_from_str(t) + timedelta(hours=hours)
+    return dt.strftime("%H:%M")
+
+
+def _fmt(t: str) -> str:
+    """Format HH:MM 24h string as '4:30 PM' or '1:00 PM'."""
+    dt = _time_from_str(t)
+    h = dt.hour % 12 or 12
+    period = "AM" if dt.hour < 12 else "PM"
+    return f"{h}:{dt.minute:02d} {period}"
+
+
+def _hour(t: str) -> float:
+    """Return hour as float (e.g. '19:30' -> 19.5)."""
+    dt = _time_from_str(t)
+    return dt.hour + dt.minute / 60
+
+
+_REST_SLOTS = [
+    {"slot_name": "breakfast",         "display_label": "Breakfast",                          "eat_by_time": "8:30 AM",  "time_note": "Morning meal",             "tags": ["Complex Carbs", "Protein", "Healthy Fats"],     "icon": "🍳", "is_hydration": False, "is_merged": False, "note": "", "recipe_category": "practice",          "double_day_alert": False},
+    {"slot_name": "mid-morning-snack", "display_label": "Mid-Morning Snack",                  "eat_by_time": "11:00 AM", "time_note": "~10-11 AM",                "tags": ["Quick Carbs", "Light"],                         "icon": "🍎", "is_hydration": False, "is_merged": False, "note": "", "recipe_category": "pre-game-snack",    "double_day_alert": False},
+    {"slot_name": "lunch",             "display_label": "Lunch",                              "eat_by_time": "1:30 PM",  "time_note": "Midday meal",              "tags": ["High Protein", "Complex Carbs", "Iron-Rich"],   "icon": "🥗", "is_hydration": False, "is_merged": False, "note": "", "recipe_category": "meal-prep",          "double_day_alert": False},
+    {"slot_name": "afternoon-snack",   "display_label": "Afternoon Snack",                    "eat_by_time": "4:00 PM",  "time_note": "~2-4 PM",                  "tags": ["Protein", "Healthy Fats"],                      "icon": "🥜", "is_hydration": False, "is_merged": False, "note": "", "recipe_category": "pre-game-snack",    "double_day_alert": False},
+    {"slot_name": "dinner",            "display_label": "Dinner",                             "eat_by_time": "7:00 PM",  "time_note": "Evening meal",             "tags": ["High Protein", "Complex Carbs", "Healthy Fats"], "icon": "🍽️", "is_hydration": False, "is_merged": False, "note": "", "recipe_category": "practice",          "double_day_alert": False},
+    {"slot_name": "evening-recovery",  "display_label": "Evening Recovery / Pre-Bed Fueling", "eat_by_time": "9:30 PM",  "time_note": "Before bed",               "tags": ["Casein Protein", "Light"],                      "icon": "🌙", "is_hydration": False, "is_merged": False, "note": "", "recipe_category": "post-game-recovery", "double_day_alert": False},
+    {"slot_name": "daily-hydration",   "display_label": "Daily Hydration",                    "eat_by_time": "All day",  "time_note": "Water target for the day", "tags": [],                                               "icon": "💧", "is_hydration": True,  "is_merged": False, "note": "", "recipe_category": None,               "double_day_alert": False},
+]
+
+
+def _make_slot(slot_name, display_label, eat_by_time, time_note, tags, icon,
+               is_hydration=False, is_merged=False, note="",
+               recipe_category=None, double_day_alert=False):
+    return {
+        "slot_name": slot_name, "display_label": display_label,
+        "eat_by_time": eat_by_time, "time_note": time_note,
+        "tags": tags, "icon": icon, "is_hydration": is_hydration,
+        "is_merged": is_merged, "note": note,
+        "recipe_category": recipe_category, "double_day_alert": double_day_alert,
+    }
+
+
+def compute_meal_slots(
+    event_type,
+    start_time,
+    duration_hours,
+    double_day=False,
+    second_start_time=None,
+):
+    """
+    Return ordered list of meal slot dicts for a given day.
+    All slot dicts have keys: slot_name, display_label, eat_by_time, time_note,
+    tags, icon, is_hydration, is_merged, note, recipe_category, double_day_alert.
+    """
+    import copy
+
+    if not event_type or event_type.lower() == "rest":
+        return [copy.copy(s) for s in _REST_SLOTS]
+
+    norm = event_type.lower()
+    is_game = "game" in norm or "tournament" in norm
+
+    if not start_time:
+        return [copy.copy(s) for s in _REST_SLOTS]
+
+    dur = duration_hours or 1.5
+    event_end = _add(start_time, dur)
+
+    pre_event_time   = _add(start_time, -3.0)
+    power_snack_time = _add(start_time, -0.75)
+    halftime_time    = _add(start_time, 0.75)
+    recovery_time    = _add(event_end,  0.5)
+
+    is_early_event = _hour(pre_event_time) < 6.0
+    is_late_event  = _hour(event_end) >= 19.0
+
+    slots = []
+
+    if double_day:
+        slots.append(_make_slot(
+            "double-day-alert", "⚡ Double Event Day",
+            "", "Two events today — +15% calories",
+            [], "⚡", double_day_alert=True,
+        ))
+
+    slots.append(_make_slot("breakfast", "Breakfast", "8:30 AM", "Morning meal",
+        ["Complex Carbs", "Protein", "Healthy Fats"], "🍳", recipe_category="practice"))
+    slots.append(_make_slot("mid-morning-snack", "Mid-Morning Snack", "11:00 AM", "~10-11 AM",
+        ["Quick Carbs", "Light"], "🍎", recipe_category="pre-game-snack"))
+    slots.append(_make_slot("lunch", "Lunch", "1:30 PM", "Midday meal",
+        ["High Protein", "Complex Carbs", "Iron-Rich"], "🥗", recipe_category="meal-prep"))
+
+    if is_early_event:
+        slots.append(_make_slot(
+            "power-snack", "Power Snack",
+            _fmt(power_snack_time),
+            f"45 min before {'kick-off' if is_game else 'training'}",
+            ["Quick Carbs"], "🍌",
+            note="Early event — light snack only before kick-off",
+            recipe_category="pre-game-snack",
+        ))
+    else:
+        label    = "Pre-Game Fuel" if is_game else "Pre-Training Fuel"
+        note_str = "3 hrs before kick-off" if is_game else "3 hrs before training"
+        slots.append(_make_slot(
+            "pre-game-fuel" if is_game else "pre-training",
+            label, _fmt(pre_event_time), note_str,
+            ["Complex Carbs", "Light Protein"], "⚡",
+            recipe_category="pre-game",
+        ))
+        slots.append(_make_slot(
+            "power-snack", "Power Snack",
+            _fmt(power_snack_time),
+            f"45 min before {'kick-off' if is_game else 'training'}",
+            ["Quick Carbs"], "🍌",
+            recipe_category="pre-game-snack",
+        ))
+
+    hydration_label = "During Game Hydration" if is_game else "During Practice Hydration"
+    slots.append(_make_slot(
+        "during-game-hydration" if is_game else "during-practice-hydration",
+        hydration_label,
+        f"{_fmt(start_time)} – {_fmt(event_end)}",
+        "Electrolytes + fluids",
+        ["Electrolytes", "Fluids"], "💦",
+        is_hydration=True,
+    ))
+
+    if is_game:
+        slots.append(_make_slot(
+            "halftime-fueling", "Halftime Fueling",
+            _fmt(halftime_time), "At halftime",
+            ["Quick Carbs", "Light"], "🍊",
+            recipe_category="halftime",
+        ))
+
+    if is_late_event:
+        slots.append(_make_slot(
+            "recovery-dinner", "Recovery Dinner",
+            f"After {_fmt(event_end)}",
+            "Post-event dinner = recovery meal",
+            ["High Protein", "Complex Carbs", "Fast Carbs"], "🍽️🔋",
+            is_merged=True,
+            note="Post-event dinner doubles as your recovery meal tonight",
+            recipe_category="post-game-recovery",
+        ))
+    else:
+        slots.append(_make_slot(
+            "recovery-fuel", "Recovery Fuel",
+            _fmt(recovery_time), "Within 30 min after event",
+            ["Protein", "Fast Carbs"], "🔋",
+            recipe_category="post-game-recovery",
+        ))
+        slots.append(_make_slot(
+            "dinner", "Dinner", "7:00 PM", "Evening meal",
+            ["High Protein", "Complex Carbs", "Healthy Fats"], "🍽️",
+            recipe_category="practice",
+        ))
+        slots.append(_make_slot(
+            "night-fuel", "Night Fuel", "9:00 PM", "Before bed",
+            ["Casein Protein", "Light"], "🌙",
+            recipe_category="post-game-recovery",
+        ))
+
+    if double_day and second_start_time:
+        between_time = f"After {_fmt(event_end)} – Before {_fmt(second_start_time)}"
+        slots.append(_make_slot(
+            "between-games", "Between Games Recovery + Refuel",
+            between_time, "Recovery window between games",
+            ["Protein", "Fast Carbs", "Electrolytes"], "🔄",
+            is_merged=True,
+            recipe_category="post-game-recovery",
+        ))
+
+    slots.append(_make_slot(
+        "daily-hydration", "Daily Hydration", "All day",
+        "Water target for the day", [], "💧",
+        is_hydration=True,
+    ))
+
+    return slots
