@@ -265,8 +265,9 @@ def get_mission_items(tl: dict, events: list, gender: str, event_type: str) -> l
 
 def calculate_performance_forecast(traffic_light: dict) -> dict:
     """Derives 4 performance metrics from nutrition traffic light. Pure math."""
-    def pct(key): return min(traffic_light.get(key, {}).get("pct_met", 0), 100)
+    def pct(key): return min(traffic_light.get(key, {}).get("pct_met") or 0, 100)
 
+    # calcium excluded — no direct acute per-match performance effect
     return {
         "sprint_capacity":   round(pct("carbs_g")   * 0.40 + pct("iron_mg")   * 0.35 + pct("protein_g") * 0.25),
         "energy_reserves":   round(pct("calories")  * 0.60 + pct("carbs_g")   * 0.40),

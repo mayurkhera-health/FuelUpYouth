@@ -1,4 +1,3 @@
-import pytest
 from api.services.today_service import calculate_performance_forecast, get_mission_items
 
 
@@ -73,3 +72,10 @@ def test_forecast_caps_at_100():
     result = calculate_performance_forecast(tl)
     assert result["sprint_capacity"] == 100
     assert result["energy_reserves"] == 100
+    assert result["second_half_power"] == 100
+    assert result["mental_focus"] == 100
+
+
+def test_get_mission_items_stub_returns_list():
+    result = get_mission_items(make_tl(), [], "girl", "rest")
+    assert isinstance(result, list)
