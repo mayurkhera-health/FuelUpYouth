@@ -10,6 +10,8 @@ from api.services.today_service import (
     get_gap_rows,
     get_athlete_streak,
     get_urgent_action,
+    calculate_performance_forecast,
+    get_mission_items,
 )
 
 router = APIRouter()
@@ -64,10 +66,15 @@ def get_daily_summary(athlete_id: int, date: str = None):
 
         return {
             "athlete": {
-                "first_name": athlete["first_name"],
-                "gender": gender,
+                "first_name":        athlete["first_name"],
+                "last_name":         athlete.get("last_name"),
+                "gender":            gender,
+                "position":          athlete.get("position"),
+                "competition_level": athlete.get("competition_level"),
+                "jersey_number":     athlete.get("jersey_number"),
+                "team_name":         athlete.get("team_name"),
                 "dietary_restrictions": athlete.get("dietary_restrictions"),
-                "allergies": athlete.get("allergies"),
+                "allergies":         athlete.get("allergies"),
             },
             "date": target_date,
             "event_type": event_type,
@@ -84,6 +91,8 @@ def get_daily_summary(athlete_id: int, date: str = None):
             "tomorrow_event": dict(tomorrow_row) if tomorrow_row else None,
             "water_cups": water_cups,
             "lea_alert": targets.get("lea_alert", False),
+            "performance_forecast": calculate_performance_forecast(tl),
+            "mission_items": get_mission_items(event_type, events, tl, meal_logs, targets, water_cups, gender),
         }
     finally:
         conn.close()
