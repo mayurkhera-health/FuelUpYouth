@@ -99,23 +99,27 @@ def get_daily_summary(athlete_id: int, date: str = None):
 
 
 @router.get("/{athlete_id}/weekly-summary")
-def get_weekly_summary(athlete_id: int):
+def get_weekly_summary(athlete_id: int, week_start: str = None):
     conn = get_conn()
     try:
         row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Athlete not found.")
         athlete = dict(row)
+        gender = athlete.get("gender", "boy")
 
-        today = dt_date.today()
-        week_start = today - timedelta(days=today.weekday())
+        from api.services.nutrition_analysis import (
+            get_week_start, get_week_dates, build_heatmap,
+            calculate_weekly_traffic_light, rank_weekly_gaps, build_wins_list,
+        )
+
+        resolved_week_start = week_start or get_week_start()
+        week_dates = get_week_dates(resolved_week_start)
+        today_str = str(dt_date.today())
         DAY_ABBR = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+
         week = []
-
-        for i in range(7):
-            d = week_start + timedelta(days=i)
-            date_str = d.isoformat()
-
+        for i, date_str in enumerate(week_dates):
             targets_row = conn.execute(
                 "SELECT * FROM daily_targets WHERE athlete_id = ? AND target_date = ?",
                 (athlete_id, date_str),
@@ -145,13 +149,53 @@ def get_weekly_summary(athlete_id: int):
             week.append({
                 "date": date_str,
                 "day_abbr": DAY_ABBR[i],
-                "day_num": d.day,
+                "day_num": dt_date.fromisoformat(date_str).day,
                 "score": score,
                 "event_type": event_row["event_type"] if event_row else None,
-                "is_today": d == today,
+                "is_today": date_str == today_str,
             })
 
         scores = [d["score"] for d in week if d["score"] is not None]
-        return {"week": week, "avg_score": round(sum(scores) / len(scores)) if scores else None}
+        week_fuel_score = round(sum(scores) / len(scores)) if scores else 0
+        days_logged = len(scores)
+
+        heatmap = build_heatmap(athlete_id, week_dates, conn)
+        weekly_tl = calculate_weekly_traffic_light(athlete_id, week_dates, conn)
+        ranked_gaps = rank_weekly_gaps(weekly_tl, gender)
+        streak = get_athlete_streak(athlete_id, conn)
+        wins = build_wins_list(weekly_tl, streak, athlete["first_name"])
+
+        prev_start_date = dt_date.fromisoformat(resolved_week_start) - timedelta(days=7)
+        prev_dates = [(prev_start_date + timedelta(days=i)).isoformat() for i in range(7)]
+        prev_scores = []
+        for date_str in prev_dates:
+            t_row = conn.execute(
+                "SELECT * FROM daily_targets WHERE athlete_id = ? AND target_date = ?",
+                (athlete_id, date_str),
+            ).fetchone()
+            m_rows = conn.execute(
+                "SELECT * FROM meal_logs WHERE athlete_id = ? AND DATE(logged_at) = ?",
+                (athlete_id, date_str),
+            ).fetchall()
+            if t_row and m_rows:
+                lg = compute_logged_totals([dict(m) for m in m_rows])
+                tl = compute_traffic_light(dict(t_row), lg)
+                prev_scores.append(tl["daily_fuel_score"])
+        prev_week_score = round(sum(prev_scores) / len(prev_scores)) if prev_scores else None
+
+        return {
+            "week_start": resolved_week_start,
+            "week_end": week_dates[-1],
+            "days_logged": days_logged,
+            "week_fuel_score": week_fuel_score,
+            "prev_week_score": prev_week_score,
+            "days": week,
+            "heatmap": heatmap,
+            "weekly_traffic_light": weekly_tl,
+            "ranked_gaps": ranked_gaps,
+            "wins": wins,
+            "streak": streak,
+            "letter_grade": calc_letter_grade(week_fuel_score),
+        }
     finally:
         conn.close()

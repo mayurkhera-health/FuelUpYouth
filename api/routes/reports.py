@@ -62,7 +62,7 @@ def daily_fuel_score(athlete_id: int, date: str = None):
 
 
 @router.get("/{athlete_id}/weekly")
-def weekly_parent_report(athlete_id: int):
+def weekly_parent_report(athlete_id: int, week_start: str = None):
     conn = get_conn()
     try:
         row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
@@ -70,12 +70,17 @@ def weekly_parent_report(athlete_id: int):
             raise HTTPException(404, "Athlete not found.")
         athlete = dict(row)
 
-        today = dt_date.today()
-        week_start = today - timedelta(days=6)
-        week_data = {"days": []}
+        from api.services.nutrition_analysis import get_week_start, get_week_dates
+        from api.services.today_service import (
+            calc_letter_grade, compute_logged_totals, compute_traffic_light,
+        )
 
-        for i in range(7):
-            day = str(week_start + timedelta(days=i))
+        resolved_week_start = week_start or get_week_start()
+        week_dates = get_week_dates(resolved_week_start)
+        week_data = {"days": []}
+        week_scores = []
+
+        for day in week_dates:
             targets_row = conn.execute(
                 "SELECT * FROM daily_targets WHERE athlete_id = ? AND target_date = ?",
                 (athlete_id, day),
@@ -96,11 +101,20 @@ def weekly_parent_report(athlete_id: int):
                 "total_calcium_mg": sum(m.get("calcium_mg") or 0 for m in meal_list),
                 "total_water_oz": sum(m.get("water_oz") or 0 for m in meal_list),
             })
+            if targets_row and meal_list:
+                logged = compute_logged_totals(meal_list)
+                tl = compute_traffic_light(dict(targets_row), logged)
+                week_scores.append(tl["daily_fuel_score"])
 
         report = claude_ai.prompt3_weekly_report(athlete, week_data)
         report["athlete_id"] = athlete_id
-        report["week_start"] = str(week_start)
-        report["week_end"] = str(today)
+        report["week_start"] = resolved_week_start
+        report["week_end"] = week_dates[-1]
+        computed_score = (
+            round(sum(week_scores) / len(week_scores))
+            if week_scores else report.get("weekly_fuel_score", 0)
+        )
+        report["letter_grade"] = calc_letter_grade(computed_score)
         return report
     finally:
         conn.close()
