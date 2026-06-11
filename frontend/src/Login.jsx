@@ -17,6 +17,13 @@ export default function Login({ onLogin, onNewAccount }) {
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState("");
   const [socialMsg, setSocialMsg]     = useState("");
+  const [isMobile, setIsMobile]       = useState(window.innerWidth < 700);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 700);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // Prevent the popstate handler from triggering another pushState
   const isPoppingRef = useRef(false);
@@ -78,32 +85,34 @@ export default function Login({ onLogin, onNewAccount }) {
   if (screen === "signin") {
     return (
       <div style={s.wrapper}>
-        {/* Left: hero */}
-        <div style={s.hero}>
-          <div style={s.wordmark}>⚽ FuelUp<span style={s.wordmarkYouth}>Youth</span></div>
-          <h1 style={s.headline}>
-            The Complete Sports Performance platform for every competitive soccer Athlete
-          </h1>
-          <p style={s.subheadline}>
-            AI-generated, RD-approved Nutrition Blueprints — personalized to every athlete's age,
-            training schedule, game days, dietary needs, and performance goals.
-            Built for youth soccer clubs, ages&nbsp;9–17.
-          </p>
-          <div style={s.features}>
-            {FEATURES.map(f => (
-              <div key={f.title} style={s.featureCard}>
-                <div style={s.featureIcon}>{f.icon}</div>
-                <div>
-                  <div style={s.featureTitle}>{f.title}</div>
-                  <div style={s.featureDesc}>{f.desc}</div>
+        {/* Left: hero — hidden on mobile */}
+        {!isMobile && (
+          <div style={s.hero}>
+            <div style={s.wordmark}>⚽ FuelUp<span style={s.wordmarkYouth}>Youth</span></div>
+            <h1 style={s.headline}>
+              The Complete Sports Performance platform for every competitive soccer Athlete
+            </h1>
+            <p style={s.subheadline}>
+              AI-generated, RD-approved Nutrition Blueprints — personalized to every athlete's age,
+              training schedule, game days, dietary needs, and performance goals.
+              Built for youth soccer clubs, ages&nbsp;9–17.
+            </p>
+            <div style={s.features}>
+              {FEATURES.map(f => (
+                <div key={f.title} style={s.featureCard}>
+                  <div style={s.featureIcon}>{f.icon}</div>
+                  <div>
+                    <div style={s.featureTitle}>{f.title}</div>
+                    <div style={s.featureDesc}>{f.desc}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Right: sign-in card */}
-        <div style={s.panel}>
+        {/* Right: sign-in card — full width on mobile */}
+        <div style={{ ...s.panel, ...(isMobile ? s.panelMobile : {}) }}>
           <div style={s.card}>
             <div style={s.cardLogo}>⚽ FuelUp</div>
             <h2 style={s.cardTitle}>Welcome back</h2>
@@ -302,14 +311,15 @@ const s = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "40px 20px",
+    padding: "24px 16px",
   },
   cCard: {
     background: "#ffffff",
     borderRadius: "24px",
-    padding: "40px 36px",
+    padding: "32px 24px",
     width: "100%",
     maxWidth: "440px",
+    boxSizing: "border-box",
     boxShadow: "0 24px 64px rgba(13,35,24,0.30)",
     border: "1px solid #dce8e0",
     animation: "fadeUp 0.32s ease",
@@ -613,6 +623,11 @@ const s = {
     flexShrink: 0,
     width: "420px",
     background: "#f4f8f5",
+  },
+  panelMobile: {
+    width: "100%",
+    padding: "24px 16px",
+    alignItems: "flex-start",
   },
   card: {
     background: "#ffffff",
