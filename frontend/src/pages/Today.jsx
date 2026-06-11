@@ -122,5 +122,5 @@ const s = {
   loadText:   { fontSize: "16px", color: "#4a6358", fontFamily: "'DM Sans', sans-serif" },
   logWrap:    { paddingTop: "10px" },
   logBtn:     { width: "100%", padding: "13px", background: "rgba(45,106,79,.07)", border: "1px dashed rgba(45,106,79,.25)", borderRadius: "14px", color: "#2d6a4f", fontFamily: "'Nunito', sans-serif", fontSize: "13px", fontWeight: "700", letterSpacing: "-.01em", cursor: "pointer", textAlign: "center" },
-  disclaimer: { textAlign: "center", fontSize: "10px", color: "#8aa898", lineHeight: "1.5", fontWeight: "300", padding: "10px 0 0" },
+  disclaimer: { textAlign: "center", fontSize: "13px", color: "#4a6358", lineHeight: "1.5", fontWeight: "400", padding: "10px 0 0" },
 };

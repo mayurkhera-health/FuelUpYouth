@@ -70,8 +70,8 @@ function ReadinessDial({ score }) {
           transform="rotate(-90 36 36)"
           style={{ transition: "stroke-dashoffset 0.9s cubic-bezier(.4,0,.2,1)" }}
         />
-        <text x="36" y="33" textAnchor="middle" fill={color} fontSize="18" fontWeight="800" fontFamily="Nunito,sans-serif">{displayed}</text>
-        <text x="36" y="44" textAnchor="middle" fill="#8aa898" fontSize="9" fontFamily="DM Sans,sans-serif" letterSpacing="1">{statusLabel}</text>
+        <text x="36" y="33" textAnchor="middle" fill={color} fontSize="20" fontWeight="800" fontFamily="Nunito,sans-serif">{displayed}</text>
+        <text x="36" y="44" textAnchor="middle" fill="#4a6358" fontSize="10" fontFamily="DM Sans,sans-serif" letterSpacing="1">{statusLabel}</text>
       </svg>
       <div style={rd.status}>{statusLabel}</div>
     </div>
@@ -79,7 +79,7 @@ function ReadinessDial({ score }) {
 }
 const rd = {
   wrap:   { display: "flex", flexDirection: "column", alignItems: "center", gap: "2px", flexShrink: 0 },
-  status: { fontSize: "11px", textTransform: "uppercase", letterSpacing: ".05em", color: "#4a6358" },
+  status: { fontSize: "13px", textTransform: "uppercase", letterSpacing: ".05em", color: "#4a6358" },
 };
 
 // ── BroadcastCard ─────────────────────────────────────────────────────────
@@ -179,25 +179,25 @@ export default function BroadcastCard({ athlete, events = [], trafficLight, fuel
 
 const bc = {
   card:          { background: "#fff", borderBottom: "1px solid #dce8e0" },
-  ticker:        { background: "#f4f8f5", borderBottom: "1px solid #dce8e0", height: "40px", padding: "0 14px", display: "flex", alignItems: "center", gap: "8px" },
-  liveDot:       { width: "6px", height: "6px", borderRadius: "50%", background: "#e05a4a", animation: "fuelup-pulse 1.4s infinite", flexShrink: 0 },
-  liveLabel:     { fontSize: "11px", textTransform: "uppercase", letterSpacing: ".1em", fontWeight: "700", color: "#e05a4a" },
-  tickerSep:     { width: "1px", height: "12px", background: "#dce8e0" },
-  tickerEvent:   { fontSize: "12px", textTransform: "uppercase", letterSpacing: ".04em", color: "#4a6358", fontWeight: "400", flex: 1, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" },
-  tickerCountdown: { fontSize: "12px", fontWeight: "700", textTransform: "uppercase", flexShrink: 0 },
+  ticker:        { background: "#f4f8f5", borderBottom: "1px solid #dce8e0", height: "44px", padding: "0 14px", display: "flex", alignItems: "center", gap: "8px" },
+  liveDot:       { width: "7px", height: "7px", borderRadius: "50%", background: "#e05a4a", animation: "fuelup-pulse 1.4s infinite", flexShrink: 0 },
+  liveLabel:     { fontSize: "13px", textTransform: "uppercase", letterSpacing: ".1em", fontWeight: "700", color: "#e05a4a" },
+  tickerSep:     { width: "1px", height: "14px", background: "#dce8e0" },
+  tickerEvent:   { fontSize: "14px", textTransform: "uppercase", letterSpacing: ".04em", color: "#4a6358", fontWeight: "400", flex: 1, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" },
+  tickerCountdown: { fontSize: "14px", fontWeight: "700", textTransform: "uppercase", flexShrink: 0 },
   identityRow:   { padding: "16px 14px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" },
-  positionLine:  { fontSize: "13px", textTransform: "uppercase", letterSpacing: ".08em", color: "#4a6358", fontWeight: "500", marginBottom: "4px" },
+  positionLine:  { fontSize: "14px", textTransform: "uppercase", letterSpacing: ".08em", color: "#4a6358", fontWeight: "500", marginBottom: "4px" },
   nameBlock:     { lineHeight: "1.0" },
-  firstName:     { fontFamily: "'Nunito', sans-serif", fontSize: "28px", fontWeight: "800", letterSpacing: "-.04em", color: "#1b3a2a" },
-  lastName:      { fontFamily: "'Nunito', sans-serif", fontSize: "28px", fontWeight: "800", letterSpacing: "-.04em", color: "#1b3a2a" },
-  teamLine:      { fontSize: "13px", color: "#4a6358", fontWeight: "400", marginTop: "4px" },
-  taglineBar:    { margin: "0 14px 14px", borderRadius: "9px", padding: "11px 13px", background: "#2d6a4f", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" },
-  taglineEmoji:  { fontSize: "18px" },
-  taglineText:   { fontFamily: "'Nunito', sans-serif", fontSize: "15px", fontWeight: "800", color: "#d4ead8", letterSpacing: "-.01em", lineHeight: "1.3", flex: 1 },
-  taglineArrow:  { fontSize: "16px", color: "#b7e4c7", opacity: ".5" },
+  firstName:     { fontFamily: "'Nunito', sans-serif", fontSize: "30px", fontWeight: "800", letterSpacing: "-.04em", color: "#1b3a2a" },
+  lastName:      { fontFamily: "'Nunito', sans-serif", fontSize: "30px", fontWeight: "800", letterSpacing: "-.04em", color: "#1b3a2a" },
+  teamLine:      { fontSize: "14px", color: "#4a6358", fontWeight: "400", marginTop: "4px" },
+  taglineBar:    { margin: "0 14px 14px", borderRadius: "9px", padding: "13px 14px", background: "#2d6a4f", display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" },
+  taglineEmoji:  { fontSize: "20px" },
+  taglineText:   { fontFamily: "'Nunito', sans-serif", fontSize: "17px", fontWeight: "800", color: "#d4ead8", letterSpacing: "-.01em", lineHeight: "1.3", flex: 1 },
+  taglineArrow:  { fontSize: "18px", color: "#b7e4c7", opacity: ".5" },
   statsRow:      { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderTop: "1px solid #dce8e0" },
-  statCell:      { padding: "11px 10px", borderRight: "1px solid #dce8e0" },
-  statLabel:     { fontSize: "11px", textTransform: "uppercase", letterSpacing: ".07em", color: "#4a6358", marginBottom: "3px" },
-  statValue:     { fontFamily: "'Nunito', sans-serif", fontSize: "16px", fontWeight: "800", letterSpacing: "-.02em", lineHeight: "1", marginBottom: "2px" },
-  statSub:       { fontSize: "11px", color: "#4a6358", fontWeight: "400" },
+  statCell:      { padding: "12px 10px", borderRight: "1px solid #dce8e0" },
+  statLabel:     { fontSize: "13px", textTransform: "uppercase", letterSpacing: ".07em", color: "#4a6358", marginBottom: "3px" },
+  statValue:     { fontFamily: "'Nunito', sans-serif", fontSize: "18px", fontWeight: "800", letterSpacing: "-.02em", lineHeight: "1", marginBottom: "2px" },
+  statSub:       { fontSize: "13px", color: "#4a6358", fontWeight: "400" },
 };
