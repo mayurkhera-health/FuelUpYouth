@@ -77,5 +77,90 @@ def test_forecast_caps_at_100():
 
 
 def test_get_mission_items_stub_returns_list():
-    result = get_mission_items(make_tl(), [], "girl", "rest")
+    result = get_mission_items("rest", [], make_tl(), [], {}, 0, "girl")
     assert isinstance(result, list)
+
+
+# ── get_mission_items ─────────────────────────────────────────────────────────
+
+def test_mission_items_always_returns_5():
+    items = get_mission_items("rest", [], make_tl(), [], {}, 0, "girl")
+    assert len(items) == 5
+
+
+def test_mission_items_all_have_required_keys():
+    items = get_mission_items("rest", [], make_tl(), [], {}, 0, "girl")
+    for item in items:
+        assert "label" in item
+        assert "sub" in item
+        assert "time" in item
+        assert "state" in item
+        assert "tag" in item
+        assert "item_type" in item
+
+
+def test_mission_items_state_values_are_valid():
+    items = get_mission_items("rest", [], make_tl(), [], {}, 0, "girl")
+    valid_states = {"done", "urgent", "critical", "pending"}
+    for item in items:
+        assert item["state"] in valid_states, f"Invalid state: {item['state']}"
+
+
+def test_mission_items_tag_values_are_valid():
+    items = get_mission_items("rest", [], make_tl(), [], {}, 0, "girl")
+    valid_tags = {"DONE", "NOW", "FIX THIS", "UPCOMING"}
+    for item in items:
+        assert item["tag"] in valid_tags, f"Invalid tag: {item['tag']}"
+
+
+def test_mission_items_rest_day():
+    items = get_mission_items("rest", [], make_tl(), [], {}, 0, "girl")
+    types = [i["item_type"] for i in items]
+    assert "iron_lunch" in types
+    assert "calcium" in types
+    assert "hydration" in types
+
+
+def test_mission_items_game_day_has_pregame_snack():
+    events = [{"start_time": "14:00", "duration_hours": 1.5, "event_type": "game"}]
+    items = get_mission_items("game", events, make_tl(), [], {}, 0, "girl")
+    types = [i["item_type"] for i in items]
+    assert "pregame_snack" in types
+
+
+def test_mission_items_game_day_has_recovery():
+    events = [{"start_time": "14:00", "duration_hours": 1.5, "event_type": "game"}]
+    items = get_mission_items("game", events, make_tl(), [], {}, 0, "girl")
+    types = [i["item_type"] for i in items]
+    assert "recovery" in types
+
+
+def test_mission_items_iron_critical_for_girls():
+    tl = make_tl(iron=30)
+    items = get_mission_items("rest", [], tl, [], {}, 0, "girl")
+    iron_items = [i for i in items if i["item_type"] == "iron_lunch"]
+    assert len(iron_items) >= 1
+    assert iron_items[0]["state"] == "critical"
+
+
+def test_mission_items_iron_not_flagged_for_boys():
+    tl = make_tl(iron=30)
+    items = get_mission_items("rest", [], tl, [], {}, 0, "boy")
+    iron_items = [i for i in items if i.get("state") == "critical"]
+    # boys don't get critical iron state
+    assert all(i["item_type"] != "iron_lunch" for i in iron_items)
+
+
+def test_mission_items_hydration_urgent_when_low():
+    tl = make_tl(water=30)
+    items = get_mission_items("rest", [], tl, [], {"hydration_oz_min": 80}, 1, "girl")
+    hydration = next(i for i in items if i["item_type"] == "hydration")
+    assert hydration["state"] in ("urgent", "critical")
+
+
+def test_mission_items_practice_day():
+    events = [{"start_time": "16:00", "duration_hours": 1.5, "event_type": "practice"}]
+    items = get_mission_items("practice", events, make_tl(), [], {}, 0, "girl")
+    types = [i["item_type"] for i in items]
+    assert "pre_practice_snack" in types
+    assert "protein_recovery" in types

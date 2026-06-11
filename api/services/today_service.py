@@ -258,9 +258,188 @@ def get_urgent_action(events: list, tl: dict, meal_logs: list) -> dict:
     }
 
 
-def get_mission_items(tl: dict, events: list, gender: str, event_type: str) -> list:
-    """Returns prioritized mission items for today's dashboard. Placeholder for future implementation."""
-    return []
+def _fmt_time(time_str: str, offset_hours: float = 0) -> str:
+    """'14:30' + 0.5 → '3:00 PM'"""
+    if not time_str:
+        return ""
+    try:
+        h, m = map(int, time_str.split(":"))
+        base = datetime.now().replace(hour=h, minute=m, second=0, microsecond=0)
+        dt = base + timedelta(hours=offset_hours)
+        hour = dt.hour % 12 or 12
+        period = "AM" if dt.hour < 12 else "PM"
+        minute_str = f":{dt.minute:02d}" if dt.minute else ""
+        return f"{hour}{minute_str} {period}"
+    except Exception:
+        return ""
+
+
+def _has_log_type(meal_logs: list, keywords: list) -> bool:
+    for m in meal_logs:
+        desc = (m.get("description") or "").lower()
+        if any(kw.lower() in desc for kw in keywords):
+            return True
+    return False
+
+
+def get_mission_items(
+    event_type: str,
+    events: list,
+    traffic_light: dict,
+    meal_logs: list,
+    targets: dict,
+    water_cups: int,
+    gender: str,
+) -> list:
+    """
+    Returns exactly 5 mission items for today.
+    Each item: {label, sub, time, state, tag, item_type}
+    state: "done" | "urgent" | "critical" | "pending"
+    tag:   "DONE" | "NOW" | "FIX THIS" | "UPCOMING"
+    """
+    now = datetime.now()
+    is_female = gender.lower() in ("girl", "female")
+    iron_pct = traffic_light.get("iron_mg", {}).get("pct_met") or 0
+    iron_gap = round(traffic_light.get("iron_mg", {}).get("gap", 0), 1)
+    water_pct = traffic_light.get("water_oz", {}).get("pct_met") or 0
+    target_cups = max(1, round((targets.get("hydration_oz_min") or 64) / 8))
+    cups_remaining = max(0, target_cups - (water_cups or 0))
+
+    event = events[0] if events else None
+    start = event.get("start_time") if event else None
+    dur = (event.get("duration_hours") or 1.5) if event else 1.5
+
+    def mins_to_start():
+        if not start:
+            return None
+        try:
+            h, m = map(int, start.split(":"))
+            t = now.replace(hour=h, minute=m, second=0, microsecond=0)
+            return round((t - now).total_seconds() / 60)
+        except Exception:
+            return None
+
+    def _item(item_type, label, sub, time, state):
+        tag = {"done": "DONE", "urgent": "NOW", "critical": "FIX THIS", "pending": "UPCOMING"}[state]
+        return {"label": label, "sub": sub, "time": time, "state": state, "tag": tag, "item_type": item_type}
+
+    def iron_item():
+        if is_female and iron_pct < 50:
+            return _item("iron_lunch", "Close the iron gap at lunch",
+                         f"Add lean beef or lentils · <em>{iron_gap}mg needed</em>",
+                         "1:00 PM", "critical")
+        return _item("iron_lunch", "Iron-rich lunch today",
+                     "Lentils, lean beef, or fortified cereal", "1:00 PM", "pending")
+
+    def hydration_item():
+        cups_done = water_cups or 0
+        state = "urgent" if water_pct < 40 else "pending"
+        return _item("hydration",
+                     f"Drink {cups_remaining} more cup{'s' if cups_remaining != 1 else ''} of water",
+                     f"<em>{cups_done}</em> of {target_cups} cups done · {cups_done * 8}oz logged",
+                     "All day", state)
+
+    norm = (event_type or "rest").lower()
+
+    # ── GAME DAY ──────────────────────────────────────────────────────────────
+    if norm in ("game", "tournament"):
+        mins = mins_to_start()
+        breakfast_done = _has_log_type(meal_logs, ["breakfast", "oatmeal", "eggs", "pancake", "toast"])
+        snack_done = _has_log_type(meal_logs, ["snack", "banana", "pre-game snack"])
+
+        item1_state = "done" if breakfast_done or (mins is not None and mins < 150) else "pending"
+        item2_state = "done" if snack_done else ("urgent" if mins is not None and 10 <= mins <= 90 else "pending")
+        recovery_time = _fmt_time(start, dur + 0.5) if start else "After game"
+        snack_time = _fmt_time(start, -0.75) if start else "45 min before"
+
+        return [
+            _item("pregame_breakfast", "Pre-game breakfast logged",
+                  "High-carb meal 2.5–4 hrs before kickoff",
+                  _fmt_time(start, -3) if start else "Morning", item1_state),
+            _item("pregame_snack", "Eat your pre-game snack NOW" if item2_state == "urgent" else "Pre-game snack",
+                  f"Banana + PB · Window closes in <em>{max(1, (mins or 45) - 10)} min</em>" if item2_state == "urgent" else "Banana + PB or rice cakes",
+                  snack_time, item2_state),
+            iron_item(),
+            _item("recovery", "Hit recovery window after the game",
+                  "Chocolate milk + banana · <em>30-min window</em>",
+                  recovery_time, "pending"),
+            hydration_item(),
+        ]
+
+    # ── PRACTICE / TRAINING / STRENGTH DAY ───────────────────────────────────
+    if norm in ("practice", "training", "strength"):
+        mins = mins_to_start()
+        recovery_time = _fmt_time(start, dur + 0.5) if start else "After training"
+        snack_time = _fmt_time(start, -0.75) if start else "45 min before"
+        pre_time = _fmt_time(start, -2.0) if start else "2 hrs before"
+
+        if norm == "strength":
+            return [
+                _item("pre_strength_meal", "Pre-strength meal 2hrs before training",
+                      "Rice + chicken or oatmeal + eggs · complex carbs + protein",
+                      pre_time, "pending"),
+                _item("pre_practice_snack", "Fast carb snack 30 min before",
+                      "Banana or rice cakes · <em>fast glucose</em>",
+                      _fmt_time(start, -0.5) if start else "30 min before", "pending"),
+                _item("protein_recovery", "CRITICAL: Protein recovery within 30 min",
+                      "Chocolate milk or Greek yogurt + banana · <em>30-min window</em>",
+                      recovery_time, "critical"),
+                _item("casein_snack", "Bedtime casein snack tonight",
+                      "Cottage cheese or Greek yogurt · <em>overnight muscle repair</em>",
+                      "9:30 PM", "pending"),
+                hydration_item(),
+            ]
+
+        return [
+            _item("pre_practice_lunch", "Eat your pre-practice lunch by noon",
+                  "High-carb lunch · rice, pasta, or sweet potato",
+                  "12:00 PM", "pending"),
+            _item("pre_practice_snack",
+                  f"Pre-practice snack {round((mins or 45))} min before training" if mins and mins > 0 else "Pre-practice snack",
+                  "Banana + PB or toast + honey · <em>fast carbs</em>",
+                  snack_time, "pending"),
+            _item("protein_recovery", "Protein recovery within 30 min of whistle",
+                  "Chocolate milk + banana · <em>30-min window</em>",
+                  recovery_time, "pending"),
+            iron_item(),
+            hydration_item(),
+        ]
+
+    # ── PRE-GAME DAY ──────────────────────────────────────────────────────────
+    if norm == "pregame_day":
+        return [
+            _item("hc_breakfast", "High-carb breakfast this morning",
+                  "Oatmeal + banana + OJ · carb loading starts now",
+                  "8:00 AM", "pending"),
+            _item("pasta_lunch", "Big pasta or rice lunch — carb load begins",
+                  "Pasta + tomato sauce + chicken · <em>high carbs, low fat</em>",
+                  "12:00 PM", "pending"),
+            _item("afternoon_snack", "Afternoon snack — keep carbs high all day",
+                  "Toast + honey or rice cakes · no heavy protein",
+                  "3:00 PM", "pending"),
+            _item("pregame_dinner", "MOST IMPORTANT: Pre-game dinner tonight",
+                  "Pasta + lean protein · <em>biggest carb meal of the week</em>",
+                  "6:30 PM", "critical"),
+            _item("low_fiber", "Limit fiber and fat today",
+                  "Easy digestion for tomorrow · no salads or heavy sauces",
+                  "All day", "pending"),
+        ]
+
+    # ── REST / RECOVERY DAY (default) ─────────────────────────────────────────
+    return [
+        _item("active_recovery", "Active recovery nutrition — don't undereat",
+              "Rest days need 80%+ of normal calories to repair muscle",
+              "All day", "pending"),
+        iron_item(),
+        _item("calcium", "2 glasses of milk for calcium restoration",
+              "Ages 9–17 is the bone-building window · <em>+600mg calcium</em>",
+              "With meals",
+              "critical" if (traffic_light.get("calcium_mg", {}).get("pct_met") or 0) < 50 else "pending"),
+        _item("anti_inflammatory", "Anti-inflammatory dinner tonight",
+              "Salmon, leafy greens, or olive oil · reduces muscle soreness",
+              "7:00 PM", "pending"),
+        hydration_item(),
+    ]
 
 
 def calculate_performance_forecast(traffic_light: dict) -> dict:
