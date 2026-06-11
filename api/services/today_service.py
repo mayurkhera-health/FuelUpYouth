@@ -347,13 +347,23 @@ def get_mission_items(
         breakfast_done = _has_log_type(meal_logs, ["breakfast", "oatmeal", "eggs", "pancake", "toast"])
         snack_done = _has_log_type(meal_logs, ["snack", "banana", "pre-game snack"])
 
-        item1_state = "done" if breakfast_done or (mins is not None and mins < 150) else "pending"
+        window_passed = mins is not None and mins < 150
+        if breakfast_done:
+            item1_state = "done"
+            item1_label = "Pre-game breakfast logged"
+        elif window_passed:
+            item1_state = "pending"
+            item1_label = "Pre-game breakfast window closed"
+        else:
+            item1_state = "pending"
+            item1_label = "Pre-game breakfast — eat now"
+
         item2_state = "done" if snack_done else ("urgent" if mins is not None and 10 <= mins <= 90 else "pending")
         recovery_time = _fmt_time(start, dur + 0.5) if start else "After game"
         snack_time = _fmt_time(start, -0.75) if start else "45 min before"
 
         return [
-            _item("pregame_breakfast", "Pre-game breakfast logged",
+            _item("pregame_breakfast", item1_label,
                   "High-carb meal 2.5–4 hrs before kickoff",
                   _fmt_time(start, -3) if start else "Morning", item1_state),
             _item("pregame_snack", "Eat your pre-game snack NOW" if item2_state == "urgent" else "Pre-game snack",
