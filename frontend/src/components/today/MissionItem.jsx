@@ -5,7 +5,7 @@ export default function MissionItem({ item, isDone, onToggle }) {
   const boxStyle = {
     done:     { border: "1px solid rgba(45,106,79,.3)", background: "rgba(45,106,79,.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "19px", color: "#2d6a4f" },
     urgent:   { border: "1.5px solid rgba(180,83,9,.5)", background: "rgba(180,83,9,.08)" },
-    critical: { border: "1.5px solid rgba(184,58,58,.4)", background: "rgba(184,58,58,.08)" },
+    build:    { border: "1.5px solid rgba(180,83,9,.35)", background: "rgba(217,119,6,.08)" },
     pending:  { border: "1.5px solid #dce8e0", background: "transparent" },
   };
 

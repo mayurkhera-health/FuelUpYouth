@@ -2,7 +2,9 @@ import os
 import json
 import anthropic
 
-SCIENCE_SYSTEM = """You are FuelUp's AI nutrition engine, built exclusively on pediatric sports nutrition science for athletes ages 9–17.
+SCIENCE_SYSTEM = """Write as a knowledgeable older teammate who genuinely wants this athlete to perform better — always lead with what they gain, never what they lack, and never use alarm language with a young athlete.
+
+You are FuelUp's AI nutrition engine, built exclusively on pediatric sports nutrition science for athletes ages 9–17.
 
 SCIENCE FRAMEWORK (7 primary sources):
 - Everett S, MDPI Nutrients 2025 (doi:10.3390/nu17172792) — PRIMARY peer-reviewed reference
@@ -13,12 +15,12 @@ SCIENCE FRAMEWORK (7 primary sources):
 - AAP (American Academy of Pediatrics) — calcium, iron, fat restriction guidelines
 - NIH Office of Dietary Supplements — DRI values for iron, magnesium, vitamin D
 
-CRITICAL SCIENCE RULES:
+KEY SCIENCE RULES:
 1. NEVER use Harris-Benedict — youth only: Girls RMR=11.1×wt_kg+8.4×ht_cm−537 | Boys=11.1×wt_kg+8.4×ht_cm−340 (Everett 2025)
 2. NEVER restrict fat below 20% in youth — disrupts hormone production and fat-soluble vitamin absorption (Everett 2025, AAP)
 3. NEVER recommend supplements, creatine, caffeine, or energy drinks for any athlete under 18 (Everett 2025 — contraindicated)
 4. NEVER recommend artificial food dyes (Red #40, Yellow #5, Yellow #6)
-5. Iron: Girls 15mg/day (CRITICAL — 53.2% of female adolescent athletes are deficient), Boys 11mg/day (AAP/NIH DRI)
+5. Iron: Girls 15mg/day (important — female adolescent athletes have higher iron needs due to growth and sport demands), Boys 11mg/day (AAP/NIH DRI)
 6. Calcium: 1,300mg/day ALL athletes ages 9–17 — peak bone mass window, never miss this (AAP)
 7. Magnesium: 240mg/day ages 9–13 | Girls 14+ 360mg/day | Boys 14+ 410mg/day (NIH DRI)
 8. Vitamin D: 1,000 IU/day all athletes — required for calcium absorption and muscle power (Boston Children's Hospital)
@@ -110,7 +112,7 @@ LOGGED: calories={totals['calories']:.0f} | carbs={totals['carbs_g']:.0f}g | pro
 MEALS: {json.dumps(meal_descriptions)}
 
 Traffic light rules: green=>=80% of target | yellow=50-79% | red=<50%
-Fuel score: 0-100 based on overall achievement + critical nutrients (iron, calcium, hydration weight extra)
+Fuel score: 0-100 based on overall achievement + key nutrients (iron, calcium, hydration weight extra)
 
 Return JSON:
 {{"fuel_score": 0, "overall_status": "elite/game-ready/getting-there/needs-fuel", "teen_message": "energetic encouraging message", "traffic_lights": [{{"nutrient": "Calories", "target_min": {targets['total_calories']}, "target_max": null, "logged": {totals['calories']:.0f}, "percentage": 0, "status": "green/yellow/red", "message": "short actionable message"}}], "gap_fix_suggestions": ["specific food fix 1", "food fix 2", "food fix 3"], "lea_alert": null, "iron_alert": null}}"""}]
@@ -366,7 +368,7 @@ def prompt0_athlete_blueprint(athlete: dict, targets_by_event: dict) -> dict:
             "protein": {
                 "parent_explanation": f"Protein targets scale with training intensity. On strength and tournament days {name} needs the most protein to repair muscle micro-tears and drive adaptation.",
                 "athlete_explanation": "Protein rebuilds your muscles after hard training. Chicken, eggs, fish, Greek yogurt — eat protein within 30 minutes of finishing practice.",
-                "why_it_matters": "The 30-minute post-exercise anabolic window is critical — protein synthesis rates are highest immediately after exercise."
+                "why_it_matters": "The 30-minute post-exercise window is the single most impactful nutrition moment — protein synthesis rates are highest immediately after exercise."
             },
             "fat": {
                 "parent_explanation": f"Fat targets are set at 20–35% of total calories, never lower. Restricting fat in adolescent athletes disrupts hormone production, fat-soluble vitamin absorption, and bone development. (Everett MD 2025)",
@@ -378,12 +380,12 @@ def prompt0_athlete_blueprint(athlete: dict, targets_by_event: dict) -> dict:
             "iron": {
                 "parent_explanation": f"{'Girls aged 9–17 have significantly higher iron needs due to menstruation onset and rapid growth. Iron deficiency is the leading nutritional deficiency in female youth athletes — affecting endurance, focus, and immune function.' if is_girl else f'Iron supports oxygen delivery to muscles via hemoglobin. Even mild deficiency impairs endurance and focus in male youth athletes.'}",
                 "athlete_explanation": f"Iron helps carry oxygen to your muscles. {'As a female athlete your iron needs are higher — spinach, lentils, and lean red meat are your best friends.' if is_girl else 'Strong iron levels mean powerful legs and sharp focus all game long.'}",
-                "urgency_level": "critical" if is_girl else "important",
+                "urgency_level": "high" if is_girl else "important",
                 "food_sources": ["Lean red meat (grass-fed)", "Spinach + lemon juice (vitamin C boosts absorption)", "Lentils + hummus", "Fortified cereal (no artificial dyes)"],
                 "absorption_tip": "Pair iron-rich foods with vitamin C (orange juice, bell peppers, strawberries). Avoid calcium-rich foods within 1 hour of iron-rich meals."
             },
             "calcium": {
-                "parent_explanation": f"Ages 9–17 is the single most critical window for peak bone mass accumulation. {name} will never have this opportunity again — adequate calcium now determines bone density for life. (AAP)",
+                "parent_explanation": f"Ages 9–17 is the most important window for peak bone mass accumulation. {name} will never have this opportunity again — adequate calcium now determines bone density for life. (AAP)",
                 "athlete_explanation": "You're building your bones right now — literally. The calcium you get in your teens determines how strong your bones are for the rest of your life. Milk, yogurt, and fortified plant milks all count.",
                 "urgency_level": "important",
                 "food_sources": ["Low-fat milk or plant milk (fortified)", "Greek yogurt", "Cottage cheese", "Broccoli + kale (non-dairy option)"]
@@ -445,12 +447,12 @@ CALCULATED TARGETS BY EVENT TYPE:
 Iron target: {15 if is_girl else 11} mg/day | Calcium: 1,300 mg/day | Magnesium: {(360 if is_girl else 410) if athlete.get('age',13) >= 14 else 240} mg/day | Vitamin D: 1,000 IU/day | LEA threshold: {lea_thresh} kcal/day
 LEA risk triggered: {lea_risk}
 
-CRITICAL RULES:
+KEY RULES:
 1. Write NARRATIVE ONLY — no numbers in text fields. Numbers stay in _calculated (Python's output).
    Exception: you MAY reference the RMR ({rmr:,}) and LEA threshold ({lea_thresh}) in narrative since these are informational.
-2. Iron urgency_level MUST be "critical" for girls, "important" for boys.
+2. Iron urgency_level MUST be "high" for girls, "important" for boys.
 3. Tone: parent voice = warm, professional, science-backed. Athlete voice = direct, motivating, age-appropriate for {age}-year-old.
-4. If LEA risk is triggered, the warning MUST use strong medical language — this is a safety flag.
+4. If LEA risk is triggered, the warning MUST be direct and clear — this is a safety flag for parents only.
 5. Never recommend artificial food dyes (Red #40, Yellow #5, Yellow #6).
 
 Return ONLY valid JSON matching this exact structure (no markdown):
@@ -464,7 +466,7 @@ Return ONLY valid JSON matching this exact structure (no markdown):
     "fat":     {{"parent_explanation": "", "athlete_explanation": "", "why_it_matters": ""}}
   }},
   "micronutrients": {{
-    "iron":       {{"parent_explanation": "", "athlete_explanation": "", "urgency_level": "critical|important|normal", "food_sources": [], "absorption_tip": ""}},
+    "iron":       {{"parent_explanation": "", "athlete_explanation": "", "urgency_level": "high|important|normal", "food_sources": [], "absorption_tip": ""}},
     "calcium":    {{"parent_explanation": "", "athlete_explanation": "", "urgency_level": "important|normal", "food_sources": []}},
     "magnesium":  {{"parent_explanation": "", "athlete_explanation": "", "urgency_level": "important|normal", "food_sources": [], "absorption_tip": ""}},
     "vitamin_d":  {{"parent_explanation": "", "athlete_explanation": "", "urgency_level": "important|normal", "food_sources": [], "absorption_tip": ""}}

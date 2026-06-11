@@ -8,7 +8,7 @@ const DAY_HERO = {
   training:   { grad: ["#b45309","#f59e0b"], emoji:"🏃", badge:"🏃 Training Day",  title:"Training Fuel Day",                desc:"Your body needs sustained energy before practice and fast recovery after. Load up on complex carbs at lunch and your pre-training meal, then hit the protein + carb recovery window right after finishing." },
   strength:   { grad: ["#b45309","#f59e0b"], emoji:"🏋️", badge:"🏋️ Strength Day", title:"Training Fuel Day",                desc:"Your body needs sustained energy before practice and fast recovery after. Load up on complex carbs at lunch and your pre-training meal, then hit the protein + carb recovery window right after finishing." },
   game:       { grad: ["#9a1a1a","#e05a4a"], emoji:"⚽", badge:"⚽ Game Day",       title:"Game Day — Perform & Recover",     desc:"Today is all about peak performance and rapid recovery. Front-load carbs before kick-off, stay on top of hydration throughout, and hit your recovery window within 30 minutes of the final whistle." },
-  tournament: { grad: ["#4a2a8a","#9a7ae8"], emoji:"🏆", badge:"🏆 Tournament",   title:"Tournament Day — Fuel to Compete", desc:"Multiple games means fuel management is critical. Prioritise carb availability all day, recover fast between games, and protect your muscles with quality protein at dinner." },
+  tournament: { grad: ["#4a2a8a","#9a7ae8"], emoji:"🏆", badge:"🏆 Tournament",   title:"Tournament Day — Fuel to Compete", desc:"Multiple games means fuel management is everything. Prioritise carb availability all day, recover fast between games, and protect your muscles with quality protein at dinner." },
 };
 
 const TAG_COLORS = {
@@ -21,7 +21,7 @@ const TAG_COLORS = {
   "Casein Protein": { bg:"#f5f0ff", color:"#5a3ab8", border:"#c8b0f4" },
   "Healthy Fats":   { bg:"#fdf5ff", color:"#7a3ab8", border:"#ddbef4" },
   "Light":          { bg:"#f4fdf7", color:"#2a7a4a", border:"#a8e4bc" },
-  "Iron-Rich":      { bg:"#fff0f0", color:"#b83a3a", border:"#f4a8a8" },
+  "Iron-Rich":      { bg:"#fff5e8", color:"#92400e", border:"#f3c67a" },
   "Electrolytes":   { bg:"#e8f4ff", color:"#1a6aa8", border:"#a0cce8" },
   "Fluids":         { bg:"#e8f4ff", color:"#1a6aa8", border:"#a0cce8" },
 };

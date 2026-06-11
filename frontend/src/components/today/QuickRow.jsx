@@ -7,7 +7,7 @@ export default function QuickRow({ waterCups, targetCups, caloriesLogged, calori
 
   const calPct    = caloriesTarget > 0 ? Math.round((caloriesLogged / caloriesTarget) * 100) : 0;
   const calRemain = Math.max(0, Math.round((caloriesTarget ?? 0) - (caloriesLogged ?? 0)));
-  const calColor  = calPct >= 80 ? "#2d6a4f" : calPct >= 60 ? "#b45309" : "#b83a3a";
+  const calColor  = calPct >= 80 ? "#2d6a4f" : "#b45309";
 
   async function handleCupTap(i) {
     const newCups = i < waterCups ? i : i + 1;

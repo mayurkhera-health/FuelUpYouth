@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 
 function metricColor(pct) {
   if (pct >= 75) return "#2d6a4f";
-  if (pct >= 50) return "#b45309";
-  return "#b83a3a";
+  return "#b45309";
 }
 
 export default function PerformanceForecast({ forecast }) {

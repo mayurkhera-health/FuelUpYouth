@@ -65,7 +65,7 @@ function BothVoices({ parentText, athleteText }) {
 
 function UrgencyBadge({ level }) {
   const map = {
-    critical: { bg: "#fee2e2", color: "#dc2626", text: "⚠ CRITICAL" },
+    high:     { bg: "#fef3c7", color: "#b45309", text: "▲ FOCUS AREA" },
     important: { bg: "#fef3c7", color: "#d97706", text: "▲ IMPORTANT" },
     normal:   { bg: "#f0fdf4", color: "#2d6a4f", text: "✓ NORMAL" },
   };

@@ -87,7 +87,7 @@ function buildSchedule(eventType, startTimeStr, durationHours) {
       slot(fromAnchor(-210),   "🍝", "Pre-Game Meal",   "Power Pasta Bowl",          "HIGH carbs · LOW fat & fiber · Familiar foods only"),
       slot(fromAnchor(-60),    "🍌", "Pre-Game Snack",  "Banana + Peanut Butter",    "Easy-digest carbs only · No heavy food"),
       marker(anchor || at(16), "⚽", "KICKOFF"),
-      slot(fromAnchor(dur+20), "🥛", "Recovery Window", "Chocolate Milk + Banana",   "3:1 carb:protein — critical 30-min window", true),
+      slot(fromAnchor(dur+20), "🥛", "Recovery Window", "Chocolate Milk + Banana",   "3:1 carb:protein — key 30-min recovery window", true),
       slot(at(19),             "🍽️", "Dinner",          "Brown Rice Salmon Bowl",    "Full recovery meal"),
     ];
     case "tournament": return [
@@ -132,8 +132,8 @@ function buildSchedule(eventType, startTimeStr, durationHours) {
 const fmt     = d => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 const cdStr   = t => { const d = t - Date.now(); if (d <= 0) return null; const h = Math.floor(d/3_600_000), m = Math.floor((d%3_600_000)/60_000); return h > 0 ? `${h}h ${m}m` : `${m}m`; };
 const greeting = () => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; };
-const scoreColor = s => s >= 90 ? "#2d6a4f" : s >= 75 ? "#d97706" : s >= 50 ? "#ea580c" : "#dc2626";
-const scoreLabel = s => s >= 90 ? "Elite Fueler" : s >= 75 ? "Game Ready" : s >= 50 ? "Getting There" : "Needs Fuel";
+const scoreColor = s => s >= 90 ? "#2d6a4f" : s >= 75 ? "#d97706" : "#b45309";
+const scoreLabel = s => s >= 90 ? "Elite Fueler" : s >= 75 ? "Game Ready" : s >= 50 ? "Building" : "Power Up";
 const scoreEmoji = s => s >= 90 ? "🔥" : s >= 75 ? "✅" : s >= 50 ? "📈" : "⚠️";
 
 // ── Event Hero ────────────────────────────────────────────────────────────────
@@ -411,7 +411,7 @@ const tr = {
   normalLabel:{ fontSize: "18px", fontWeight: "700", color: "#4a6358", marginBottom: "1px" },
   normalMeal: { fontSize: "17px", color: "#4a6358" },
   lateLogBtn: { marginTop: "6px", padding: "5px 12px", background: "transparent", border: "1.5px solid", borderRadius: "8px", fontSize: "17px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", cursor: "pointer", display: "inline-block" },
-  urgentTip:  { fontSize: "16px", color: "#dc2626", marginTop: "2px", fontWeight: "600" },
+  urgentTip:  { fontSize: "16px", color: "#b45309", marginTop: "2px", fontWeight: "600" },
   thumbPhoto: { width: "40px", height: "40px", borderRadius: "8px", objectFit: "cover", flexShrink: 0, border: "1.5px solid #e5e7eb" },
   // marker
   markerRow:  { display: "flex", alignItems: "center", gap: "8px", margin: "6px 0" },
@@ -505,7 +505,7 @@ const FUELING_GUIDES = {
       { time: "Breakfast", body: "Anti-inflammatory foods — eggs and berries, oatmeal with fruit, or a grain bowl with vegetables. Recovery doesn't stop on rest days; your body is actively repairing from recent training." },
       { time: "Lunch", body: "Keep protein high. Muscle repair continues for 24–48 hours after intense activity, even when you're not training." },
       { time: "Afternoon Snack", body: "Antioxidant-rich foods — almonds and berries, an apple with nut butter, or hummus with vegetables. These help reduce inflammation from training." },
-      { time: "Dinner", body: "Focus on iron and calcium today. Rest days are the best time to absorb these critical nutrients — iron for oxygen delivery, calcium for bone strength and peak bone mass." },
+      { time: "Dinner", body: "Focus on iron and calcium today. Rest days are the best time to absorb these key nutrients — iron for oxygen delivery, calcium for bone strength and peak bone mass." },
       { time: "Bedtime Snack (if needed)", body: "Cottage cheese or Greek yogurt — casein protein works overnight even when you're resting, supporting muscle maintenance during recovery." },
     ],
     reminder: "Rest days are not 'off' days for nutrition — they are repair days. Keep fueling well.",

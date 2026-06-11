@@ -36,7 +36,7 @@ function Dot({ pct, isToday }) {
       ? { bg: "rgba(45,106,79,.15)", color: "#2d6a4f" }
       : pct >= 50
       ? { bg: "rgba(217,119,6,.12)", color: "#b45309" }
-      : { bg: "rgba(184,58,58,.12)", color: "#b83a3a" };
+      : { bg: "rgba(217,119,6,.12)", color: "#b45309" };
   return (
     <div style={{ ...base, background: scheme.bg, color: scheme.color }}>
       {pct >= 80 ? "✓" : pct}
@@ -118,7 +118,7 @@ export default function WeeklyHeatmap({ days = [], heatmap = {} }) {
                 ? "#2d6a4f"
                 : sc >= 50
                 ? "#b45309"
-                : "#b83a3a";
+                : "#b45309";
             return (
               <div
                 key={day.date}
@@ -146,7 +146,7 @@ export default function WeeklyHeatmap({ days = [], heatmap = {} }) {
         {" "}≥80%{"  "}
         <span style={{ ...s.legendDot, background: "rgba(217,119,6,.12)", color: "#b45309", marginLeft: "8px" }}>65</span>
         {" "}50–79%{"  "}
-        <span style={{ ...s.legendDot, background: "rgba(184,58,58,.12)", color: "#b83a3a", marginLeft: "8px" }}>35</span>
+        <span style={{ ...s.legendDot, background: "rgba(217,119,6,.12)", color: "#b45309", marginLeft: "8px" }}>35</span>
         {" "}&lt;50%{"  "}
         <span style={{ ...s.legendDot, background: "#f4f8f5", color: "#c8d8d0", marginLeft: "8px" }}>—</span>
         {" "}Not logged

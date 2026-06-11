@@ -26,7 +26,7 @@ def compute_traffic_light(targets: dict, logged: dict) -> dict:
         target_val = targets.get(target_key) or 1.0
         pct = min(150, round(logged_val / target_val * 100))
         gap = round(max(0.0, target_val - logged_val), 1)
-        status = "met" if pct >= 80 else "low" if pct >= 50 else "critical"
+        status = "met" if pct >= 80 else "low" if pct >= 50 else "build"
         tl[logged_key] = {
             "logged": round(logged_val, 1),
             "target": round(target_val, 1),
@@ -294,8 +294,8 @@ def get_mission_items(
     """
     Returns exactly 5 mission items for today.
     Each item: {label, sub, time, state, tag, item_type}
-    state: "done" | "urgent" | "critical" | "pending"
-    tag:   "DONE" | "NOW" | "FIX THIS" | "UPCOMING"
+    state: "done" | "urgent" | "build" | "pending"
+    tag:   "DONE" | "NOW" | "BOOST" | "UPCOMING"
     """
     now = datetime.now()
     is_female = gender.lower() in ("girl", "female")
@@ -320,7 +320,7 @@ def get_mission_items(
             return None
 
     def _item(item_type, label, sub, time, state):
-        tag = {"done": "DONE", "urgent": "NOW", "critical": "BOOST", "pending": "UPCOMING"}[state]
+        tag = {"done": "DONE", "urgent": "NOW", "build": "BOOST", "pending": "UPCOMING"}[state]
         return {"label": label, "sub": sub, "time": time, "state": state, "tag": tag, "item_type": item_type}
 
     def iron_item():

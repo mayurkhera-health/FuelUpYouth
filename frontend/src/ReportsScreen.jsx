@@ -6,12 +6,12 @@ const TODAY = new Date().toISOString().split("T")[0];
 const SCORE_COLORS = {
   "Elite Fueler": { bg: "#f0faf4", border: "#b0e8c8", text: "#2d6a4f", bar: "#2d6a4f" },
   "Game Ready":   { bg: "#fdf5e7", border: "#f4d3a0", text: "#c8903a", bar: "#c8903a" },
-  "Getting There":{ bg: "#fdf5e7", border: "#f4d3a0", text: "#c8903a", bar: "#c8903a" },
-  "Needs Fuel":   { bg: "#fdf2f0", border: "#f4c0b8", text: "#c05a4a", bar: "#c05a4a" },
+  "Building":     { bg: "#fdf5e7", border: "#f4d3a0", text: "#c8903a", bar: "#c8903a" },
+  "Power Up":     { bg: "#fdf5e7", border: "#f4d3a0", text: "#b45309", bar: "#b45309" },
 };
 
 function ScoreGauge({ score, badge }) {
-  const c = SCORE_COLORS[badge] || SCORE_COLORS["Needs Fuel"];
+  const c = SCORE_COLORS[badge] || SCORE_COLORS["Power Up"];
   return (
     <div style={{ ...g.wrap, background: c.bg, border: `1.5px solid ${c.border}` }}>
       <div style={{ ...g.score, color: c.text }}>{score}</div>

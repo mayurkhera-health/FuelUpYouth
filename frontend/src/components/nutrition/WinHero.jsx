@@ -30,7 +30,7 @@ const COLOR_BOX = {
   green: "rgba(45,106,79,.12)",
   blue: "rgba(37,99,235,.10)",
   purple: "rgba(126,106,181,.12)",
-  red: "rgba(184,58,58,.10)",
+  amber: "rgba(217,119,6,.12)",
 };
 
 export default function WinHero({ athlete, weekSummary }) {
@@ -116,7 +116,7 @@ export default function WinHero({ athlete, weekSummary }) {
           <div style={s.focusRow}>
             {focusGaps.map((gap) => {
               const pct = gap.avg_pct;
-              const color = pct < 50 ? "#b83a3a" : "#b45309";
+              const color = "#b45309";
               const label = NUTRIENT_LABELS[gap.nutrient] ?? gap.nutrient;
               const unit = UNIT[gap.nutrient] ?? "";
               return (

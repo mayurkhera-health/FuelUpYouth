@@ -24,8 +24,7 @@ function computeCountdown(events) {
 // ── Score helpers ──────────────────────────────────────────────────────────
 function scoreColor(score) {
   if (score >= 75) return "#2d6a4f";
-  if (score >= 50) return "#b45309";
-  return "#b83a3a";
+  return "#b45309";
 }
 
 function taglineContent(score) {
@@ -103,7 +102,7 @@ export default function BroadcastCard({ athlete, events = [], trafficLight, fuel
 
   const carbsPct  = tl.carbs_g?.pct_met  ?? 0;
   const ironPct   = tl.iron_mg?.pct_met  ?? 0;
-  const ironSub   = ironPct < 50 ? "critical" : ironPct < 80 ? "low" : "on track";
+  const ironSub   = ironPct < 50 ? "build today" : ironPct < 80 ? "building" : "on track";
 
   return (
     <div style={bc.card}>
@@ -113,7 +112,7 @@ export default function BroadcastCard({ athlete, events = [], trafficLight, fuel
         <span style={bc.liveLabel}>LIVE</span>
         <div style={bc.tickerSep} />
         <span style={bc.tickerEvent}>{eventStr.toUpperCase()}</span>
-        <span style={{ ...bc.tickerCountdown, color: isUrgent ? "#b83a3a" : "#b45309" }}>
+        <span style={{ ...bc.tickerCountdown, color: "#b45309" }}>
           {hasEvent ? (countdown.isLive ? "IN PROGRESS" : `${countdown.text} TO KICKOFF`) : "NO EVENT"}
         </span>
       </div>
@@ -153,21 +152,21 @@ export default function BroadcastCard({ athlete, events = [], trafficLight, fuel
         </div>
         <div style={bc.statCell}>
           <div style={bc.statLabel}>Carbs</div>
-          <div style={{ ...bc.statValue, color: carbsPct >= 80 ? "#2d6a4f" : carbsPct >= 50 ? "#b45309" : "#b83a3a" }}>
+          <div style={{ ...bc.statValue, color: carbsPct >= 80 ? "#2d6a4f" : "#b45309" }}>
             {carbsPct}%
           </div>
           <div style={bc.statSub}>of target</div>
         </div>
         <div style={{ ...bc.statCell }}>
           <div style={bc.statLabel}>Iron</div>
-          <div style={{ ...bc.statValue, color: ironPct >= 80 ? "#2d6a4f" : ironPct >= 50 ? "#b45309" : "#b83a3a" }}>
+          <div style={{ ...bc.statValue, color: ironPct >= 80 ? "#2d6a4f" : "#b45309" }}>
             {ironPct}%
           </div>
           <div style={bc.statSub}>{ironSub}</div>
         </div>
         <div style={{ ...bc.statCell, borderRight: "none" }}>
           <div style={bc.statLabel}>Kickoff</div>
-          <div style={{ ...bc.statValue, color: isUrgent ? "#b83a3a" : "#b45309" }}>
+          <div style={{ ...bc.statValue, color: "#b45309" }}>
             {hasEvent ? (countdown.isLive ? "—" : countdown.text) : "—"}
           </div>
           <div style={bc.statSub}>{hasEvent && countdown.isLive ? "LIVE" : "hrs·min"}</div>
