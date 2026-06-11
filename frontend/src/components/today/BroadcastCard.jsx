@@ -41,16 +41,16 @@ function ReadinessDial({ score }) {
   const circumference = 182; // 2π × 29
 
   useEffect(() => {
+    let interval;
     const timer = setTimeout(() => {
       let val = 0;
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         val = Math.min(val + 2, score);
         setDisplayed(val);
         if (val >= score) clearInterval(interval);
       }, 14);
-      return () => clearInterval(interval);
     }, 200);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); clearInterval(interval); };
   }, [score]);
 
   const offset = circumference - (circumference * displayed) / 100;
@@ -71,7 +71,7 @@ function ReadinessDial({ score }) {
           style={{ transition: "stroke-dashoffset 0.9s cubic-bezier(.4,0,.2,1)" }}
         />
         <text x="36" y="33" textAnchor="middle" fill={color} fontSize="16" fontWeight="800" fontFamily="Nunito,sans-serif">{displayed}</text>
-        <text x="36" y="43" textAnchor="middle" fill="#8aa898" fontSize="7" fontFamily="DM Sans,sans-serif" letterSpacing="1">READY</text>
+        <text x="36" y="43" textAnchor="middle" fill="#8aa898" fontSize="7" fontFamily="DM Sans,sans-serif" letterSpacing="1">{statusLabel}</text>
       </svg>
       <div style={rd.status}>{statusLabel}</div>
     </div>
@@ -83,7 +83,7 @@ const rd = {
 };
 
 // ── BroadcastCard ─────────────────────────────────────────────────────────
-export default function BroadcastCard({ athlete, events, trafficLight, fuelScore, onNavigateMealPlan }) {
+export default function BroadcastCard({ athlete, events = [], trafficLight, fuelScore, onNavigateMealPlan }) {
   const [countdown, setCountdown] = useState(() => computeCountdown(events));
 
   useEffect(() => {
@@ -170,7 +170,7 @@ export default function BroadcastCard({ athlete, events, trafficLight, fuelScore
           <div style={{ ...bc.statValue, color: isUrgent ? "#b83a3a" : "#b45309" }}>
             {hasEvent ? (countdown.isLive ? "—" : countdown.text) : "—"}
           </div>
-          <div style={bc.statSub}>{countdown.isLive ? "LIVE" : "hrs·min"}</div>
+          <div style={bc.statSub}>{hasEvent && countdown.isLive ? "LIVE" : "hrs·min"}</div>
         </div>
       </div>
     </div>
