@@ -119,8 +119,8 @@ const s = {
   body:       { padding: "0 12px" },
   loadWrap:   { display: "flex", flexDirection: "column", alignItems: "center", gap: "14px", padding: "60px 0" },
   spinner:    { width: "30px", height: "30px", border: "3px solid #dce8e0", borderTopColor: "#2d6a4f", borderRadius: "50%", animation: "spin 0.7s linear infinite" },
-  loadText:   { fontSize: "16px", color: "#4a6358", fontFamily: "'DM Sans', sans-serif" },
+  loadText:   { fontSize: "19px", color: "#4a6358", fontFamily: "'DM Sans', sans-serif" },
   logWrap:    { paddingTop: "10px" },
-  logBtn:     { width: "100%", padding: "13px", background: "rgba(45,106,79,.07)", border: "1px dashed rgba(45,106,79,.25)", borderRadius: "14px", color: "#2d6a4f", fontFamily: "'Nunito', sans-serif", fontSize: "13px", fontWeight: "700", letterSpacing: "-.01em", cursor: "pointer", textAlign: "center" },
-  disclaimer: { textAlign: "center", fontSize: "13px", color: "#4a6358", lineHeight: "1.5", fontWeight: "400", padding: "10px 0 0" },
+  logBtn:     { width: "100%", padding: "13px", background: "rgba(45,106,79,.07)", border: "1px dashed rgba(45,106,79,.25)", borderRadius: "14px", color: "#2d6a4f", fontFamily: "'Nunito', sans-serif", fontSize: "16px", fontWeight: "700", letterSpacing: "-.01em", cursor: "pointer", textAlign: "center" },
+  disclaimer: { textAlign: "center", fontSize: "16px", color: "#4a6358", lineHeight: "1.5", fontWeight: "400", padding: "10px 0 0" },
 };
