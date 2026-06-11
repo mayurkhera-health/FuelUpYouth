@@ -12,6 +12,8 @@ export default function ArticleSection({
   onOpen,
   emptyCase = "no_articles",
 }) {
+  if (articles.length === 0 && emptyCase === "no_articles") return null;
+
   return (
     <div style={s.section}>
       <div style={s.header}>
