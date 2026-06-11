@@ -2,13 +2,28 @@ import { useState, useEffect, useCallback } from "react";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
-const EVENT_COLORS = {
-  game:       { bg: "#fdf2f0", border: "#f4c0b8", text: "#c05a4a", label: "⚽ Game" },
-  tournament: { bg: "#f4f1fb", border: "#c8bde8", text: "#7e6ab5", label: "🏆 Tournament" },
-  practice:   { bg: "#fdf5e7", border: "#f4d3a0", text: "#c8903a", label: "🏃 Practice" },
-  training:   { bg: "#fdf5e7", border: "#f4d3a0", text: "#c8903a", label: "💪 Training" },
-  strength:   { bg: "#eef5fb", border: "#b8d8ef", text: "#4a8fc4", label: "🏋️ Strength" },
-  rest:       { bg: "#f4f8f5", border: "#dce8e0", text: "#8aa898", label: "🌿 Rest" },
+const DAY_HERO = {
+  rest:       { grad: ["#2d6a4f","#52b788"], emoji:"🌿", badge:"🌿 Rest Day",     title:"Recovery & Rebuild Day",           desc:"No training today — your body is repairing muscle and replenishing glycogen. Focus on protein to rebuild and complex carbs to restore energy stores. Prioritise iron-rich foods and calcium for bone health." },
+  practice:   { grad: ["#b45309","#f59e0b"], emoji:"🏃", badge:"🏃 Training Day",  title:"Training Fuel Day",                desc:"Your body needs sustained energy before practice and fast recovery after. Load up on complex carbs at lunch and your pre-training meal, then hit the protein + carb recovery window right after finishing." },
+  training:   { grad: ["#b45309","#f59e0b"], emoji:"🏃", badge:"🏃 Training Day",  title:"Training Fuel Day",                desc:"Your body needs sustained energy before practice and fast recovery after. Load up on complex carbs at lunch and your pre-training meal, then hit the protein + carb recovery window right after finishing." },
+  strength:   { grad: ["#b45309","#f59e0b"], emoji:"🏋️", badge:"🏋️ Strength Day", title:"Training Fuel Day",                desc:"Your body needs sustained energy before practice and fast recovery after. Load up on complex carbs at lunch and your pre-training meal, then hit the protein + carb recovery window right after finishing." },
+  game:       { grad: ["#9a1a1a","#e05a4a"], emoji:"⚽", badge:"⚽ Game Day",       title:"Game Day — Perform & Recover",     desc:"Today is all about peak performance and rapid recovery. Front-load carbs before kick-off, stay on top of hydration throughout, and hit your recovery window within 30 minutes of the final whistle." },
+  tournament: { grad: ["#4a2a8a","#9a7ae8"], emoji:"🏆", badge:"🏆 Tournament",   title:"Tournament Day — Fuel to Compete", desc:"Multiple games means fuel management is critical. Prioritise carb availability all day, recover fast between games, and protect your muscles with quality protein at dinner." },
+};
+
+const TAG_COLORS = {
+  "Complex Carbs":  { bg:"#fff8e7", color:"#b8720a", border:"#f4d3a0" },
+  "Quick Carbs":    { bg:"#fff8e7", color:"#b8720a", border:"#f4d3a0" },
+  "Fast Carbs":     { bg:"#fff8e7", color:"#b8720a", border:"#f4d3a0" },
+  "Protein":        { bg:"#eff8ff", color:"#1a6ab8", border:"#b8d9f4" },
+  "High Protein":   { bg:"#eff8ff", color:"#1a6ab8", border:"#b8d9f4" },
+  "Light Protein":  { bg:"#eff8ff", color:"#1a6ab8", border:"#b8d9f4" },
+  "Casein Protein": { bg:"#f5f0ff", color:"#5a3ab8", border:"#c8b0f4" },
+  "Healthy Fats":   { bg:"#fdf5ff", color:"#7a3ab8", border:"#ddbef4" },
+  "Light":          { bg:"#f4fdf7", color:"#2a7a4a", border:"#a8e4bc" },
+  "Iron-Rich":      { bg:"#fff0f0", color:"#b83a3a", border:"#f4a8a8" },
+  "Electrolytes":   { bg:"#e8f4ff", color:"#1a6aa8", border:"#a0cce8" },
+  "Fluids":         { bg:"#e8f4ff", color:"#1a6aa8", border:"#a0cce8" },
 };
 
 function getMondayOf(d) {
@@ -28,37 +43,6 @@ function addDays(d, n) {
 function toISO(d) {
   return d.toISOString().split("T")[0];
 }
-
-function formatWeekRange(monday) {
-  const sunday = addDays(monday, 6);
-  const fmt = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return `${fmt(monday)} – ${fmt(sunday)}, ${monday.getFullYear()}`;
-}
-
-// ── CalorieSummaryBar ─────────────────────────────────────────────────────────
-function CalorieSummaryBar({ planned, target }) {
-  if (!target) return null;
-  const pct = Math.min(100, Math.round((planned / target) * 100));
-  const color = pct >= 90 ? "#2d6a4f" : pct >= 70 ? "#d97706" : "#dc2626";
-  return (
-    <div style={csb.wrap}>
-      <div style={csb.track}>
-        <div style={{ ...csb.fill, width: `${pct}%`, background: color }} />
-      </div>
-      <div style={csb.label}>
-        <span style={{ color }}>{planned}</span>
-        <span style={csb.target}> / {target} kcal</span>
-      </div>
-    </div>
-  );
-}
-const csb = {
-  wrap: { marginBottom: "8px" },
-  track: { height: "5px", background: "#dce8e0", borderRadius: "99px", overflow: "hidden", marginBottom: "3px" },
-  fill: { height: "100%", borderRadius: "99px", transition: "width 0.4s ease" },
-  label: { fontSize: "14px", textAlign: "center", color: "#4a6358", fontWeight: "500" },
-  target: { color: "#4a6358" },
-};
 
 // ── RecipePicker ──────────────────────────────────────────────────────────────
 function RecipePicker({ slot, allRecipes, athleteAllergens, onSelect, onClose }) {
@@ -110,141 +94,212 @@ const rp = {
   tag: { background: "#f0fdf4", color: "#2d6a4f", fontSize: "12px", fontWeight: "600", padding: "1px 6px", borderRadius: "99px" },
 };
 
-// ── SlotCard ──────────────────────────────────────────────────────────────────
-function SlotCard({ slot, date, allRecipes, athleteAllergens, isActive, onOpenPicker, onClosePicker, onAssign, onAutoSwap, onClear, onLogEaten }) {
+// ── WeekDots ────────────────────────────────────────────────────────────────
+const EVENT_DOT_COLOR = { game:"#c04a3a", tournament:"#7e6ab5", practice:"#c8903a", training:"#c8903a", strength:"#4a8fc4", rest:"#8aa898" };
+
+function WeekDots({ days, selectedDate, onSelect }) {
+  return (
+    <div style={wd.wrap}>
+      {days.map(day => {
+        const isActive   = day.date === selectedDate;
+        const hasPlanned = day.slots.some(s => s.recipe_id);
+        const evColor    = EVENT_DOT_COLOR[day.event_type] || EVENT_DOT_COLOR.rest;
+        const d = new Date(day.date + "T12:00:00").getDate();
+        return (
+          <div key={day.date} style={wd.col} onClick={() => onSelect(day.date)}>
+            <div style={{ ...wd.dot, ...(isActive ? wd.dotActive : hasPlanned ? wd.dotPlanned : wd.dotEmpty) }}>
+              {day.day_label[0]}
+            </div>
+            <div style={wd.dateNum}>{d}</div>
+            <div style={{ ...wd.evDot, background: evColor }} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+const wd = {
+  wrap:       { display:"flex", justifyContent:"space-between", background:"#fff", padding:"10px 20px 12px", borderBottom:"1px solid #f0f4f1" },
+  col:        { display:"flex", flexDirection:"column", alignItems:"center", gap:"3px", cursor:"pointer" },
+  dot:        { width:"32px", height:"32px", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"12px", fontWeight:"800" },
+  dotActive:  { background:"#2d6a4f", color:"#fff", boxShadow:"0 2px 8px rgba(45,106,79,0.30)" },
+  dotPlanned: { background:"#d4ead8", color:"#2d6a4f" },
+  dotEmpty:   { background:"#f0f4f1", color:"#8aa898" },
+  dateNum:    { fontSize:"10px", color:"#8aa898", fontWeight:"700" },
+  evDot:      { width:"5px", height:"5px", borderRadius:"50%" },
+};
+
+// ── DayHero ─────────────────────────────────────────────────────────────────
+function DayHero({ day }) {
+  const hero = DAY_HERO[day.event_type] || DAY_HERO.rest;
+  const pct  = day.calorie_target ? Math.min(100, Math.round((day.planned_calories / day.calorie_target) * 100)) : 0;
+  return (
+    <div style={{ ...dh.card, background: `linear-gradient(135deg, ${hero.grad[0]}, ${hero.grad[1]})` }}>
+      <div style={dh.bgEmoji}>{hero.emoji}</div>
+      <div style={dh.badge}>{hero.badge}</div>
+      <div style={dh.title}>{hero.title}</div>
+      <div style={dh.desc}>{hero.desc}</div>
+      {day.double_day && (
+        <div style={dh.doubleDayAlert}>⚡ Double Event Day — +15% calorie target today</div>
+      )}
+      <div style={dh.calRow}>
+        <div style={dh.calBarWrap}>
+          <div style={dh.calTrack}>
+            <div style={{ ...dh.calFill, width: `${pct}%` }} />
+          </div>
+        </div>
+        <div style={dh.calLabel}>{day.planned_calories} / {day.calorie_target ?? "–"} kcal</div>
+      </div>
+    </div>
+  );
+}
+const dh = {
+  card:           { margin:"14px 16px 0", borderRadius:"18px", padding:"18px 18px 16px", position:"relative", overflow:"hidden" },
+  bgEmoji:        { position:"absolute", right:"-10px", top:"-10px", fontSize:"90px", opacity:"0.12", transform:"rotate(10deg)", userSelect:"none", lineHeight:1 },
+  badge:          { display:"inline-flex", alignItems:"center", gap:"5px", background:"rgba(255,255,255,0.22)", border:"1px solid rgba(255,255,255,0.30)", padding:"3px 10px", borderRadius:"20px", fontSize:"12px", fontWeight:"700", color:"#fff", marginBottom:"8px" },
+  title:          { fontSize:"18px", fontWeight:"900", color:"#fff", marginBottom:"6px", lineHeight:"1.2", fontFamily:"'Nunito', sans-serif" },
+  desc:           { fontSize:"13px", color:"rgba(255,255,255,0.88)", lineHeight:"1.6" },
+  doubleDayAlert: { marginTop:"8px", background:"rgba(255,255,255,0.20)", borderRadius:"8px", padding:"5px 10px", fontSize:"12px", fontWeight:"700", color:"#fff" },
+  calRow:         { marginTop:"12px", background:"rgba(255,255,255,0.18)", borderRadius:"10px", padding:"8px 12px", display:"flex", alignItems:"center", gap:"10px" },
+  calBarWrap:     { flex:1 },
+  calTrack:       { height:"5px", background:"rgba(255,255,255,0.25)", borderRadius:"99px", overflow:"hidden" },
+  calFill:        { height:"100%", background:"rgba(255,255,255,0.80)", borderRadius:"99px", transition:"width 0.4s ease" },
+  calLabel:       { fontSize:"12px", color:"rgba(255,255,255,0.90)", fontWeight:"700", whiteSpace:"nowrap" },
+};
+
+// ── TimelineSlot ──────────────────────────────────────────────────────────────
+function TimelineSlot({ slot, date, allRecipes, athleteAllergens, isActive, isLast,
+                        onOpenPicker, onClosePicker, onAssign, onAutoSwap, onClear }) {
+  if (slot.double_day_alert) {
+    return (
+      <div style={ts.alertBanner}>
+        <span style={ts.alertIcon}>⚡</span>
+        <div>
+          <div style={ts.alertTitle}>Double Event Day</div>
+          <div style={ts.alertSub}>Two events today — calorie targets increased by 15%</div>
+        </div>
+      </div>
+    );
+  }
+
   const filled = !!slot.recipe_id;
 
   return (
-    <div style={sc.wrap}>
-      <div style={sc.label}>{slot.display_label}</div>
-
-      {filled ? (
-        <div style={{ ...sc.filledCard, ...(slot.is_ai_generated ? sc.aiCard : {}) }}>
-          {slot.is_ai_generated && <div style={sc.aiBadge}>✨ AI</div>}
-          <div style={sc.recipeName}>{slot.recipe_name}</div>
-          <div style={sc.recipeCal}>{slot.calories} kcal</div>
-          <div style={sc.actions}>
-            {slot.logged ? (
-              <div style={sc.eatenBadge}>✅ Eaten</div>
-            ) : (
-              <button style={sc.eatBtn} onClick={() => onLogEaten(date, slot.slot_name)}>
-                ✓ Mark as Eaten
-              </button>
-            )}
-            <button style={sc.swapBtn} onClick={() => onAutoSwap(date, slot.slot_name)} title="Get a different recipe">🔄</button>
-            <button style={sc.clearBtn} onClick={() => onClear(date, slot.slot_name)} title="Remove">✕</button>
+    <div style={ts.wrap}>
+      <div style={ts.lineCol}>
+        <div style={{ ...ts.dot, ...(slot.is_hydration ? ts.dotHydration : filled ? ts.dotFilled : ts.dotEmpty) }} />
+        {!isLast && <div style={ts.line} />}
+      </div>
+      <div style={ts.cardCol}>
+        <div style={ts.cardHeader}>
+          <div style={{ ...ts.iconWrap, ...(slot.is_hydration ? ts.iconWrapBlue : ts.iconWrapGreen) }}>
+            {slot.icon}
+          </div>
+          <div style={ts.headerText}>
+            <div style={ts.slotName}>{slot.display_label}</div>
+            <div style={ts.eatBy}>
+              {slot.is_hydration ? "💧" : "⏰"} {slot.eat_by_time}
+              {slot.note ? <span style={ts.conflictNote}> · {slot.note}</span> : null}
+            </div>
           </div>
         </div>
-      ) : (
-        <button style={sc.emptyCard} onClick={() => onOpenPicker(date, slot.slot_name)}>
-          + Add
-        </button>
-      )}
 
-      {isActive && (
-        <RecipePicker
-          slot={slot}
-          allRecipes={allRecipes}
-          athleteAllergens={athleteAllergens}
-          onSelect={(recipe) => { onAssign(date, slot.slot_name, recipe); onClosePicker(); }}
-          onClose={onClosePicker}
-        />
-      )}
-    </div>
-  );
-}
-const sc = {
-  wrap: { marginBottom: "6px" },
-  label: { fontSize: "13px", fontWeight: "700", color: "#4a6358", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "3px" },
-  emptyCard: { width: "100%", minHeight: "44px", background: "none", border: "1.5px dashed #d1d5db", borderRadius: "8px", color: "#4a6358", fontSize: "14px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" },
-  filledCard: { background: "#f4f8f5", border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "8px", position: "relative" },
-  aiCard: { background: "#f0fdf4", borderColor: "#b0e8c8" },
-  aiBadge: { fontSize: "11px", fontWeight: "800", color: "#2d6a4f", marginBottom: "2px" },
-  recipeName: { fontSize: "13px", fontWeight: "700", color: "#1b3a2a", lineHeight: 1.6, marginBottom: "2px" },
-  recipeCal: { fontSize: "13px", color: "#4a6358", marginBottom: "6px" },
-  actions: { display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" },
-  eatBtn: { flex: 1, background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "13px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
-  eatenBadge: { flex: 1, fontSize: "13px", fontWeight: "700", color: "#2d6a4f", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "6px", padding: "4px 6px", textAlign: "center" },
-  swapBtn: { background: "#f0f4f1", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "13px", cursor: "pointer" },
-  clearBtn: { background: "#fef2f2", border: "none", borderRadius: "6px", padding: "4px 6px", fontSize: "13px", cursor: "pointer", color: "#dc2626" },
-};
+        {slot.tags.length > 0 && (
+          <div style={ts.tags}>
+            {slot.tags.map(tag => {
+              const c = TAG_COLORS[tag] || { bg:"#f0f4f1", color:"#4a6358", border:"#dce8e0" };
+              return <span key={tag} style={{ ...ts.tag, background:c.bg, color:c.color, borderColor:c.border }}>{tag}</span>;
+            })}
+          </div>
+        )}
 
-// ── DayColumn ─────────────────────────────────────────────────────────────────
-function DayColumn({ day, allRecipes, athleteAllergens, activeSlot, onOpenPicker, onClosePicker, onAssign, onAutoSwap, onClear, onLogEaten }) {
-  const evColor = EVENT_COLORS[day.event_type] || EVENT_COLORS.rest;
-  const isToday = day.date === new Date().toISOString().split("T")[0];
+        {slot.is_hydration ? (
+          <div style={ts.hydrationInfo}>Water target based on today&apos;s training load</div>
+        ) : filled ? (
+          <div style={{ ...ts.filledCard, ...(slot.is_merged ? ts.mergedCard : {}), ...(slot.is_ai_generated ? ts.aiCard : {}) }}>
+            {slot.is_ai_generated && <div style={ts.aiBadge}>✨ AI</div>}
+            <div style={ts.recipeName}>{slot.recipe_name}</div>
+            <div style={ts.recipeCal}>{slot.calories} kcal</div>
+            <div style={ts.actions}>
+              <button style={ts.btnSwap} onClick={() => onAutoSwap(date, slot.slot_name)}>🔄 Swap</button>
+              <button style={ts.btnClear} onClick={() => onClear(date, slot.slot_name)}>✕ Remove</button>
+            </div>
+          </div>
+        ) : (
+          <button style={ts.addBtn} onClick={() => onOpenPicker(date, slot.slot_name)}>
+            ＋ {slot.is_merged ? "Add Recovery Dinner" : "Add Meal"}
+          </button>
+        )}
 
-  return (
-    <div style={{ ...dc.col, ...(isToday ? dc.colToday : {}) }}>
-      {/* Day header */}
-      <div style={dc.header}>
-        <div style={{ ...dc.dayLabel, ...(isToday ? dc.todayLabel : {}) }}>{day.day_label}</div>
-        <div style={{ ...dc.dateNum, ...(isToday ? dc.todayNum : {}) }}>
-          {new Date(day.date + "T12:00:00").getDate()}
-        </div>
-        <div style={{ ...dc.eventBadge, background: evColor.bg, color: evColor.text, borderColor: evColor.border }}>
-          {evColor.label}
-        </div>
-        {day.event_name && <div style={dc.eventName}>{day.event_name.length > 14 ? day.event_name.slice(0,13) + "…" : day.event_name}</div>}
+        {isActive && (
+          <RecipePicker
+            slot={slot}
+            allRecipes={allRecipes}
+            athleteAllergens={athleteAllergens}
+            onSelect={recipe => { onAssign(date, slot.slot_name, recipe); onClosePicker(); }}
+            onClose={onClosePicker}
+          />
+        )}
       </div>
-
-      <CalorieSummaryBar planned={day.planned_calories} target={day.calorie_target} />
-
-      {/* Slots */}
-      {day.slots.map(slot => (
-        <SlotCard
-          key={slot.slot_name}
-          slot={slot}
-          date={day.date}
-          allRecipes={allRecipes}
-          athleteAllergens={athleteAllergens}
-          isActive={activeSlot?.date === day.date && activeSlot?.slot === slot.slot_name}
-          onOpenPicker={(date, slotName) => onOpenPicker(date, slotName)}
-          onClosePicker={onClosePicker}
-          onAssign={onAssign}
-          onAutoSwap={onAutoSwap}
-          onClear={onClear}
-          onLogEaten={onLogEaten}
-        />
-      ))}
     </div>
   );
 }
-const dc = {
-  col: { flex: "0 0 160px", minWidth: "140px", padding: "10px 8px", borderRight: "1px solid #f3f4f6" },
-  colToday: { background: "#fafffe" },
-  header: { textAlign: "center", marginBottom: "8px", paddingBottom: "8px", borderBottom: "1.5px solid #e5e7eb" },
-  dayLabel: { fontSize: "13px", fontWeight: "700", color: "#4a6358", textTransform: "uppercase", letterSpacing: "0.06em" },
-  todayLabel: { color: "#2d6a4f" },
-  dateNum: { fontSize: "22px", fontWeight: "800", color: "#1b3a2a", lineHeight: 1.6, marginBottom: "4px" },
-  todayNum: { color: "#2d6a4f" },
-  eventBadge: { fontSize: "13px", fontWeight: "700", padding: "2px 6px", borderRadius: "99px", border: "1px solid", display: "inline-block", marginBottom: "2px" },
-  eventName: { fontSize: "13px", color: "#4a6358", marginTop: "2px" },
+const ts = {
+  wrap:         { display:"flex", gap:"0", marginBottom:"0" },
+  lineCol:      { display:"flex", flexDirection:"column", alignItems:"center", width:"24px", flexShrink:0, paddingTop:"8px" },
+  dot:          { width:"12px", height:"12px", borderRadius:"50%", flexShrink:0, zIndex:1 },
+  dotFilled:    { background:"#2d6a4f", border:"2px solid #2d6a4f" },
+  dotEmpty:     { background:"#fff", border:"2px solid #2d6a4f" },
+  dotHydration: { background:"#1a6ab8", border:"2px solid #1a6ab8" },
+  line:         { width:"2px", flex:1, background:"linear-gradient(to bottom, #2d6a4f, #b0e8c8)", marginTop:"3px" },
+  cardCol:      { flex:1, paddingBottom:"14px" },
+  cardHeader:   { display:"flex", alignItems:"flex-start", gap:"10px", marginBottom:"8px" },
+  iconWrap:     { width:"38px", height:"38px", borderRadius:"11px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"19px", flexShrink:0 },
+  iconWrapGreen:{ background:"#f0fdf4" },
+  iconWrapBlue: { background:"#e8f4ff" },
+  headerText:   { flex:1 },
+  slotName:     { fontSize:"15px", fontWeight:"800", color:"#1b3a2a", lineHeight:"1.2", fontFamily:"'Nunito', sans-serif" },
+  eatBy:        { fontSize:"12px", color:"#2d6a4f", fontWeight:"700", marginTop:"2px" },
+  conflictNote: { color:"#b45309", fontWeight:"600" },
+  tags:         { display:"flex", flexWrap:"wrap", gap:"5px", marginBottom:"10px" },
+  tag:          { padding:"3px 9px", borderRadius:"20px", fontSize:"11px", fontWeight:"700", border:"1.5px solid" },
+  hydrationInfo:{ fontSize:"12px", color:"#5a8ab8", fontStyle:"italic", padding:"6px 0" },
+  filledCard:   { background:"#f4f8f5", border:"1.5px solid #e5e7eb", borderRadius:"10px", padding:"10px 12px" },
+  mergedCard:   { background:"#f5f0ff", borderColor:"#dbbef4" },
+  aiCard:       { background:"#f0fdf4", borderColor:"#b0e8c8" },
+  aiBadge:      { fontSize:"10px", fontWeight:"800", color:"#2d6a4f", marginBottom:"2px" },
+  recipeName:   { fontSize:"14px", fontWeight:"700", color:"#1b3a2a", marginBottom:"2px", lineHeight:"1.4" },
+  recipeCal:    { fontSize:"13px", color:"#4a6358", marginBottom:"8px" },
+  actions:      { display:"flex", gap:"6px" },
+  btnSwap:      { background:"#f0f4f1", border:"none", borderRadius:"7px", padding:"6px 10px", fontSize:"13px", cursor:"pointer", color:"#4a6358", fontWeight:"600" },
+  btnClear:     { background:"#fef2f2", border:"none", borderRadius:"7px", padding:"6px 10px", fontSize:"13px", cursor:"pointer", color:"#dc2626", fontWeight:"600" },
+  addBtn:       { width:"100%", padding:"9px 12px", background:"#f0fdf4", border:"1.5px solid #2d6a4f", borderRadius:"9px", color:"#2d6a4f", fontSize:"14px", fontWeight:"700", cursor:"pointer" },
+  alertBanner:  { display:"flex", alignItems:"center", gap:"10px", background:"#fffbeb", border:"1.5px solid #fde68a", borderRadius:"12px", padding:"10px 14px", marginBottom:"14px" },
+  alertIcon:    { fontSize:"20px" },
+  alertTitle:   { fontSize:"14px", fontWeight:"800", color:"#92400e" },
+  alertSub:     { fontSize:"12px", color:"#b45309" },
 };
 
 // ── MealPlannerScreen ─────────────────────────────────────────────────────────
 export default function MealPlannerScreen({ athlete, onNavigate, freshImport = false, onFreshImportSeen }) {
-  const [weekStart, setWeekStart]     = useState(getMondayOf(new Date()));
-  const [weekData, setWeekData]       = useState(null);
-  const [allRecipes, setAllRecipes]   = useState([]);
-  const [activeSlot, setActiveSlot]   = useState(null); // { date, slot }
-  const [generating, setGenerating]   = useState(false);
-  const [loading, setLoading]         = useState(false);
-  const [error, setError]             = useState("");
-  const [aiReasoning, setAiReasoning] = useState("");
-  const [overwriteWarning, setOverwriteWarning] = useState(false);
+  const todayISO = new Date().toISOString().split("T")[0];
+  const [weekStart, setWeekStart]       = useState(getMondayOf(new Date()));
+  const [selectedDate, setSelectedDate] = useState(todayISO);
+  const [weekData, setWeekData]         = useState(null);
+  const [allRecipes, setAllRecipes]     = useState([]);
+  const [activeSlot, setActiveSlot]     = useState(null);
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState("");
 
   const athleteAllergens = (athlete.allergies || "").split(",").map(a => a.trim().toLowerCase()).filter(Boolean);
 
-  // Load recipes once
   useEffect(() => {
     fetch(`${API}/api/recipes/`)
       .then(r => r.json())
-      .then(setAllRecipes)
+      .then(data => setAllRecipes(data.recipes || []))
       .catch(() => {});
   }, []);
 
-  // Load week plan whenever weekStart changes
   const loadWeek = useCallback(async () => {
     setLoading(true); setError("");
     const res = await fetch(`${API}/api/meal-plans/${athlete.id}?week_start=${toISO(weekStart)}`);
@@ -255,10 +310,22 @@ export default function MealPlannerScreen({ athlete, onNavigate, freshImport = f
 
   useEffect(() => { loadWeek(); }, [loadWeek]);
 
-  function prevWeek() { setWeekStart(addDays(weekStart, -7)); setActiveSlot(null); setAiReasoning(""); }
-  function nextWeek() { setWeekStart(addDays(weekStart,  7)); setActiveSlot(null); setAiReasoning(""); }
+  function goToPrevDay() {
+    const prev = addDays(new Date(selectedDate + "T12:00:00"), -1);
+    const monday = getMondayOf(prev);
+    if (toISO(monday) !== toISO(weekStart)) setWeekStart(monday);
+    setSelectedDate(toISO(prev));
+    setActiveSlot(null);
+  }
 
-  // Assign recipe to a slot
+  function goToNextDay() {
+    const next = addDays(new Date(selectedDate + "T12:00:00"), 1);
+    const monday = getMondayOf(next);
+    if (toISO(monday) !== toISO(weekStart)) setWeekStart(monday);
+    setSelectedDate(toISO(next));
+    setActiveSlot(null);
+  }
+
   async function handleAssign(date, slotName, recipe) {
     const res = await fetch(`${API}/api/meal-plans/${athlete.id}/slot`, {
       method: "PUT",
@@ -271,44 +338,24 @@ export default function MealPlannerScreen({ athlete, onNavigate, freshImport = f
     }
   }
 
-  // Auto-swap: pick a random different recipe from the same slot category
   function handleAutoSwap(date, slotName) {
     const day = weekData?.days.find(d => d.date === date);
     const slot = day?.slots.find(s => s.slot_name === slotName);
     if (!slot?.recipe_category) return;
-
-    const safe = allRecipes.filter(r => {
-      if (r.category !== slot.recipe_category) return false;
-      if (athleteAllergens.some(a => r.allergens.map(x => x.toLowerCase()).includes(a))) return false;
-      return true;
-    });
-
-    const alternatives = safe.filter(r => r.id !== slot.recipe_id);
-    if (alternatives.length === 0) return;
-
-    const pick = alternatives[Math.floor(Math.random() * alternatives.length)];
-    handleAssign(date, slotName, pick);
+    const safe = allRecipes.filter(r =>
+      r.category === slot.recipe_category &&
+      !athleteAllergens.some(a => r.allergens.map(x => x.toLowerCase()).includes(a))
+    );
+    const alts = safe.filter(r => r.id !== slot.recipe_id);
+    if (!alts.length) return;
+    handleAssign(date, slotName, alts[Math.floor(Math.random() * alts.length)]);
   }
 
-  // Clear a slot
   async function handleClear(date, slotName) {
     const res = await fetch(`${API}/api/meal-plans/${athlete.id}/slot?plan_date=${date}&slot_name=${slotName}`, { method: "DELETE" });
     if (res.ok) updateSlotInState(date, slotName, { recipe_id: null, recipe_name: null, calories: null, carbs_g: null, protein_g: null, fat_g: null, is_ai_generated: false, logged: false });
   }
 
-  // Mark as eaten
-  async function handleLogEaten(date, slotName) {
-    const res = await fetch(`${API}/api/meal-plans/${athlete.id}/log-slot`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan_date: date, slot_name: slotName }),
-    });
-    if (res.ok) {
-      updateSlotFieldInState(date, slotName, "logged", true);
-    }
-  }
-
-  // Optimistic state update helpers
   function updateSlotInState(date, slotName, patch) {
     setWeekData(prev => {
       if (!prev) return prev;
@@ -322,43 +369,8 @@ export default function MealPlannerScreen({ athlete, onNavigate, freshImport = f
     });
   }
 
-  function updateSlotFieldInState(date, slotName, field, value) {
-    setWeekData(prev => {
-      if (!prev) return prev;
-      const days = prev.days.map(day => {
-        if (day.date !== date) return day;
-        const slots = day.slots.map(s => s.slot_name === slotName ? { ...s, [field]: value } : s);
-        return { ...day, slots };
-      });
-      return { ...prev, days };
-    });
-  }
-
-  // Generate AI plan
-  async function handleGenerate(overwrite = false) {
-    // Check if any slots are already filled
-    if (!overwrite && weekData) {
-      const filled = weekData.days.reduce((n, d) => n + d.slots.filter(s => s.recipe_id).length, 0);
-      if (filled > 0) { setOverwriteWarning(true); return; }
-    }
-    setOverwriteWarning(false);
-    setGenerating(true); setError(""); setAiReasoning("");
-    const res = await fetch(`${API}/api/meal-plans/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ athlete_id: athlete.id, week_start: toISO(weekStart), overwrite_existing: overwrite }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setWeekData(data);
-      setAiReasoning(data.ai_reasoning || "");
-    } else {
-      setError(data.detail || "AI generation failed. Please try again.");
-    }
-    setGenerating(false);
-  }
-
-  const filledCount = weekData ? weekData.days.reduce((n, d) => n + d.slots.filter(s => s.recipe_id).length, 0) : 0;
+  const selectedDay = weekData?.days.find(d => d.date === selectedDate) ?? null;
+  const selectedDt  = new Date(selectedDate + "T12:00:00");
 
   return (
     <div>
@@ -367,79 +379,77 @@ export default function MealPlannerScreen({ athlete, onNavigate, freshImport = f
           <div style={s.importBannerInner}>
             <div style={s.importBannerText}>
               <div style={s.importBannerTitle}>🎉 Schedule loaded — meal slots are ready!</div>
-              <div style={s.importBannerSub}>Assign meals to each slot, or let AI generate the full week in one tap.</div>
+              <div style={s.importBannerSub}>Tap each day to plan meals for that day.</div>
             </div>
             <button style={s.importBannerClose} onClick={onFreshImportSeen}>✕</button>
           </div>
         </div>
       )}
 
-      <h2 style={s.title}>🍳 Meal Planner</h2>
-      <p style={s.subtitle}>
-        Plan {athlete.first_name}'s meals for the week. Slots adapt to each day's training schedule.
-        Tap any planned meal to log it as eaten.
-      </p>
-
-      {/* Week navigator */}
-      <div style={s.navRow}>
-        <button style={s.navBtn} onClick={prevWeek}>‹</button>
-        <div style={s.weekLabel}>Week of {formatWeekRange(weekStart)}</div>
-        <button style={s.navBtn} onClick={nextWeek}>›</button>
-      </div>
-
-      {/* Generate AI plan */}
-      {overwriteWarning ? (
-        <div style={s.overwriteWarn}>
-          <span>{filledCount} slots are already planned. Overwrite them with AI suggestions?</span>
-          <div style={s.overwriteActions}>
-            <button style={s.overwriteYes} onClick={() => handleGenerate(true)}>Yes, overwrite</button>
-            <button style={s.overwriteKeep} onClick={() => handleGenerate(false)}>Fill empty slots only</button>
-            <button style={s.overwriteCancel} onClick={() => setOverwriteWarning(false)}>Cancel</button>
-          </div>
+      <div style={s.headerRow}>
+        <div>
+          <h2 style={s.title}>🍳 Meal Planner</h2>
+          <p style={s.subtitle}>{athlete.first_name}&apos;s daily fueling plan</p>
         </div>
-      ) : (
-        <button style={s.genBtn} onClick={() => handleGenerate(false)} disabled={generating}>
-          {generating ? "✨ Building your week plan…" : "✨ Generate Week Plan"}
-        </button>
-      )}
+        <div style={s.toggleWrap}>
+          <div style={s.toggleActive}>Day</div>
+          <div style={s.toggleDisabled} title="Coming soon">Week</div>
+        </div>
+      </div>
 
       {error && <div style={s.errorBox}>{error}</div>}
 
-      {aiReasoning && (
-        <div style={s.reasoningBox}>
-          <span style={s.reasoningLabel}>AI reasoning: </span>{aiReasoning}
-        </div>
-      )}
-
-      {/* Week grid */}
       {loading ? (
         <div style={s.loadingMsg}>Loading plan…</div>
       ) : weekData ? (
-        <div style={s.weekGrid}>
-          {weekData.days.map(day => (
-            <DayColumn
-              key={day.date}
-              day={day}
-              allRecipes={allRecipes}
-              athleteAllergens={athleteAllergens}
-              activeSlot={activeSlot}
-              onOpenPicker={(date, slot) => setActiveSlot({ date, slot })}
-              onClosePicker={() => setActiveSlot(null)}
-              onAssign={handleAssign}
-              onAutoSwap={handleAutoSwap}
-              onClear={handleClear}
-              onLogEaten={handleLogEaten}
-            />
-          ))}
-        </div>
-      ) : null}
+        <>
+          <WeekDots
+            days={weekData.days}
+            selectedDate={selectedDate}
+            onSelect={date => { setSelectedDate(date); setActiveSlot(null); }}
+          />
 
-      {/* Legend */}
-      <div style={s.legend}>
-        <span style={s.legendItem}><span style={{ ...s.legendDot, background: "#2d6a4f" }} />AI generated</span>
-        <span style={s.legendItem}><span style={{ ...s.legendDot, background: "#8aa898" }} />Manual</span>
-        <span style={s.legendItem}>✅ = Logged to Nutrition tab</span>
-      </div>
+          <div style={s.dayNav}>
+            <button style={s.dayNavBtn} onClick={goToPrevDay}>‹</button>
+            <div style={s.dayNavCenter}>
+              <div style={s.dayNavDow}>
+                {selectedDt.toLocaleDateString("en-US", { weekday:"long" }).toUpperCase()}
+              </div>
+              <div style={s.dayNavDate}>{selectedDt.getDate()}</div>
+              <div style={s.dayNavMonth}>
+                {selectedDt.toLocaleDateString("en-US", { month:"long", year:"numeric" })}
+              </div>
+            </div>
+            <button style={s.dayNavBtn} onClick={goToNextDay}>›</button>
+          </div>
+
+          {selectedDay ? (
+            <>
+              <DayHero day={selectedDay} />
+              <div style={s.timeline}>
+                {selectedDay.slots.map((slot, idx) => (
+                  <TimelineSlot
+                    key={slot.slot_name}
+                    slot={slot}
+                    date={selectedDay.date}
+                    allRecipes={allRecipes}
+                    athleteAllergens={athleteAllergens}
+                    isActive={activeSlot?.date === selectedDay.date && activeSlot?.slot === slot.slot_name}
+                    isLast={idx === selectedDay.slots.length - 1}
+                    onOpenPicker={(date, slotName) => setActiveSlot({ date, slot: slotName })}
+                    onClosePicker={() => setActiveSlot(null)}
+                    onAssign={handleAssign}
+                    onAutoSwap={handleAutoSwap}
+                    onClear={handleClear}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div style={s.loadingMsg}>Select a day above.</div>
+          )}
+        </>
+      ) : null}
 
       <p style={s.disclaimer}>
         Meal plans are suggestions based on event type and nutrition targets.
@@ -450,39 +460,32 @@ export default function MealPlannerScreen({ athlete, onNavigate, freshImport = f
 }
 
 const s = {
-  importBanner: { margin: "0 0 16px", borderRadius: "14px", background: "linear-gradient(135deg, #0f4c35 0%, #1a7a54 100%)", padding: "1px" },
-  importBannerInner: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", background: "linear-gradient(135deg, #0f4c35 0%, #1a7a54 100%)", borderRadius: "13px", padding: "16px 18px" },
-  importBannerText: { flex: 1 },
-  importBannerTitle: { fontSize: "17px", fontWeight: "700", color: "#ffffff", marginBottom: "3px" },
-  importBannerSub: { fontSize: "15px", color: "#b7e4c7", lineHeight: 1.6 },
-  importBannerClose: { background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", borderRadius: "50%", width: "28px", height: "28px", cursor: "pointer", fontSize: "15px", flexShrink: 0 },
+  importBanner:      { margin:"0 0 16px", borderRadius:"14px", background:"linear-gradient(135deg, #0f4c35, #1a7a54)", padding:"1px" },
+  importBannerInner: { display:"flex", alignItems:"center", justifyContent:"space-between", gap:"12px", background:"linear-gradient(135deg, #0f4c35, #1a7a54)", borderRadius:"13px", padding:"16px 18px" },
+  importBannerText:  { flex:1 },
+  importBannerTitle: { fontSize:"17px", fontWeight:"700", color:"#fff", marginBottom:"3px" },
+  importBannerSub:   { fontSize:"15px", color:"#b7e4c7", lineHeight:"1.6" },
+  importBannerClose: { background:"rgba(255,255,255,0.15)", border:"none", color:"#fff", borderRadius:"50%", width:"28px", height:"28px", cursor:"pointer", fontSize:"15px", flexShrink:0 },
 
-  title: { fontSize: "20px", fontWeight: "700", color: "#1b3a2a", margin: "0 0 4px" },
-  subtitle: { fontSize: "15px", color: "#4a6358", marginBottom: "16px", lineHeight: 1.5 },
+  headerRow:     { display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"0" },
+  title:         { fontSize:"20px", fontWeight:"700", color:"#1b3a2a", margin:"0 0 2px" },
+  subtitle:      { fontSize:"14px", color:"#4a6358", margin:"0 0 12px" },
 
-  navRow: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" },
-  navBtn: { background: "#f0f4f1", border: "1.5px solid #e5e7eb", borderRadius: "8px", width: "36px", height: "36px", fontSize: "20px", cursor: "pointer", color: "#4a6358", fontWeight: "700" },
-  weekLabel: { fontSize: "15px", fontWeight: "700", color: "#1b3a2a", textAlign: "center" },
+  toggleWrap:    { display:"flex", background:"#f0f4f1", borderRadius:"10px", padding:"3px", gap:"2px", flexShrink:0 },
+  toggleActive:  { padding:"5px 14px", borderRadius:"7px", background:"#2d6a4f", color:"#fff", fontSize:"13px", fontWeight:"700", boxShadow:"0 1px 4px rgba(45,106,79,0.25)" },
+  toggleDisabled:{ padding:"5px 14px", borderRadius:"7px", color:"#c0c0c0", fontSize:"13px", fontWeight:"700", cursor:"not-allowed" },
 
-  genBtn: { width: "100%", padding: "12px", background: "linear-gradient(135deg, #0f4c35, #1a7a54)", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "700", cursor: "pointer", marginBottom: "12px", letterSpacing: "0.01em" },
+  errorBox:      { background:"#fef2f2", border:"1.5px solid #fecaca", borderRadius:"8px", padding:"10px 14px", fontSize:"15px", color:"#dc2626", marginBottom:"12px" },
+  loadingMsg:    { textAlign:"center", color:"#4a6358", padding:"40px 0", fontSize:"16px" },
 
-  overwriteWarn: { background: "#fffbeb", border: "1.5px solid #fde68a", borderRadius: "10px", padding: "12px 16px", marginBottom: "12px", fontSize: "15px", color: "#92400e" },
-  overwriteActions: { display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" },
-  overwriteYes: { background: "#dc2626", color: "#fff", border: "none", borderRadius: "7px", padding: "6px 14px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
-  overwriteKeep: { background: "linear-gradient(135deg, #2d6a4f, #52b788)", color: "#fff", border: "none", borderRadius: "7px", padding: "6px 14px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
-  overwriteCancel: { background: "#f0f4f1", color: "#4a6358", border: "1.5px solid #e5e7eb", borderRadius: "7px", padding: "6px 14px", fontSize: "14px", fontWeight: "600", cursor: "pointer" },
+  dayNav:        { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 20px 0" },
+  dayNavBtn:     { width:"38px", height:"38px", background:"#fff", border:"1.5px solid #dce8e0", borderRadius:"10px", fontSize:"20px", fontWeight:"700", color:"#4a6358", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" },
+  dayNavCenter:  { textAlign:"center" },
+  dayNavDow:     { fontSize:"12px", color:"#8aa898", fontWeight:"700", letterSpacing:"0.08em" },
+  dayNavDate:    { fontSize:"28px", fontWeight:"900", color:"#1b3a2a", lineHeight:"1.1", fontFamily:"'Nunito', sans-serif" },
+  dayNavMonth:   { fontSize:"13px", color:"#6b8f7e", marginTop:"1px" },
 
-  errorBox: { background: "#fef2f2", border: "1.5px solid #fecaca", borderRadius: "8px", padding: "10px 14px", fontSize: "15px", color: "#dc2626", marginBottom: "12px" },
-  reasoningBox: { background: "#f0fdf4", border: "1.5px solid #bbf7d0", borderRadius: "8px", padding: "10px 14px", fontSize: "14px", color: "#4a6358", marginBottom: "12px", lineHeight: 1.5 },
-  reasoningLabel: { fontWeight: "700", color: "#2d6a4f" },
+  timeline:      { padding:"16px 16px 8px", display:"flex", flexDirection:"column" },
 
-  loadingMsg: { textAlign: "center", color: "#4a6358", padding: "40px 0", fontSize: "16px" },
-
-  weekGrid: { display: "flex", overflowX: "auto", border: "1.5px solid #e5e7eb", borderRadius: "12px", marginBottom: "16px", scrollbarWidth: "thin" },
-
-  legend: { display: "flex", gap: "16px", fontSize: "13px", color: "#4a6358", marginBottom: "8px", flexWrap: "wrap" },
-  legendItem: { display: "flex", alignItems: "center", gap: "4px" },
-  legendDot: { width: "8px", height: "8px", borderRadius: "50%", display: "inline-block" },
-
-  disclaimer: { fontSize: "13px", color: "#8aa898", textAlign: "center", marginTop: "4px", lineHeight: 1.6 },
+  disclaimer:    { fontSize:"13px", color:"#8aa898", textAlign:"center", marginTop:"16px", lineHeight:"1.6", padding:"0 8px 16px" },
 };
