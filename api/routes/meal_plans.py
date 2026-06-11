@@ -3,44 +3,10 @@ from datetime import date, timedelta
 from api.models import MealPlanSlotUpdate, MealPlanLogSlot, MealPlanGenerateRequest
 from api.database import get_conn
 from api.services import recipe_db, claude_ai
-from api.routes.nutrition import get_targets  # reuse target calculation
+from api.routes.nutrition import get_targets
+from api.services.meal_timing import compute_meal_slots
 
 router = APIRouter()
-
-SLOTS_BY_EVENT = {
-    "rest":       ["breakfast", "lunch", "dinner", "snack"],
-    "practice":   ["breakfast", "pre-game", "post-game-recovery", "dinner", "bedtime-snack"],
-    "training":   ["breakfast", "pre-game", "post-game-recovery", "dinner", "bedtime-snack"],
-    "strength":   ["breakfast", "pre-game", "post-game-recovery", "dinner", "bedtime-snack"],
-    "game":       ["pre-game", "pre-game-snack", "halftime", "post-game-recovery", "dinner", "bedtime-snack"],
-    "tournament": ["pre-game", "pre-game-snack", "halftime", "between-games", "post-game-recovery", "dinner", "bedtime-snack"],
-}
-
-SLOT_TO_CATEGORY = {
-    "breakfast":          "practice",
-    "lunch":              "meal-prep",
-    "dinner":             "practice",
-    "snack":              "pre-game-snack",
-    "pre-game":           "pre-game",
-    "pre-game-snack":     "pre-game-snack",
-    "halftime":           "halftime",
-    "post-game-recovery": "post-game-recovery",
-    "between-games":      "tournament",
-    "bedtime-snack":      "tournament",
-}
-
-SLOT_LABELS = {
-    "breakfast":          "Breakfast",
-    "lunch":              "Lunch",
-    "dinner":             "Dinner",
-    "snack":              "Snack",
-    "pre-game":           "Pre-Game Meal",
-    "pre-game-snack":     "Pre-Game Snack",
-    "halftime":           "Halftime Fuel",
-    "post-game-recovery": "Post-Game Recovery",
-    "between-games":      "Between Games",
-    "bedtime-snack":      "Bedtime Snack",
-}
 
 DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -56,39 +22,57 @@ def _build_week(athlete_id: int, week_start: date, conn) -> list:
         day_date = week_start + timedelta(days=i)
         date_str = day_date.isoformat()
 
-        # Get event for this day
-        event = conn.execute(
-            "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time LIMIT 1",
+        # Fetch ALL events for this day to detect double-day
+        event_rows = conn.execute(
+            "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time",
             (athlete_id, date_str),
-        ).fetchone()
+        ).fetchall()
+        events = [dict(r) for r in event_rows]
 
-        event_type = dict(event)["event_type"] if event else "rest"
-        event_name = dict(event)["event_name"] if event else None
+        event_type   = events[0]["event_type"] if events else "rest"
+        event_name   = events[0]["event_name"] if events else None
+        start_time   = events[0]["start_time"] if events else None
+        duration_h   = events[0]["duration_hours"] if events else None
+        double_day   = len(events) >= 2
+        second_start = events[1]["start_time"] if double_day else None
 
-        # Get calorie target
+        # Calorie target
         target_row = conn.execute(
             "SELECT total_calories FROM daily_targets WHERE athlete_id = ? AND target_date = ?",
             (athlete_id, date_str),
         ).fetchone()
         calorie_target = dict(target_row)["total_calories"] if target_row else None
 
-        # Get filled slots from DB
+        # Filled slots from DB
         rows = conn.execute(
             "SELECT * FROM meal_plans WHERE athlete_id = ? AND plan_date = ?",
             (athlete_id, date_str),
         ).fetchall()
         filled = {dict(r)["slot_name"]: dict(r) for r in rows}
 
-        # Build slot list from event type
-        slot_names = SLOTS_BY_EVENT.get(event_type, SLOTS_BY_EVENT["rest"])
+        # Compute dynamic slot list
+        slot_defs = compute_meal_slots(
+            event_type, start_time, duration_h,
+            double_day=double_day, second_start_time=second_start,
+        )
+
         slots = []
         planned_calories = 0
-        for slot_name in slot_names:
-            f = filled.get(slot_name)
+        for sd in slot_defs:
+            sname = sd["slot_name"]
+            f = filled.get(sname)
             slot = {
-                "slot_name":       slot_name,
-                "display_label":   SLOT_LABELS.get(slot_name, slot_name),
-                "recipe_category": SLOT_TO_CATEGORY.get(slot_name, "practice"),
+                "slot_name":       sname,
+                "display_label":   sd["display_label"],
+                "eat_by_time":     sd["eat_by_time"],
+                "time_note":       sd["time_note"],
+                "tags":            sd["tags"],
+                "icon":            sd["icon"],
+                "is_hydration":    sd["is_hydration"],
+                "is_merged":       sd["is_merged"],
+                "note":            sd["note"],
+                "double_day_alert": sd.get("double_day_alert", False),
+                "recipe_category": sd["recipe_category"],
                 "recipe_id":       f["recipe_id"]   if f else None,
                 "recipe_name":     f["recipe_name"] if f else None,
                 "calories":        f["calories"]    if f else None,
@@ -109,6 +93,7 @@ def _build_week(athlete_id: int, week_start: date, conn) -> list:
             "event_name":       event_name,
             "calorie_target":   calorie_target,
             "planned_calories": round(planned_calories),
+            "double_day":       double_day,
             "slots":            slots,
         })
     return days
@@ -244,8 +229,8 @@ def generate_plan(data: MealPlanGenerateRequest):
             ).fetchone()
             calorie_target = dict(target_row)["total_calories"] if target_row else 2000
 
-            slot_names = SLOTS_BY_EVENT.get(event_type, SLOTS_BY_EVENT["rest"])
-            slots = [{"slot_name": s, "recipe_category": SLOT_TO_CATEGORY.get(s, "practice")} for s in slot_names]
+            slot_defs = compute_meal_slots(event_type, None, None)
+            slots = [{"slot_name": sd["slot_name"], "recipe_category": sd["recipe_category"]} for sd in slot_defs]
 
             week_schedule.append({
                 "date": date_str,
