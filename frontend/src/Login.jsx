@@ -160,11 +160,8 @@ export default function Login({ onLogin, onNewAccount }) {
 
             <h1 style={s.bigHeadline}>Fuel your game.</h1>
             <p style={s.heroSub}>
-              Smart nutrition guidance for young soccer athletes and their families.
-            </p>
-            <p style={s.heroBody}>
-              Build better eating habits, prepare for practices and games, and get simple daily
-              recommendations based on your athlete's schedule.
+              Smart fueling, synced to your athlete's daily schedule — built by a sports dietitian mom who's lived this journey to D1.<br /><br />
+              Nutrient timing, meal plans, and hydration for every practice, game, and tournament.
             </p>
 
             <button style={s.primaryBtn} onClick={() => go("who")}>
