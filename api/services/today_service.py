@@ -452,6 +452,87 @@ def get_mission_items(
     ]
 
 
+# ── MACRO FOCUS MAPPING ───────────────────────────────────────────────────────
+# Maps slot_name from compute_meal_slots to a display label shown in Today's Mission.
+# slot_names use hyphens (from meal_timing.py); underscore variants are also included
+# for any callers using underscore-style keys.
+
+MACRO_FOCUS_MAP = {
+    # Core slots from compute_meal_slots (hyphen-separated)
+    "breakfast":                    "Balanced Fuel",
+    "mid-morning-snack":            "Quick Fuel",
+    "lunch":                        "High Carbs",
+    "afternoon-snack":              "Quick Fuel",
+    "dinner":                       "High Protein + Carbs",
+    "evening-recovery":             "Protein Focus",
+    "night-fuel":                   "Protein Focus",
+    "pre-game-fuel":                "High Carbs",
+    "pre-training":                 "High Carbs + Protein",
+    "power-snack":                  "Fast Carbs",
+    "halftime-fueling":             "Fast Carbs",
+    "recovery-fuel":                "Recovery Focus",
+    "recovery-dinner":              "High Protein + Carbs",
+    "between-games":                "Electrolytes + Carbs",
+    # Underscore variants
+    "pre_game_breakfast":           "High Carbs",
+    "pre_game_snack":               "High Carbs",
+    "halftime":                     "Fast Carbs",
+    "recovery_snack":               "Recovery Focus",
+    "recovery_lunch":               "High Protein + Carbs",
+    "pre_practice_lunch":           "High Carbs + Protein",
+    "pre_practice_snack":           "High Carbs",
+    "post_practice_dinner":         "Recovery Focus",
+    "pre_strength_lunch":           "High Protein + Carbs",
+    "post_strength_snack":          "High Protein",
+    "bedtime_casein":               "Protein Focus",
+    "pregame_breakfast":            "High Carbs",
+    "pregame_lunch":                "High Carbs",
+    "pregame_snack":                "High Carbs",
+    "pregame_dinner":               "Max Carb Load",
+    "tournament_breakfast":         "High Carbs",
+    "between_games":                "Electrolytes + Carbs",
+    "tournament_recovery":          "Recovery Focus",
+    "recovery_breakfast":           "Light Fuel",
+    "recovery_dinner":              "Anti-Inflammatory",
+    "snack":                        "Quick Fuel",
+    "bedtime_snack":                "Protein Focus",
+}
+
+
+def get_macro_focus(meal_type: str) -> str:
+    """Returns the macro focus label for a given slot/meal_type. Never returns None."""
+    if not meal_type:
+        return "Fuel Window"
+    if meal_type in MACRO_FOCUS_MAP:
+        return MACRO_FOCUS_MAP[meal_type]
+    key = meal_type.lower().replace(" ", "_").replace("-", "_")
+    return MACRO_FOCUS_MAP.get(key, "Fuel Window")
+
+
+def build_mission_items_from_slots(slot_defs: list, logged_slots: dict) -> list:
+    """
+    Converts compute_meal_slots output into Today's Mission items.
+    Skips hydration-only slots and double-day alert banners.
+    logged_slots: {slot_name: bool} from the meal_plans table.
+    """
+    missions = []
+    i = 0
+    for slot in slot_defs:
+        if slot.get("is_hydration") or slot.get("double_day_alert"):
+            continue
+        slot_name = slot["slot_name"]
+        missions.append({
+            "id":          f"mission_{i}",
+            "time":        slot.get("eat_by_time", ""),
+            "label":       slot.get("display_label", slot_name),
+            "macro_focus": get_macro_focus(slot_name),
+            "logged":      logged_slots.get(slot_name, False),
+            "meal_type":   slot_name,
+        })
+        i += 1
+    return missions
+
+
 def calculate_performance_forecast(traffic_light: dict) -> dict:
     """Derives 4 performance metrics from nutrition traffic light. Pure math."""
     def pct(key): return min(traffic_light.get(key, {}).get("pct_met") or 0, 100)

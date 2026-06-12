@@ -55,6 +55,12 @@ export default function Today({ athlete, onNavigate }) {
 
   const events       = summary?.events ?? [];
   const eventType    = summary?.event_type ?? "rest";
+
+  function getEventLabel(et) {
+    return { game: "Game Day", tournament: "Tournament Day", practice: "Practice Day",
+             strength: "Strength Day", pregame_day: "Pre-Game Day",
+             recovery: "Recovery Day", rest: "Rest Day" }[et] || "Today";
+  }
   const tl           = summary?.traffic_light ?? {};
   const fuelScore    = tl.daily_fuel_score ?? 0;
   const targets      = summary?.targets ?? {};
@@ -78,6 +84,7 @@ export default function Today({ athlete, onNavigate }) {
         <DailyMission
           missionItems={missionItems}
           eventType={eventType}
+          eventLabel={getEventLabel(eventType)}
           date={summary?.date}
           athleteId={athlete.id}
           onToast={showToast}

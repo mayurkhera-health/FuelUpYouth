@@ -11,8 +11,9 @@ from api.services.today_service import (
     get_athlete_streak,
     get_urgent_action,
     calculate_performance_forecast,
-    get_mission_items,
+    build_mission_items_from_slots,
 )
+from api.services.meal_timing import compute_meal_slots
 
 router = APIRouter()
 
@@ -64,6 +65,17 @@ def get_daily_summary(athlete_id: int, date: str = None):
             (athlete_id, tomorrow),
         ).fetchone()
 
+        # Build mission items from the same slot definitions used by the Meal Plan tab
+        start_time     = events[0]["start_time"]     if events else None
+        duration_hours = events[0]["duration_hours"] if events else None
+        slot_defs = compute_meal_slots(event_type, start_time, duration_hours)
+        plan_rows = conn.execute(
+            "SELECT slot_name, logged FROM meal_plans WHERE athlete_id = ? AND plan_date = ?",
+            (athlete_id, target_date),
+        ).fetchall()
+        logged_slots = {r["slot_name"]: bool(r["logged"]) for r in plan_rows}
+        mission_items = build_mission_items_from_slots(slot_defs, logged_slots)
+
         return {
             "athlete": {
                 "first_name":        athlete["first_name"],
@@ -92,7 +104,7 @@ def get_daily_summary(athlete_id: int, date: str = None):
             "water_cups": water_cups,
             "lea_alert": targets.get("lea_alert", False),
             "performance_forecast": calculate_performance_forecast(tl),
-            "mission_items": get_mission_items(event_type, events, tl, meal_logs, targets, water_cups, gender),
+            "mission_items": mission_items,
         }
     finally:
         conn.close()

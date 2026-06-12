@@ -24,10 +24,7 @@ export default function MissionItem({ item, isDone, onToggle }) {
       <div style={s.body}>
         <div style={{ ...s.label, ...(isDone ? s.labelDone : {}) }}>{item.label}</div>
         {item.sub && (
-          <div
-            style={s.sub}
-            dangerouslySetInnerHTML={{ __html: item.sub }}
-          />
+          <div style={s.sub}>{item.sub}</div>
         )}
       </div>
       <div style={s.right}>
