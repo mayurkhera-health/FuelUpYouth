@@ -114,6 +114,20 @@ class RecipeSwapRequest(BaseModel):
     meal_timing_category: str
 
 
+class RecipeGenerateRequest(BaseModel):
+    athlete_id: int
+    category: str
+    allergies: Optional[List[str]] = None
+    dietary_restrictions: Optional[List[str]] = None
+
+
+class PhotoMealAnalyzeRequest(BaseModel):
+    athlete_id: int
+    image_base64: str
+    image_media_type: Optional[str] = "image/jpeg"
+    allergies: Optional[List[str]] = None
+
+
 class MealPlanSlotUpdate(BaseModel):
     plan_date: str
     slot_name: str

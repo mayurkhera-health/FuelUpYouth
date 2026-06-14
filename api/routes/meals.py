@@ -1,9 +1,52 @@
 from fastapi import APIRouter, HTTPException
-from typing import List
-from api.models import MealLogCreate, MealLogResponse
+from typing import List, Optional
+from api.models import MealLogCreate, MealLogResponse, PhotoMealAnalyzeRequest
 from api.database import get_conn
+from api.services import photo_meal_analyzer
 
 router = APIRouter()
+
+
+def _parse_allergies(raw) -> list:
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return [a.strip() for a in raw if a and str(a).strip().lower() != "none"]
+    return [a.strip() for a in str(raw).split(",") if a.strip().lower() != "none"]
+
+
+@router.post("/analyze-photo")
+def analyze_photo_meal(data: PhotoMealAnalyzeRequest):
+    if not data.image_base64 or len(data.image_base64) < 100:
+        raise HTTPException(400, "Please provide a valid base64-encoded image.")
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM athletes WHERE id = ?", (data.athlete_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Athlete not found.")
+        athlete = dict(row)
+    finally:
+        conn.close()
+
+    allergies = data.allergies or _parse_allergies(athlete.get("allergies"))
+    media_type = data.image_media_type or "image/jpeg"
+    if media_type not in ("image/jpeg", "image/png"):
+        media_type = "image/jpeg"
+
+    try:
+        analysis = photo_meal_analyzer.analyze_photo(
+            data.image_base64,
+            media_type=media_type,
+            allergies=allergies,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Photo analysis failed: {e}")
+
+    return {"analysis": analysis}
 
 
 @router.post("/", response_model=MealLogResponse, status_code=201)
