@@ -1,6 +1,7 @@
-"""Photo meal analyzer: Claude vision food detection + USDA FDC nutrition lookup."""
+"""Photo meal analyzer: Bedrock vision food detection + USDA FDC nutrition lookup."""
 import json
-from api.services import claude_ai
+
+from api.services.bedrock_client import converse_vision, extract_json
 from api.services.fdc_client import (
     best_match,
     macros_for_portion,
@@ -29,16 +30,6 @@ Rules:
 - If no food is visible, return { "foods": [] }"""
 
 
-def _parse_claude_json(text: str) -> dict:
-    raw = text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.strip()
-    return json.loads(raw)
-
-
 def _unique_foods(foods: list) -> list:
     seen: set[str] = set()
     result = []
@@ -52,26 +43,15 @@ def _unique_foods(foods: list) -> list:
 
 
 def detect_foods(image_base64: str, media_type: str = "image/jpeg") -> list:
-    msg = claude_ai._client().messages.create(
-        model="claude-sonnet-4-6",
+    text = converse_vision(
+        prompt=VISION_PROMPT,
+        image_base64=image_base64,
+        media_type=media_type,
         max_tokens=1024,
-        messages=[{
-            "role": "user",
-            "content": [
-                {
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": media_type,
-                        "data": image_base64,
-                    },
-                },
-                {"type": "text", "text": VISION_PROMPT},
-            ],
-        }],
+        temperature=0.2,
     )
 
-    parsed = _parse_claude_json(msg.content[0].text)
+    parsed = json.loads(extract_json(text))
     foods = parsed.get("foods") or []
     if not isinstance(foods, list):
         raise ValueError("Vision output missing foods array")

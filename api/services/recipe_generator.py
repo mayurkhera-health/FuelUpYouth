@@ -1,17 +1,9 @@
-"""Recipe generator agent: FDC ingredient lookup + Claude recipe composition."""
+"""Recipe generator agent: FDC ingredient lookup + Bedrock recipe composition."""
 import json
+
 from api.services import claude_ai
+from api.services.bedrock_client import converse_text, extract_json
 from api.services.recipe_categories import gather_ingredients, resolve_category
-
-
-def _parse_claude_json(text: str) -> dict:
-    raw = text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.strip()
-    return json.loads(raw)
 
 
 def generate_recipe(
@@ -75,14 +67,13 @@ Return ONLY valid JSON:
   "tags": ["tag1", "tag2"]
 }}"""
 
-    msg = claude_ai._client().messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
+    text = converse_text(
         system=claude_ai.SCIENCE_SYSTEM,
-        messages=[{"role": "user", "content": prompt}],
+        user=prompt,
+        max_tokens=1024,
+        temperature=0.7,
     )
-
-    llm_recipe = _parse_claude_json(msg.content[0].text)
+    llm_recipe = json.loads(extract_json(text))
 
     recipe = {
         "name": llm_recipe["name"],

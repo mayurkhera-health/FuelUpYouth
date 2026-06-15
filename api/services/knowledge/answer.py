@@ -1,13 +1,12 @@
 """
 RAG answer orchestration.
-Claude receives retrieved knowledge chunks + optional calculation result.
-Claude answers ONLY from the provided context.
+Bedrock receives retrieved knowledge chunks + optional calculation result.
+Answers ONLY from the provided context.
 """
 
 from typing import Optional
 
-import anthropic
-
+from api.services.bedrock_client import converse_text
 from api.services.knowledge.retrieval import retrieve, KnowledgeChunk
 from api.services.knowledge.calculations import (
     iron_rda, calcium_rda, protein_range, hydration_needs,
@@ -83,15 +82,8 @@ KNOWLEDGE EXCERPTS:
 {calc_text}"""
 
 
-def _call_claude(system_prompt: str, user_question: str) -> str:
-    client = anthropic.Anthropic()
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=512,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_question}],
-    )
-    return message.content[0].text
+def _call_bedrock(system_prompt: str, user_question: str) -> str:
+    return converse_text(system=system_prompt, user=user_question, max_tokens=512, temperature=0.3)
 
 
 def answer_with_knowledge(question: str, athlete: dict) -> dict:
@@ -118,7 +110,7 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
         }
 
     system_prompt = _build_system_prompt(chunks, calc_result)
-    answer_text = _call_claude(system_prompt, question)
+    answer_text = _call_bedrock(system_prompt, question)
 
     citations = [
         {

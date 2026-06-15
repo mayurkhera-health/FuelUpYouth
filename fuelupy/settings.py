@@ -83,7 +83,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ── FuelUp — External API Keys ───────────────────────────────────────────────
-ANTHROPIC_API_KEY     = os.getenv('ANTHROPIC_API_KEY')
+AWS_REGION            = os.getenv('AWS_REGION', 'us-east-1')
+BEDROCK_MODEL_ID      = os.getenv('BEDROCK_MODEL_ID', 'mistral.ministral-3-8b-instruct')
 OPENWEATHERMAP_API_KEY = os.getenv('OPENWEATHERMAP_API_KEY')
 
 # ── FuelUp — Web Push (VAPID) ────────────────────────────────────────────────

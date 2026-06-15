@@ -55,7 +55,11 @@ fly volumes create fuelup_data --size 1 --region sjc
 
 ```bash
 fly secrets set \
-  ANTHROPIC_API_KEY="sk-ant-..." \
+  AWS_REGION="us-east-1" \
+  AWS_ACCESS_KEY_ID="AKIA..." \
+  AWS_SECRET_ACCESS_KEY="..." \
+  BEDROCK_MODEL_ID="mistral.ministral-3-8b-instruct" \
+  FDC_API_KEY="your-fdc-key" \
   SECRET_KEY="your-django-secret-key" \
   OPENWEATHERMAP_API_KEY="your-owm-key" \
   VAPID_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----" \
@@ -113,7 +117,11 @@ The database volume persists across deploys — no need to re-initialize.
 |---|---|---|
 | `DB_PATH` | `fly.toml` `[env]` | `/data/fuelup.db` — do not change |
 | `PORT` | `fly.toml` `[env]` | `8080` — do not change |
-| `ANTHROPIC_API_KEY` | `fly secrets` | Claude AI integration |
+| `AWS_REGION` | `fly secrets` | Bedrock region (e.g. `us-east-1`) |
+| `AWS_ACCESS_KEY_ID` | `fly secrets` | IAM user with `bedrock:InvokeModel` |
+| `AWS_SECRET_ACCESS_KEY` | `fly secrets` | IAM secret for Bedrock |
+| `BEDROCK_MODEL_ID` | `fly secrets` | Default `mistral.ministral-3-8b-instruct` |
+| `FDC_API_KEY` | `fly secrets` | USDA FoodData Central |
 | `SECRET_KEY` | `fly secrets` | Django secret key |
 | `OPENWEATHERMAP_API_KEY` | `fly secrets` | Weather for game-day nutrition |
 | `VAPID_PRIVATE_KEY` | `fly secrets` | Web push notifications |

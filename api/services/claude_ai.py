@@ -1,6 +1,6 @@
-import os
 import json
-import anthropic
+
+from api.services.bedrock_client import converse_text, extract_json, is_configured
 
 SCIENCE_SYSTEM = """Write as a knowledgeable older teammate who genuinely wants this athlete to perform better — always lead with what they gain, never what they lack, and never use alarm language with a young athlete.
 
@@ -48,17 +48,20 @@ MEAL TIMING RULES (Castle + Lair/Murdoch + Teenage Athletes Journal):
 Respond ONLY with valid JSON. No markdown, no prose outside the JSON."""
 
 
-def _client():
-    return anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+def _json_completion(user: str, max_tokens: int = 1024, temperature: float = 0.7) -> dict:
+    raw = converse_text(
+        system=SCIENCE_SYSTEM,
+        user=user,
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    return json.loads(extract_json(raw))
 
 
 def prompt1_nutrient_targets(athlete: dict, event_type: str, calculated_targets: dict) -> dict:
     """Prompt 1: Validate + explain daily nutrient targets for athlete."""
-    msg = _client().messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
-        system=SCIENCE_SYSTEM,
-        messages=[{"role": "user", "content": f"""Validate these daily nutrition targets for a youth soccer athlete.
+    try:
+        return _json_completion(f"""Validate these daily nutrition targets for a youth soccer athlete.
 
 ATHLETE: {athlete['first_name']}, age {athlete['age']}, gender {athlete['gender']}
 Weight: {athlete['weight_lbs']}lbs | Height: {athlete['height_ft']}'{athlete['height_in']}"
@@ -71,17 +74,9 @@ TODAY'S EVENT: {event_type}
 CALCULATED TARGETS: {json.dumps(calculated_targets)}
 
 Return JSON:
-{{"validated": true, "adjustments": [], "explanation": "2-3 sentence science-backed explanation", "parent_note": "One sentence for parent dashboard", "supplement_flag": null, "lea_alert": null}}"""}]
-    )
-    try:
-        raw = msg.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"): raw = raw[4:]
-            raw = raw.strip()
-        return json.loads(raw)
+{{"validated": true, "adjustments": [], "explanation": "2-3 sentence science-backed explanation", "parent_note": "One sentence for parent dashboard", "supplement_flag": null, "lea_alert": null}}""")
     except Exception:
-        return {"validated": True, "explanation": msg.content[0].text, "adjustments": [], "parent_note": "", "supplement_flag": None, "lea_alert": None}
+        return {"validated": True, "explanation": "Targets validated.", "adjustments": [], "parent_note": "", "supplement_flag": None, "lea_alert": None}
 
 
 def prompt2_meal_analysis(athlete: dict, targets: dict, meal_logs: list, date: str) -> dict:
@@ -97,11 +92,8 @@ def prompt2_meal_analysis(athlete: dict, targets: dict, meal_logs: list, date: s
     }
     meal_descriptions = [m.get("description", "Unknown meal") for m in meal_logs]
 
-    msg = _client().messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1500,
-        system=SCIENCE_SYSTEM,
-        messages=[{"role": "user", "content": f"""Analyze today's nutrition for {athlete['first_name']}, age {athlete['age']}, gender {athlete['gender']}.
+    try:
+        return _json_completion(f"""Analyze today's nutrition for {athlete['first_name']}, age {athlete['age']}, gender {athlete['gender']}.
 
 DATE: {date} | EVENT: {targets.get('event_type','rest')}
 
@@ -115,52 +107,30 @@ Traffic light rules: green=>=80% of target | yellow=50-79% | red=<50%
 Fuel score: 0-100 based on overall achievement + key nutrients (iron, calcium, hydration weight extra)
 
 Return JSON:
-{{"fuel_score": 0, "overall_status": "elite/game-ready/getting-there/needs-fuel", "teen_message": "energetic encouraging message", "traffic_lights": [{{"nutrient": "Calories", "target_min": {targets['total_calories']}, "target_max": null, "logged": {totals['calories']:.0f}, "percentage": 0, "status": "green/yellow/red", "message": "short actionable message"}}], "gap_fix_suggestions": ["specific food fix 1", "food fix 2", "food fix 3"], "lea_alert": null, "iron_alert": null}}"""}]
-    )
-    try:
-        raw = msg.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"): raw = raw[4:]
-            raw = raw.strip()
-        return json.loads(raw)
+{{"fuel_score": 0, "overall_status": "elite/game-ready/getting-there/needs-fuel", "teen_message": "energetic encouraging message", "traffic_lights": [{{"nutrient": "Calories", "target_min": {targets['total_calories']}, "target_max": null, "logged": {totals['calories']:.0f}, "percentage": 0, "status": "green/yellow/red", "message": "short actionable message"}}], "gap_fix_suggestions": ["specific food fix 1", "food fix 2", "food fix 3"], "lea_alert": null, "iron_alert": null}}""", max_tokens=1500)
     except Exception:
         return {"fuel_score": 50, "overall_status": "getting-there", "teen_message": "Keep fueling!", "traffic_lights": [], "gap_fix_suggestions": [], "lea_alert": None, "iron_alert": None}
 
 
 def prompt3_weekly_report(athlete: dict, week_data: dict) -> dict:
     """Prompt 3: Generate weekly parent fuel report."""
-    msg = _client().messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=2000,
-        system=SCIENCE_SYSTEM,
-        messages=[{"role": "user", "content": f"""Generate a weekly fuel report for the parent of {athlete['first_name']}, age {athlete['age']}, gender {athlete['gender']}.
+    try:
+        return _json_completion(f"""Generate a weekly fuel report for the parent of {athlete['first_name']}, age {athlete['age']}, gender {athlete['gender']}.
 
 Brand voice: warm, professional, science-backed, encouraging. Never alarmist. Always solution-focused.
 
 WEEK DATA: {json.dumps(week_data)}
 
 Return JSON:
-{{"weekly_fuel_score": 0, "score_trend": "improving/stable/declining", "what_went_well": ["specific positive 1", "specific positive 2"], "nutrients_to_focus_on": [{{"nutrient": "Iron", "gap": "Xmg/day short", "food_fixes": ["food 1"], "recipe": "R020 Iron-Boost Hummus Plate"}}], "game_day_readiness": "assessment string", "hydration_report": {{"days_goal_met": 0, "avg_oz": 0}}, "iron_alert": null, "featured_recipe": {{"id": "R001", "name": "...", "reason": "..."}}, "report_text": "full warm professional 3-4 paragraph report for email/SMS", "legal_disclaimer": "FuelUp provides educational food guidance — not medical nutrition therapy. Consult your child's physician for medical concerns."}}"""}]
-    )
-    try:
-        raw = msg.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"): raw = raw[4:]
-            raw = raw.strip()
-        return json.loads(raw)
+{{"weekly_fuel_score": 0, "score_trend": "improving/stable/declining", "what_went_well": ["specific positive 1", "specific positive 2"], "nutrients_to_focus_on": [{{"nutrient": "Iron", "gap": "Xmg/day short", "food_fixes": ["food 1"], "recipe": "R020 Iron-Boost Hummus Plate"}}], "game_day_readiness": "assessment string", "hydration_report": {{"days_goal_met": 0, "avg_oz": 0}}, "iron_alert": null, "featured_recipe": {{"id": "R001", "name": "...", "reason": "..."}}, "report_text": "full warm professional 3-4 paragraph report for email/SMS", "legal_disclaimer": "FuelUp provides educational food guidance — not medical nutrition therapy. Consult your child's physician for medical concerns."}}""", max_tokens=2000)
     except Exception:
-        return {"report_text": msg.content[0].text, "weekly_fuel_score": 0}
+        return {"report_text": "Weekly report unavailable.", "weekly_fuel_score": 0}
 
 
 def prompt4_recipe_swap(athlete: dict, disliked_recipe: str, meal_timing_category: str) -> dict:
     """Prompt 4: Generate 3 alternatives when athlete dislikes a recipe."""
-    msg = _client().messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1500,
-        system=SCIENCE_SYSTEM,
-        messages=[{"role": "user", "content": f"""Generate 3 alternative meal suggestions.
+    try:
+        return _json_completion(f"""Generate 3 alternative meal suggestions.
 
 ATHLETE: {athlete['first_name']}, age {athlete['age']}, gender {athlete['gender']}, weight {athlete['weight_lbs']}lbs
 Allergies: {athlete.get('allergies','None')} | Diet restrictions: {athlete.get('dietary_restrictions','None')}
@@ -171,26 +141,15 @@ MEAL TIMING CATEGORY: {meal_timing_category}
 Alternatives must: match nutritional goals for this timing, avoid all allergens/restrictions, appeal to a 13-17 year old, be realistic for a family to prepare.
 
 Return JSON:
-{{"alternatives": [{{"name": "Recipe name", "description": "1-2 sentences", "ingredients": "main ingredients", "why_it_works": "brief science reason", "macros": {{"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0}}, "prep_time_min": 0, "dietary_tags": [], "allergens": []}}], "powered_by_note": "Nutrition data — Powered by Edamam"}}"""}]
-    )
-    try:
-        raw = msg.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"): raw = raw[4:]
-            raw = raw.strip()
-        return json.loads(raw)
+{{"alternatives": [{{"name": "Recipe name", "description": "1-2 sentences", "ingredients": "main ingredients", "why_it_works": "brief science reason", "macros": {{"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0}}, "prep_time_min": 0, "dietary_tags": [], "allergens": []}}], "powered_by_note": "Nutrition data — Powered by Edamam"}}""", max_tokens=1500)
     except Exception:
         return {"alternatives": [], "powered_by_note": "Powered by Edamam"}
 
 
 def prompt5_hydration(athlete: dict, event: dict, weather: dict, sweat_output: dict) -> dict:
     """Prompt 5: Personalized hydration + electrolyte plan."""
-    msg = _client().messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
-        system=SCIENCE_SYSTEM,
-        messages=[{"role": "user", "content": f"""Generate a personalized hydration plan.
+    try:
+        return _json_completion(f"""Generate a personalized hydration plan.
 
 ATHLETE: {athlete['first_name']}, {athlete['weight_lbs']}lbs, sweat profile: {athlete.get('sweat_profile','Moderate')}
 EVENT: {event.get('event_type','practice')}, {event.get('duration_hours',1.5)}hrs, city: {event.get('city','Unknown')}
@@ -199,15 +158,7 @@ SWEAT OUTPUT: {sweat_output.get('sweat_loss_liters',0):.2f}L total loss, {sweat_
 ELECTROLYTES NEEDED: {sweat_output.get('electrolytes_needed',False)}
 
 Return JSON:
-{{"pre_event_oz": 0, "during_event_oz_per_20min": 0, "post_event_oz": 0, "total_day_oz": 0, "electrolytes_needed": false, "electrolyte_type": "natural sports drink/coconut water/water only", "sports_drink_warning": "Avoid artificial dyes (Red #40, Yellow #5, Yellow #6) — linked to behavioral changes in adolescents (Everett 2025). Choose clear/natural brands only.", "teen_message": "energetic hydration reminder", "parent_alert": null, "timing_reminders": [{{"when": "2hrs before", "action": "Drink Xoz water", "reason": "..."}}]}}"""}]
-    )
-    try:
-        raw = msg.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"): raw = raw[4:]
-            raw = raw.strip()
-        return json.loads(raw)
+{{"pre_event_oz": 0, "during_event_oz_per_20min": 0, "post_event_oz": 0, "total_day_oz": 0, "electrolytes_needed": false, "electrolyte_type": "natural sports drink/coconut water/water only", "sports_drink_warning": "Avoid artificial dyes (Red #40, Yellow #5, Yellow #6) — linked to behavioral changes in adolescents (Everett 2025). Choose clear/natural brands only.", "teen_message": "energetic hydration reminder", "parent_alert": null, "timing_reminders": [{{"when": "2hrs before", "action": "Drink Xoz water", "reason": "..."}}]}}""")
     except Exception:
         return {"total_day_oz": 80, "electrolytes_needed": sweat_output.get("electrolytes_needed", False), "sports_drink_warning": "Avoid artificial dyes — choose clear/natural brands only."}
 
@@ -222,11 +173,8 @@ def prompt6_weekly_meal_plan(athlete: dict, week_schedule: list, recipes: list) 
     dairy_free = "dairy-free" in (athlete.get("dietary_restrictions") or "").lower() or \
                  "dairy" in (athlete.get("allergies") or "").lower()
 
-    msg = _client().messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=2000,
-        system=SCIENCE_SYSTEM,
-        messages=[{"role": "user", "content": f"""You are FuelUp's AI meal planner for youth soccer athletes.
+    try:
+        return _json_completion(f"""You are FuelUp's AI meal planner for youth soccer athletes.
 
 ATHLETE: {athlete['first_name']}, age {athlete['age']}, gender {athlete['gender']}
 Weight: {athlete['weight_lbs']}lbs
@@ -262,28 +210,15 @@ Return ONLY valid JSON, no prose:
   }},
   "reasoning": "2-3 sentence summary of your choices",
   "variety_check": "passed or warning message"
-}}"""}]
-    )
-    try:
-        text = msg.content[0].text.strip()
-        # Strip markdown code fences Claude sometimes wraps around JSON
-        if text.startswith("```"):
-            text = text.split("```")[1]
-            if text.startswith("json"):
-                text = text[4:]
-            text = text.strip()
-        return json.loads(text)
+}}""", max_tokens=2000)
     except Exception:
         return {"plan": {}, "reasoning": "AI generation failed — please try again.", "variety_check": "failed"}
 
 
 def prompt7_estimate_macros(description: str, athlete: dict) -> dict:
     """Prompt 7: Estimate macros from a free-text meal description."""
-    msg = _client().messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=512,
-        system=SCIENCE_SYSTEM,
-        messages=[{"role": "user", "content": f"""Estimate the nutritional macros for this meal description.
+    try:
+        return _json_completion(f"""Estimate the nutritional macros for this meal description.
 
 ATHLETE CONTEXT: age {athlete.get('age', 14)}, gender {athlete.get('gender', 'unknown')}, weight {athlete.get('weight_lbs', 130)}lbs — youth soccer athlete.
 
@@ -297,15 +232,7 @@ Instructions:
 - If the description is too vague to estimate (e.g. "lunch"), return confidence: "low".
 
 Return ONLY valid JSON:
-{{"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0, "iron_mg": 0, "calcium_mg": 0, "confidence": "high|medium|low", "portion_note": "brief note on portion assumption, e.g. '2 cups pasta + 4oz chicken'"}}"""}]
-    )
-    try:
-        raw = msg.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"): raw = raw[4:]
-            raw = raw.strip()
-        return json.loads(raw)
+{{"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0, "iron_mg": 0, "calcium_mg": 0, "confidence": "high|medium|low", "portion_note": "brief note on portion assumption, e.g. '2 cups pasta + 4oz chicken'"}}""", max_tokens=512)
     except Exception:
         return {"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0, "iron_mg": 0, "calcium_mg": 0, "confidence": "low", "portion_note": "Could not parse"}
 
@@ -423,9 +350,8 @@ def prompt0_athlete_blueprint(athlete: dict, targets_by_event: dict) -> dict:
         }
     }
 
-    # If no API key, return the mock directly
-    import os
-    if not os.getenv("ANTHROPIC_API_KEY"):
+    # If no AWS credentials, return the mock directly
+    if not is_configured():
         return MOCK
 
     # Build the prompt
@@ -477,17 +403,6 @@ Return ONLY valid JSON matching this exact structure (no markdown):
 }}"""
 
     try:
-        msg = _client().messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=3000,
-            system=SCIENCE_SYSTEM,
-            messages=[{"role": "user", "content": prompt_text}]
-        )
-        raw = msg.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"): raw = raw[4:]
-            raw = raw.strip()
-        return json.loads(raw)
+        return _json_completion(prompt_text, max_tokens=3000)
     except Exception:
         return MOCK
