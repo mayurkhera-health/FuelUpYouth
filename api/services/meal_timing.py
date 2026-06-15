@@ -408,9 +408,10 @@ def generate_day_windows(athlete_id: int, plan_date: str, conn) -> dict:
     events = [dict(r) for r in event_rows]
     first_event = events[0] if events else None
 
-    result     = generate_windows_for_day(athlete_id, plan_date, events)
-    day_type   = result["day_type"]
-    tw_list    = result["windows"]
+    result              = generate_windows_for_day(athlete_id, plan_date, events)
+    day_type            = result["day_type"]
+    tw_list             = result["windows"]
+    early_morning_msg   = result.get("early_morning_message")
 
     event_info = None
     if first_event:
@@ -441,8 +442,9 @@ def generate_day_windows(athlete_id: int, plan_date: str, conn) -> dict:
         })
 
     return {
-        "date":     plan_date,
-        "day_type": day_type,
-        "event":    event_info,
-        "windows":  windows,
+        "date":                  plan_date,
+        "day_type":              day_type,
+        "early_morning_message": early_morning_msg,
+        "event":                 event_info,
+        "windows":               windows,
     }
