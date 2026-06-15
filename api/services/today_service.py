@@ -672,10 +672,14 @@ def record_window_capture(
     thumb_url: str | None,
     conn,
     audio_url: str | None = None,
+    log_date: str | None = None,
 ) -> int:
     """Insert (or replace) a window_logs row and mark meal_plans.logged for backward compat."""
     _ensure_window_logs_table(conn)
-    today = date.today().isoformat()
+    # INVARIANT: use the client's local date, not the server's UTC date.
+    # Without this, athletes in timezones behind UTC will have evening logs
+    # assigned to the *next* day (server UTC) and appear pre-done the next morning.
+    today = log_date or date.today().isoformat()
     cur = conn.execute(
         """INSERT INTO window_logs
                (athlete_id, window_id, log_date, method, text, photo_url, thumb_url,
@@ -699,10 +703,12 @@ def record_window_capture(
     return cur.lastrowid
 
 
-def build_today_view(athlete_id: int, conn) -> dict | None:
+def build_today_view(athlete_id: int, conn, today: str | None = None) -> dict | None:
     from api.services.nutrition_analysis import get_week_start, get_week_dates
 
-    today_str = date.today().isoformat()
+    # INVARIANT: use the client's local date so timezone-shifted athletes
+    # see the correct day's windows. Falls back to server UTC if not provided.
+    today_str = today or date.today().isoformat()
     _ensure_window_logs_table(conn)
 
     ath = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()

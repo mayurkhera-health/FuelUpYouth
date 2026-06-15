@@ -3,7 +3,7 @@ import uuid
 import base64
 from datetime import date as dt_date, timedelta
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
 from api.database import get_conn
 from api.services import nutrition_calc
 from api.services.today_service import (
@@ -96,10 +96,10 @@ def get_day_timeline(athlete_id: int, date: str = None):
 
 
 @router.get("/{athlete_id}/today")
-def get_today_view(athlete_id: int):
+def get_today_view(athlete_id: int, date: str = Query(None)):
     conn = get_conn()
     try:
-        data = build_today_view(athlete_id, conn)
+        data = build_today_view(athlete_id, conn, today=date)
         if data is None:
             raise HTTPException(404, "Athlete not found.")
         return data
@@ -115,6 +115,7 @@ async def capture_window(
     text: str | None = Form(None),
     photo: UploadFile | None = File(None),
     audio: UploadFile | None = File(None),
+    log_date: str | None = Form(None),
 ):
     """
     Completes a fuel window — photo, voice, or text.
@@ -137,10 +138,11 @@ async def capture_window(
             thumb_url=thumb_url,
             audio_url=audio_url,
             conn=conn,
+            log_date=log_date,
         )
         queue_nutrient_resolution(log_id, conn)
 
-        data = build_today_view(athlete_id, conn)
+        data = build_today_view(athlete_id, conn, today=log_date)
         if data is None:
             raise HTTPException(404, "Athlete not found.")
         return data

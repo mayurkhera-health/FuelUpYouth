@@ -1,4 +1,12 @@
-from api.services.today_service import calculate_performance_forecast, get_mission_items
+import sqlite3
+from api.services.today_service import (
+    calculate_performance_forecast,
+    get_mission_items,
+    assign_window_status,
+    build_today_view,
+    record_window_capture,
+    _ensure_window_logs_table,
+)
 
 
 def make_tl(calories=80, carbs=80, protein=80, iron=80, calcium=80, water=80):
@@ -164,3 +172,83 @@ def test_mission_items_practice_day():
     types = [i["item_type"] for i in items]
     assert "pre_practice_snack" in types
     assert "protein_recovery" in types
+
+
+# ── Window status invariant tests ─────────────────────────────────────────────
+
+def test_windows_not_done_by_time():
+    """
+    INVARIANT: A window is 'done' only if its DB row is logged.
+    Time alone never marks a window done — even past-due windows stay
+    'next' or 'upcoming' until the athlete actually logs them.
+    """
+    windows = [
+        {"slot_name": "breakfast",         "logged": False, "eat_by_time": "8:30 AM"},
+        {"slot_name": "mid-morning-snack", "logged": False, "eat_by_time": "11:00 AM"},
+        {"slot_name": "lunch",             "logged": False, "eat_by_time": "1:30 PM"},
+        {"slot_name": "afternoon-snack",   "logged": False, "eat_by_time": "4:00 PM"},
+        {"slot_name": "dinner",            "logged": False, "eat_by_time": "7:00 PM"},
+    ]
+    result = assign_window_status(windows)
+    done_windows = [w for w in result if w["status"] == "done"]
+    next_windows = [w for w in result if w["status"] == "next"]
+    upcoming_windows = [w for w in result if w["status"] == "upcoming"]
+    assert len(done_windows) == 0, f"Expected 0 done windows, got {[w['slot_name'] for w in done_windows]}"
+    assert len(next_windows) == 1
+    assert len(upcoming_windows) == 4
+
+
+def test_windows_done_only_by_logged_flag():
+    """Only windows with logged=True are marked done."""
+    windows = [
+        {"slot_name": "breakfast",         "logged": True,  "eat_by_time": "8:30 AM"},
+        {"slot_name": "mid-morning-snack", "logged": False, "eat_by_time": "11:00 AM"},
+        {"slot_name": "lunch",             "logged": False, "eat_by_time": "1:30 PM"},
+        {"slot_name": "afternoon-snack",   "logged": False, "eat_by_time": "4:00 PM"},
+    ]
+    result = assign_window_status(windows)
+    assert result[0]["status"] == "done"
+    assert result[1]["status"] == "next"
+    assert result[2]["status"] == "upcoming"
+    assert result[3]["status"] == "upcoming"
+
+
+def _make_test_conn():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    _ensure_window_logs_table(conn)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS meal_plans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id INTEGER NOT NULL, plan_date TEXT NOT NULL,
+            slot_name TEXT NOT NULL, logged INTEGER DEFAULT 0,
+            UNIQUE(athlete_id, plan_date, slot_name)
+        )
+    """)
+    conn.commit()
+    return conn
+
+
+def test_record_window_capture_uses_log_date():
+    """record_window_capture respects client-supplied log_date, not server date."""
+    conn = _make_test_conn()
+    # Simulate athlete logging at 11 PM PDT (= next-day UTC) but passing their local date
+    local_date = "2026-06-14"
+    record_window_capture(
+        athlete_id=99,
+        window_id="breakfast",
+        method="text",
+        text="oatmeal",
+        photo_url=None,
+        thumb_url=None,
+        conn=conn,
+        log_date=local_date,
+    )
+    row = conn.execute(
+        "SELECT log_date FROM window_logs WHERE athlete_id = 99 AND window_id = 'breakfast'"
+    ).fetchone()
+    assert row is not None
+    assert row["log_date"] == local_date, (
+        f"Expected log_date={local_date!r} (client local), got {row['log_date']!r} (server UTC)"
+    )
+    conn.close()
