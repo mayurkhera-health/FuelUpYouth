@@ -87,7 +87,11 @@ def get_day_timeline(athlete_id: int, date: str = None):
             )
 
         enriched = [
-            {**w, "items": by_key.get(w["window_key"], []), "ideas": IDEAS.get(w["category_key"], [])}
+            {
+                **w,
+                "items": by_key.get(w["window_key"], []),
+                "ideas": IDEAS.get(w.get("category", ""), IDEAS.get(w["category_key"], [])),
+            }
             for w in skeleton["windows"]
         ]
         return {**skeleton, "windows": enriched}

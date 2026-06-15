@@ -434,6 +434,7 @@ def generate_day_windows(athlete_id: int, plan_date: str, conn) -> dict:
             "window_id":      f"w_{tw['key']}",
             "window_key":     tw["key"],
             "label":          tw["label"],
+            "category":       tw["category"],
             "category_key":   tw["category_key"],
             "category_label": tw["category_label"],
             "time_display":   tw["time_display"],
