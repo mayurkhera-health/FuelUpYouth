@@ -105,9 +105,9 @@ export default function Today({ athlete, onNavigate }) {
         />
 
         <div style={s.logWrap}>
-          <button style={s.logBtn} onClick={() => onNavigate("meal-log")}>
-            📸 Log a meal — 2 seconds
-          </button>
+          <div style={s.logHint}>
+            Tap <strong>Photo</strong> or <strong>Say it</strong> on any mission item to log your fuel.
+          </div>
         </div>
 
         <p style={s.disclaimer}>
@@ -127,7 +127,7 @@ const s = {
   loadWrap:   { display: "flex", flexDirection: "column", alignItems: "center", gap: "14px", padding: "60px 0" },
   spinner:    { width: "30px", height: "30px", border: "3px solid #dce8e0", borderTopColor: "#2d6a4f", borderRadius: "50%", animation: "spin 0.7s linear infinite" },
   loadText:   { fontSize: "18px", color: "#4a6358", fontFamily: "'DM Sans', sans-serif" },
-  logWrap:    { paddingTop: "10px" },
-  logBtn:     { width: "100%", padding: "13px", background: "rgba(45,106,79,.07)", border: "1px dashed rgba(45,106,79,.25)", borderRadius: "14px", color: "#2d6a4f", fontFamily: "'Nunito', sans-serif", fontSize: "17px", fontWeight: "700", letterSpacing: "-.01em", cursor: "pointer", textAlign: "center" },
+  logWrap:    { paddingTop: "6px" },
+  logHint:    { fontSize: "13px", color: "#8aa898", textAlign: "center", lineHeight: "1.5", padding: "4px 0 8px" },
   disclaimer: { textAlign: "center", fontSize: "15px", color: "#4a6358", lineHeight: "1.5", fontWeight: "400", padding: "10px 0 0" },
 };

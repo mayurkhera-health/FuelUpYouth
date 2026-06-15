@@ -2,6 +2,7 @@ from datetime import date as dt_date, timedelta
 from fastapi import APIRouter, HTTPException
 from api.database import get_conn
 from api.services import claude_ai
+from api.services.report_service import build_weekly_report
 
 router = APIRouter()
 
@@ -116,6 +117,24 @@ def weekly_parent_report(athlete_id: int, week_start: str = None):
         )
         report["letter_grade"] = calc_letter_grade(computed_score)
         return report
+    finally:
+        conn.close()
+
+
+@router.get("/{athlete_id}/weekly-report")
+def weekly_fuel_report_v2(athlete_id: int, week_start: str = None):
+    """
+    Full structured weekly report for the Fuel Report tab.
+    Returns grade, what_went_well, critical_gap, daily_scores, next_week, summary.
+    """
+    from api.services.nutrition_analysis import get_week_start
+
+    resolved = week_start or get_week_start()
+    conn = get_conn()
+    try:
+        return build_weekly_report(athlete_id, resolved, conn)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     finally:
         conn.close()
 

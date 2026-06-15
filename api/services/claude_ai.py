@@ -165,6 +165,8 @@ Return JSON:
 
 def prompt6_weekly_meal_plan(athlete: dict, week_schedule: list, recipes: list) -> dict:
     """Prompt 6: Generate a full week meal plan from available recipes."""
+    from api.services.nutrient_timing_rules import TIMING_BRIEF
+
     compact_recipes = [
         {"id": r["id"], "name": r["name"], "category": r["category"],
          "calories": r["macros"]["calories"], "dietary": r["dietary"], "allergens": r["allergens"]}
@@ -182,18 +184,23 @@ Allergies: {athlete.get('allergies', 'None')}
 Dietary restrictions: {athlete.get('dietary_restrictions', 'None')}
 Dairy-free: {dairy_free}
 
+{TIMING_BRIEF}
+
 TASK: Assign one recipe_id to every meal slot in the 7-day schedule below.
+Each slot maps to a specific clinical eating window — match the recipe to that window's nutritional requirements above.
 
 RULES:
 1. Only use recipe IDs from AVAILABLE RECIPES — never invent IDs.
 2. Each slot has a recipe_category — only pick a recipe whose category matches exactly.
 3. Do not repeat the same recipe_id more than twice across the entire week.
 4. Vary protein sources: rotate chicken, fish, plant-based, eggs across days.
-5. Game/tournament pre-game slots must have highest-carb recipe in that category.
-6. Rest day total calories ~15-20% lower than game day total.
-7. bedtime-snack on game/practice/tournament days must be a dairy casein recipe (R017 or R026) UNLESS dairy_free=True, in which case skip it (set to null).
-8. Never assign a recipe whose allergens overlap with athlete's allergies.
-9. Use null for a slot only if no safe recipe exists for that category.
+5. Gas Tank / Pre-Game slots (3–4 hrs before): highest-carb recipe in category.
+6. Top-Off / Power Snack slots (30–60 min before): simplest, fastest-digesting carb recipe — no fat/fiber.
+7. Recovery slots (within 30 min after): 3:1–4:1 carbs:protein ratio — chocolate milk or equivalent gold standard.
+8. Rest day total calories ~15–20% lower than game day total.
+9. Bedtime Casein on game/practice/tournament/strength days: dairy casein recipe (R017 or R026) UNLESS dairy_free=True, then null.
+10. Never assign a recipe whose allergens overlap with athlete's allergies.
+11. Use null for a slot only if no safe recipe exists for that category.
 
 WEEK SCHEDULE:
 {json.dumps(week_schedule, indent=2)}
@@ -406,3 +413,87 @@ Return ONLY valid JSON matching this exact structure (no markdown):
         return _json_completion(prompt_text, max_tokens=3000)
     except Exception:
         return MOCK
+
+
+def prompt3_weekly_report_v2(data: dict) -> dict:
+    """Structured weekly parent fuel report for the Fuel Report tab.
+    Claude writes ONLY narrative text. All numbers come from Python.
+    """
+    import json as _json
+
+    athlete  = data["athlete"]
+    name     = athlete["first_name"]
+    gender   = athlete.get("gender", "prefer_not_to_say")
+    pronoun  = "her" if gender in ("girl", "female") else "his" if gender in ("boy", "male") else "their"
+    gap      = data.get("critical_gap")
+    next_evts = data.get("next_events", [])
+
+    user_content = f"""Generate a structured weekly fuel report for the parent of {name}, age {athlete.get('age')}, gender {gender}.
+
+Week of {data['week_start']}
+Letter grade: {data['letter_grade']} | Avg fuel score: {data['avg_score']}/100
+Days logged: {data['days_logged']}/7 | Streak: {data['streak']} days
+
+Critical gap this week:
+- Nutrient: {gap['nutrient'] if gap else 'none'} ({gap['label'] if gap else 'N/A'})
+- Weekly average met: {gap['avg_pct'] if gap else 0}% of daily target
+- Average logged per day: {gap['avg_amount'] if gap else 0}{gap['unit'] if gap else ''}
+- Daily target: {gap['target'] if gap else 0}{gap['unit'] if gap else ''}
+
+Next week events: {_json.dumps(next_evts)}
+
+RULES — never break these:
+1. Banned words: critical, empty, fix this, failure, behind, deficit, warning, must, should, lack, deficient, insufficient, zero, missing
+2. Always lead with what {name} gained, never with what was missing
+3. Use ONLY the provided numbers above — do not invent or recalculate any numbers
+4. Pronoun for {name}: {pronoun}
+5. "what_went_well" must always have at least 1 item, max 3 items
+6. "next_week_tips" must have exactly one entry per event in next_events (same order)
+
+Return ONLY valid JSON — no markdown, no preamble:
+{{
+  "grade_headline": "One encouraging sentence using {name}'s name",
+  "grade_summary": "One sentence about this week's fueling story",
+  "what_went_well": [
+    {{"text": "specific positive with context", "stat": "value like '5/7' or '✓' or '↑+2'"}},
+    {{"text": "second positive", "stat": "stat"}},
+    {{"text": "third positive if genuine", "stat": "stat"}}
+  ],
+  "critical_gap_why": "2 sentences. Use provided numbers only. Performance consequence first, then the mechanism. Never alarming.",
+  "next_week_tips": ["one specific nutrition prep sentence per event in next_events"],
+  "summary_paragraphs": [
+    "Paragraph 1: what went well this week — specific, warm, uses {name}'s name",
+    "Paragraph 2: the one gap and exact food fix using provided numbers only",
+    "Paragraph 3: what to focus on next week based on the events listed"
+  ]
+}}"""
+
+    msg = _client().messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=900,
+        system=SCIENCE_SYSTEM,
+        messages=[{"role": "user", "content": user_content}],
+    )
+    try:
+        raw = msg.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+        return json.loads(raw)
+    except Exception:
+        return {
+            "grade_headline": f"Keep going, {name}!",
+            "grade_summary": "Every day logged is a step forward.",
+            "what_went_well": [
+                {"text": f"Logged {data['days_logged']} days this week", "stat": f"{data['days_logged']}/7"}
+            ],
+            "critical_gap_why": "Consistent logging helps identify where to focus next.",
+            "next_week_tips": ["Focus on balanced meals and hydration."] * max(1, len(next_evts)),
+            "summary_paragraphs": [
+                f"This week {name} made progress building consistent fueling habits.",
+                "Focus on the one area identified and try adding the suggested foods.",
+                "Next week brings new opportunities to fuel even better.",
+            ],
+        }

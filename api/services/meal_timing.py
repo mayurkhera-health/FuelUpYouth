@@ -2,6 +2,58 @@ import re
 import copy
 from datetime import datetime, timedelta
 
+# ── Day Timeline format (Meal Plan tab) ───────────────────────────────────────
+
+_CATEGORY_BY_SLOT: dict[str, str] = {
+    "breakfast":                  "balanced",
+    "mid-morning-snack":          "carb",
+    "lunch":                      "balanced",
+    "afternoon-snack":            "recovery",
+    "pre-game-fuel":              "carb",
+    "pre-training":               "carb",
+    "power-snack":                "carb",
+    "halftime-fueling":           "carb",
+    "recovery-fuel":              "recovery",
+    "recovery-dinner":            "recovery",
+    "dinner":                     "balanced",
+    "night-fuel":                 "recovery",
+    "evening-recovery":           "recovery",
+    "between-games":              "recovery",
+    "during-game-hydration":      "hydrate",
+    "during-practice-hydration":  "hydrate",
+    "daily-hydration":            "hydrate",
+}
+
+_CATEGORY_LABELS: dict[str, str] = {
+    "carb":     "Build on carbs",
+    "balanced": "Fuel + rebuild",
+    "recovery": "Recovery fuel",
+    "hydrate":  "Stay hydrated",
+}
+
+_WHY_LINES: dict[str, str] = {
+    "carb":     "Carbs before your session keep your legs fresh and your focus sharp.",
+    "balanced": "A balanced mix of carbs, protein, and healthy fats sets a solid base.",
+    "recovery": "Within 30 min of finishing, protein + carbs kick-start muscle repair.",
+    "hydrate":  "Staying ahead of thirst helps maintain output and reduces cramping.",
+}
+
+
+def _display_time_to_sort(eat_by_time: str) -> str:
+    """Convert '5:30 PM' or '5:30 PM – 6:00 PM' to 24h 'HH:MM' sort key."""
+    if not eat_by_time or eat_by_time == "All day":
+        return "99:00"
+    match = re.search(r"(\d+):(\d+)\s*(AM|PM)", eat_by_time)
+    if not match:
+        return "99:00"
+    h, m, period = int(match.group(1)), int(match.group(2)), match.group(3)
+    h24 = h % 12 + (12 if period == "PM" else 0)
+    return f"{h24:02d}:{m:02d}"
+
+from api.services.nutrient_timing_rules import (
+    WINDOWS, HYDRATION, CARB_FUELING_THRESHOLD_MINUTES,
+)
+
 
 def _offset(event_date: str, start_time: str, hours: float) -> str:
     if not start_time:
@@ -34,32 +86,43 @@ def get_meal_timing_protocol(event_type: str, event_date: str, start_time: str =
 
 
 def _game_day(event_date: str, start_time: str) -> list:
+    _rec = WINDOWS["recovery"]
+    _cas = WINDOWS["bedtime_casein"]
+    _gas = WINDOWS["gas_tank"]
+    _top = WINDOWS["top_off"]
     return [
-        {"timing": "Night before (7pm)", "when": f"{event_date} (night before 19:00)", "what": "High carb dinner — pasta/rice + protein + milk", "why": "Glycogen loading begins 24-48hrs before kickoff (Everett MD 2025)", "recipe": "Power Pasta Bowl (R001)", "recipient": "parent", "critical": True},
-        {"timing": "3hrs before kickoff", "when": _offset(event_date, start_time, -3), "what": "Pre-game breakfast — carbs + protein + OJ", "why": "3hr fuel window opens — no GI distress risk", "recipe": "Tournament Morning Plate (R023)", "recipient": "both"},
-        {"timing": "45min before kickoff", "when": _offset(event_date, start_time, -0.75), "what": "Pre-game snack — banana + PB or toast + honey", "why": "Fast glucose for warm-up energy", "recipe": "Banana + PB (R006) or Toast + Honey (R007)", "recipient": "teen"},
-        {"timing": "Halftime", "when": _offset(event_date, start_time, 0.75), "what": "Orange slices + 16oz water OR banana + natural sports drink", "why": "Fast glucose for second half + rehydration", "recipe": "Orange Slices (R010) or Banana + Sports Drink (R011)", "recipient": "teen"},
-        {"timing": "Within 30min after final whistle", "when": _offset(event_date, start_time, 2.0), "what": "Recovery snack — chocolate milk + banana", "why": "30min window is non-negotiable for glycogen + protein synthesis", "recipe": "Choc Milk Recovery (R013)", "recipient": "both", "critical": True},
-        {"timing": "1-2hrs after game", "when": _offset(event_date, start_time, 3.0), "what": "Recovery meal — protein + carbs + veg + milk", "why": "Continue glycogen restoration for 4-6hrs post game", "recipe": "Post-Practice Rebuild Plate (R019)", "recipient": "both"},
-        {"timing": "Bedtime", "when": f"{event_date} 21:00", "what": "Casein snack — cottage cheese or Greek yogurt", "why": "Overnight muscle repair — critical on game days", "recipe": "Cottage Cheese + Pineapple (R017)", "recipient": "teen"},
+        {"timing": "Night before (7pm)", "when": f"{event_date} (night before 19:00)", "what": "High carb dinner — pasta/rice + protein + milk", "why": "Glycogen loading takes 24–48 hrs — tonight's dinner determines tomorrow's performance (IOC/ACSM).", "recipe": "Power Pasta Bowl (R001)", "recipient": "parent", "critical": True},
+        {"timing": "3 hrs before kickoff", "when": _offset(event_date, start_time, _gas["offset_hours"]), "what": "Gas Tank Meal — carbs + protein + OJ", "why": _gas["why"], "recipe": "Tournament Morning Plate (R023)", "recipient": "both"},
+        {"timing": "45 min before kickoff", "when": _offset(event_date, start_time, _top["offset_hours"]), "what": "Top-Off Snack — banana or toast + honey", "why": _top["why"], "recipe": "Banana + PB (R006) or Toast + Honey (R007)", "recipient": "teen"},
+        {"timing": "Halftime", "when": _offset(event_date, start_time, 0.75), "what": "Orange slices + 16 oz water OR banana + natural sports drink", "why": WINDOWS["during_long"]["why"], "recipe": "Orange Slices (R010) or Banana + Sports Drink (R011)", "recipient": "teen"},
+        {"timing": "Within 30 min after final whistle", "when": _offset(event_date, start_time, 2.0), "what": f"Recovery Window — {_rec['gold_standard']}", "why": _rec["why"], "recipe": "Choc Milk Recovery (R013)", "recipient": "both", "critical": True},
+        {"timing": "1–2 hrs after game", "when": _offset(event_date, start_time, 3.0), "what": "Recovery meal — protein + carbs + veg + milk", "why": "Continue glycogen restoration; muscle protein synthesis remains elevated for 4–6 hrs post-exercise.", "recipe": "Post-Practice Rebuild Plate (R019)", "recipient": "both"},
+        {"timing": "Bedtime", "when": f"{event_date} 21:00", "what": f"Bedtime Casein — {_cas['examples'][0]} or {_cas['examples'][1]}", "why": _cas["why"], "recipe": "Cottage Cheese + Pineapple (R017)", "recipient": "teen"},
     ]
 
 
 def _strength(event_date: str, start_time: str) -> list:
+    _gas = WINDOWS["gas_tank"]
+    _top = WINDOWS["top_off"]
+    _rec = WINDOWS["recovery"]
+    _cas = WINDOWS["bedtime_casein"]
     return [
-        {"timing": "2hrs before", "when": _offset(event_date, start_time, -2), "what": "Carb + protein meal — rice/pasta + chicken", "why": "Fuel glycogen + prime amino acid availability", "recipe": "Strength Day Protein Plate (R022)", "recipient": "both"},
-        {"timing": "30min before", "when": _offset(event_date, start_time, -0.5), "what": "Fast carb snack — banana or rice cakes", "why": "Immediate glucose for lifting performance", "recipe": "Rice Cakes + Almond Butter (R009)", "recipient": "teen"},
-        {"timing": "During (if >45min)", "when": "During session", "what": "Water — electrolytes if >45min or hot", "why": "Prevent dehydration-induced strength loss", "recipe": None, "recipient": "teen"},
-        {"timing": "Within 30min after", "when": _offset(event_date, start_time, 1.5), "what": "0.25-0.30g protein/kg body weight", "why": "mTORC1 activation window for muscle protein synthesis (Everett 2025)", "recipe": "Post-Practice Rebuild Plate (R019)", "recipient": "both", "critical": True},
-        {"timing": "Bedtime — MANDATORY", "when": f"{event_date} 21:00", "what": "30-40g casein — cottage cheese or Greek yogurt", "why": "Overnight muscle repair proven in adolescent athletes (Everett 2025)", "recipe": "Cottage Cheese + Pineapple (R017)", "recipient": "teen", "critical": True},
+        {"timing": "2 hrs before", "when": _offset(event_date, start_time, -2), "what": "Gas Tank Meal — rice/pasta + chicken", "why": _gas["why"], "recipe": "Strength Day Protein Plate (R022)", "recipient": "both"},
+        {"timing": "30 min before", "when": _offset(event_date, start_time, _top["offset_hours"]), "what": "Top-Off Snack — banana or rice cakes", "why": _top["why"], "recipe": "Rice Cakes + Almond Butter (R009)", "recipient": "teen"},
+        {"timing": "During session", "when": "During session", "what": f"Water throughout — {HYDRATION['during']['target_oz_per_15min'][0]}–{HYDRATION['during']['target_oz_per_15min'][1]} oz every 15 min", "why": WINDOWS["during_short"]["why"], "recipe": None, "recipient": "teen"},
+        {"timing": "Within 30 min after", "when": _offset(event_date, start_time, 1.5), "what": f"Recovery Window — {_rec['gold_standard']}", "why": _rec["why"], "recipe": "Post-Practice Rebuild Plate (R019)", "recipient": "both", "critical": True},
+        {"timing": "Bedtime — MANDATORY", "when": f"{event_date} 21:00", "what": f"Bedtime Casein — {_cas['protein_target_g'][0]}–{_cas['protein_target_g'][1]} g casein", "why": _cas["why"], "recipe": "Cottage Cheese + Pineapple (R017)", "recipient": "teen", "critical": True},
     ]
 
 
 def _practice(event_date: str, start_time: str) -> list:
+    _gas = WINDOWS["gas_tank"]
+    _top = WINDOWS["top_off"]
+    _rec = WINDOWS["recovery"]
     return [
-        {"timing": "3-4hrs before practice", "when": _offset(event_date, start_time, -3.5), "what": "Pre-practice meal — carbs + protein", "why": "Fuel tank filled before high-intensity session", "recipe": "Pre-Practice Oatmeal Bowl (R018)", "recipient": "both"},
-        {"timing": "30-60min before practice", "when": _offset(event_date, start_time, -0.5), "what": "Fast carb snack — banana or toast", "why": "Top up blood glucose for practice intensity", "recipe": "Banana + PB (R006)", "recipient": "teen"},
-        {"timing": "Within 30min after practice", "when": _offset(event_date, start_time, 2.0), "what": "Recovery dinner — protein + carbs + veg + milk", "why": "Glycogen restoration + muscle repair window", "recipe": "Post-Practice Rebuild Plate (R019)", "recipient": "both", "critical": True},
+        {"timing": "3–4 hrs before practice", "when": _offset(event_date, start_time, _gas["offset_hours"]), "what": "Gas Tank Meal — carbs + protein", "why": _gas["why"], "recipe": "Pre-Practice Oatmeal Bowl (R018)", "recipient": "both"},
+        {"timing": "30–60 min before practice", "when": _offset(event_date, start_time, _top["offset_hours"]), "what": "Top-Off Snack — banana or toast", "why": _top["why"], "recipe": "Banana + PB (R006)", "recipient": "teen"},
+        {"timing": "Within 30 min after practice", "when": _offset(event_date, start_time, 2.0), "what": f"Recovery Window — {_rec['gold_standard']}", "why": _rec["why"], "recipe": "Post-Practice Rebuild Plate (R019)", "recipient": "both", "critical": True},
     ]
 
 
@@ -192,10 +255,14 @@ def compute_meal_slots(
     dur = duration_hours or 1.5
     event_end = _add(start_time, dur)
 
-    pre_event_time   = _add(start_time, -3.0)
-    power_snack_time = _add(start_time, -0.75)
+    # Timing anchors derived from nutrient_timing_rules WINDOWS
+    pre_event_time   = _add(start_time, WINDOWS["gas_tank"]["offset_hours"])
+    power_snack_time = _add(start_time, WINDOWS["top_off"]["offset_hours"])
     halftime_time    = _add(start_time, 0.75)
-    recovery_time    = _add(event_end,  0.5)
+    recovery_time    = _add(event_end,  WINDOWS["recovery"]["offset_hours"])
+
+    # Does this session require carb + electrolyte fueling during (>= 75 min)?
+    needs_carb_fueling = (dur * 60) >= CARB_FUELING_THRESHOLD_MINUTES or is_game
 
     is_early_event = _hour(pre_event_time) < 6.0
     is_late_event  = _hour(event_end) >= 19.0
@@ -245,14 +312,22 @@ def compute_meal_slots(
             recipe_category="pre-game-snack",
         ))
 
+    if needs_carb_fueling:
+        during_tags  = WINDOWS["during_long"]["tags"]
+        during_note  = f"30–60 g simple carbs/hr + electrolytes — {WINDOWS['during_long']['why']}"
+    else:
+        during_tags  = WINDOWS["during_short"]["tags"]
+        during_note  = WINDOWS["during_short"]["why"]
+
     hydration_label = "During Game Hydration" if is_game else "During Practice Hydration"
     slots.append(_make_slot(
         "during-game-hydration" if is_game else "during-practice-hydration",
         hydration_label,
         f"{_fmt(start_time)} – {_fmt(event_end)}",
-        "Electrolytes + fluids",
-        ["Electrolytes", "Fluids"], "💦",
+        "Electrolytes + fluids" if needs_carb_fueling else "Water only",
+        during_tags, "💦",
         is_hydration=True,
+        note=during_note,
     ))
 
     if is_game and "tournament" not in norm:
@@ -265,12 +340,12 @@ def compute_meal_slots(
 
     if is_late_event:
         slots.append(_make_slot(
-            "recovery-dinner", "Recovery Dinner",
+            "recovery-dinner", "After Training Recovery Fuel",
             f"After {_fmt(event_end)}",
-            "Post-event dinner = recovery meal",
-            ["High Protein", "Complex Carbs", "Fast Carbs"], "🍽️🔋",
+            "Recovery window — prioritize fuel over a full dinner",
+            ["High Protein", "Fast Carbs", "Fluids"], "🔋",
             is_merged=True,
-            note="Post-event dinner doubles as your recovery meal tonight",
+            note="Practice ends at dinner time — recovery nutrition takes priority over a sit-down meal",
             recipe_category="post-game-recovery",
         ))
     else:
@@ -314,3 +389,61 @@ def compute_meal_slots(
     slots.sort(key=_slot_sort_key)
 
     return slots
+
+
+def generate_day_windows(athlete_id: int, plan_date: str, conn) -> dict:
+    """
+    Single window engine for the Day Timeline.
+    Wraps compute_meal_slots() (already used by Today) — R1 invariant preserved.
+
+    Returns skeleton dict: { date, day_type, event, windows[] }
+    Callers attach items[] and ideas[] before returning to client.
+    """
+    event_row = conn.execute(
+        "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time LIMIT 1",
+        (athlete_id, plan_date),
+    ).fetchone()
+
+    if event_row:
+        event = dict(event_row)
+        event_type     = event["event_type"]
+        start_time     = event.get("start_time")
+        duration_hours = event.get("duration_hours") or 1.5
+    else:
+        event, event_type, start_time, duration_hours = None, "rest", None, None
+
+    slot_defs = compute_meal_slots(event_type, start_time, duration_hours)
+
+    event_info = None
+    if event and start_time:
+        event_end = _add(start_time, duration_hours or 1.5)
+        event_info = {
+            "label":         event.get("event_name") or event_type.capitalize(),
+            "start_display": _fmt(start_time),
+            "end_display":   _fmt(event_end),
+            "sort_time":     start_time,
+        }
+
+    windows = []
+    for sd in slot_defs:
+        if sd.get("double_day_alert"):
+            continue
+        sname        = sd["slot_name"]
+        category_key = _CATEGORY_BY_SLOT.get(sname, "balanced" if not sd["is_hydration"] else "hydrate")
+        windows.append({
+            "window_id":      f"w_{sname}",
+            "window_key":     sname,
+            "label":          sd["display_label"],
+            "category_key":   category_key,
+            "category_label": _CATEGORY_LABELS[category_key],
+            "time_display":   sd["eat_by_time"],
+            "sort_time":      _display_time_to_sort(sd["eat_by_time"]),
+            "why":            _WHY_LINES[category_key],
+        })
+
+    return {
+        "date":     plan_date,
+        "day_type": event_type,
+        "event":    event_info,
+        "windows":  windows,
+    }

@@ -1,5 +1,9 @@
+import io
+import uuid
+import base64
 from datetime import date as dt_date, timedelta
-from fastapi import APIRouter, HTTPException
+from pathlib import Path
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from api.database import get_conn
 from api.services import nutrition_calc
 from api.services.today_service import (
@@ -12,10 +16,136 @@ from api.services.today_service import (
     get_urgent_action,
     calculate_performance_forecast,
     build_mission_items_from_slots,
+    build_today_view,
+    record_window_capture,
 )
-from api.services.meal_timing import compute_meal_slots
+from api.services.nutrient_resolver import queue_nutrient_resolution
+from api.services.meal_timing import compute_meal_slots, generate_day_windows
+from api.services.idea_catalog import IDEAS
 
 router = APIRouter()
+
+_PHOTOS_DIR = Path("/tmp/fuelup_photos")
+_AUDIO_DIR  = Path("/tmp/fuelup_audio")
+
+
+async def _store_meal_photo(photo: UploadFile, athlete_id: int, slot_name: str):
+    """Save full image to disk; return (photo_url, thumb_data_uri)."""
+    try:
+        from PIL import Image as PILImage
+        content = await photo.read()
+        _PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
+        filename = f"{athlete_id}_{slot_name}_{uuid.uuid4().hex[:8]}.jpg"
+        photo_path = _PHOTOS_DIR / filename
+        photo_path.write_bytes(content)
+        img = PILImage.open(io.BytesIO(content)).convert("RGB")
+        img.thumbnail((120, 120))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=70)
+        thumb_b64 = base64.b64encode(buf.getvalue()).decode()
+        return str(photo_path), f"data:image/jpeg;base64,{thumb_b64}"
+    except Exception:
+        return None, None
+
+
+async def _store_meal_audio(audio: UploadFile, athlete_id: int, slot_name: str) -> str | None:
+    """Save voice clip to disk; return path string."""
+    try:
+        content = await audio.read()
+        _AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+        raw_name = audio.filename or "clip.webm"
+        ext = raw_name.rsplit(".", 1)[-1] if "." in raw_name else "webm"
+        filename = f"{athlete_id}_{slot_name}_{uuid.uuid4().hex[:8]}.{ext}"
+        audio_path = _AUDIO_DIR / filename
+        audio_path.write_bytes(content)
+        return str(audio_path)
+    except Exception:
+        return None
+
+
+@router.get("/{athlete_id}/meal-plan")
+def get_day_timeline(athlete_id: int, date: str = None):
+    """Day Timeline for the Meal Plan tab. Single engine: wraps compute_meal_slots."""
+    plan_date = date or str(dt_date.today())
+    conn = get_conn()
+    try:
+        if not conn.execute("SELECT id FROM athletes WHERE id = ?", (athlete_id,)).fetchone():
+            raise HTTPException(404, "Athlete not found")
+
+        skeleton = generate_day_windows(athlete_id, plan_date, conn)
+
+        rows = conn.execute(
+            "SELECT id, window_key, item_text, added_by FROM meal_plan_selections "
+            "WHERE athlete_id = ? AND plan_date = ?",
+            (athlete_id, plan_date),
+        ).fetchall()
+        by_key: dict = {}
+        for row in rows:
+            r = dict(row)
+            by_key.setdefault(r["window_key"], []).append(
+                {"id": r["id"], "text": r["item_text"], "added_by": r["added_by"]}
+            )
+
+        enriched = [
+            {**w, "items": by_key.get(w["window_key"], []), "ideas": IDEAS.get(w["category_key"], [])}
+            for w in skeleton["windows"]
+        ]
+        return {**skeleton, "windows": enriched}
+    finally:
+        conn.close()
+
+
+@router.get("/{athlete_id}/today")
+def get_today_view(athlete_id: int):
+    conn = get_conn()
+    try:
+        data = build_today_view(athlete_id, conn)
+        if data is None:
+            raise HTTPException(404, "Athlete not found.")
+        return data
+    finally:
+        conn.close()
+
+
+@router.post("/{athlete_id}/windows/{slot_name}/capture")
+async def capture_window(
+    athlete_id: int,
+    slot_name: str,
+    method: str = Form(...),
+    text: str | None = Form(None),
+    photo: UploadFile | None = File(None),
+    audio: UploadFile | None = File(None),
+):
+    """
+    Completes a fuel window — photo, voice, or text.
+    All three paths: instant done, background nutrient resolution.
+    """
+    conn = get_conn()
+    try:
+        photo_url = thumb_url = audio_url = None
+        if method == "photo" and photo is not None:
+            photo_url, thumb_url = await _store_meal_photo(photo, athlete_id, slot_name)
+        if method == "voice" and audio is not None:
+            audio_url = await _store_meal_audio(audio, athlete_id, slot_name)
+
+        log_id = record_window_capture(
+            athlete_id=athlete_id,
+            window_id=slot_name,
+            method=method,
+            text=text,
+            photo_url=photo_url,
+            thumb_url=thumb_url,
+            audio_url=audio_url,
+            conn=conn,
+        )
+        queue_nutrient_resolution(log_id, conn)
+
+        data = build_today_view(athlete_id, conn)
+        if data is None:
+            raise HTTPException(404, "Athlete not found.")
+        return data
+    finally:
+        conn.close()
 
 
 @router.get("/{athlete_id}/daily-summary")

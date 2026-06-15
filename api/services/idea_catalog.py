@@ -1,0 +1,38 @@
+IDEAS: dict[str, list[str]] = {
+    "carb": [
+        "Banana + toast",
+        "Rice bowl",
+        "Bagel + honey",
+        "Fruit smoothie",
+        "Pretzels",
+        "Pasta",
+        "White rice",
+        "English muffin + jam",
+    ],
+    "balanced": [
+        "Oatmeal + berries",
+        "Chicken + rice",
+        "Eggs + toast",
+        "Yogurt bowl",
+        "Sandwich + fruit",
+        "Turkey wrap",
+        "Cottage cheese + fruit",
+        "PB&J + banana",
+    ],
+    "recovery": [
+        "Greek yogurt + fruit",
+        "Chocolate milk",
+        "Turkey wrap",
+        "Smoothie + nut butter",
+        "Eggs + whole grain toast",
+        "Cottage cheese + pineapple",
+        "Tuna + crackers",
+    ],
+    "hydrate": [
+        "Water bottle (24 oz)",
+        "Electrolyte drink",
+        "Fruit + water",
+        "Coconut water",
+        "Watermelon slices",
+    ],
+}

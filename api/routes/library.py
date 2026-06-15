@@ -44,7 +44,7 @@ def _require_admin(key: Optional[str]):
 
 
 @router.get("/articles")
-def get_articles(category: str = None, search: str = None):
+def get_articles(category: str = None, search: str = None, audience: str = None):
     conn = get_conn()
     try:
         query = "SELECT * FROM articles WHERE is_active = 1"
@@ -55,6 +55,9 @@ def get_articles(category: str = None, search: str = None):
         if search:
             query += " AND (title LIKE ? OR summary LIKE ? OR category LIKE ? OR author LIKE ?)"
             params.extend([f"%{search}%"] * 4)
+        if audience in ("athlete", "parent"):
+            query += " AND audience IN (?, 'both')"
+            params.append(audience)
         query += " ORDER BY published_date DESC"
         rows = conn.execute(query, params).fetchall()
         return [dict(r) for r in rows]
@@ -152,6 +155,34 @@ def generate_picks(athlete_id: int, x_admin_key: Optional[str] = Header(None)):
         generate_weekly_picks(athlete_id, conn)
         conn.commit()
         return {"status": "ok"}
+    finally:
+        conn.close()
+
+
+@router.post("/admin/articles/{article_id}/publish")
+def publish_article(article_id: int, x_admin_key: Optional[str] = Header(None)):
+    _require_admin(x_admin_key)
+    conn = get_conn()
+    try:
+        if not conn.execute("SELECT id FROM articles WHERE id = ?", (article_id,)).fetchone():
+            raise HTTPException(status_code=404, detail="Article not found")
+        conn.execute("UPDATE articles SET is_active = 1 WHERE id = ?", (article_id,))
+        conn.commit()
+        return {"status": "published"}
+    finally:
+        conn.close()
+
+
+@router.post("/admin/articles/{article_id}/unpublish")
+def unpublish_article(article_id: int, x_admin_key: Optional[str] = Header(None)):
+    _require_admin(x_admin_key)
+    conn = get_conn()
+    try:
+        if not conn.execute("SELECT id FROM articles WHERE id = ?", (article_id,)).fetchone():
+            raise HTTPException(status_code=404, detail="Article not found")
+        conn.execute("UPDATE articles SET is_active = 0 WHERE id = ?", (article_id,))
+        conn.commit()
+        return {"status": "unpublished"}
     finally:
         conn.close()
 

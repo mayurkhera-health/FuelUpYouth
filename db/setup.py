@@ -179,6 +179,19 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_knowledge_items_status
             ON knowledge_items(review_status);
 
+        CREATE TABLE IF NOT EXISTS meal_plan_selections (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id  INTEGER NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            plan_date   TEXT NOT NULL,
+            window_key  TEXT NOT NULL,
+            item_text   TEXT NOT NULL,
+            added_by    TEXT NOT NULL DEFAULT 'parent',
+            created_at  TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_meal_plan_selections_athlete_date
+            ON meal_plan_selections(athlete_id, plan_date);
+
         CREATE TABLE IF NOT EXISTS articles (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             title            TEXT NOT NULL,
@@ -203,6 +216,16 @@ def init_db():
             generated_at     TEXT DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(athlete_id, article_id, week_start)
         );
+
+        CREATE TABLE IF NOT EXISTS athlete_logins (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            email       TEXT UNIQUE NOT NULL,
+            athlete_id  INTEGER NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            created_at  TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_athlete_logins_email
+            ON athlete_logins(email);
     """)
 
     conn.commit()

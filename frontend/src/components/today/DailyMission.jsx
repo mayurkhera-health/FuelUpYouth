@@ -1,15 +1,14 @@
-import { useState } from "react";
-import MissionItem from "./MissionItem";
+import { useState, useRef, useEffect } from "react";
+import MissionItem  from "./MissionItem";
+import VoiceCapture from "./VoiceCapture";
+import TextCapture  from "./TextCapture";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
-// Derives display status from item.logged + item.time relative to now
 function getMissionStatus(item, now = new Date()) {
   if (item.logged) return "done";
-
   const cleanTime = (item.time || "").replace("~", "").trim();
   if (!cleanTime || cleanTime === "All day") return "upcoming";
-
   try {
     const parts = cleanTime.split(" ");
     const timePart = parts[0];
@@ -19,11 +18,9 @@ function getMissionStatus(item, now = new Date()) {
     const mins = parseInt(minsStr || "0", 10);
     if (meridiem === "PM" && hours !== 12) hours += 12;
     if (meridiem === "AM" && hours === 12) hours = 0;
-
     const mealTime = new Date(now);
     mealTime.setHours(hours, mins, 0, 0);
     const diffMins = (mealTime - now) / 60000;
-
     if (diffMins >= -30 && diffMins <= 90) return "active";
     if (diffMins < -30) return "done";
     return "upcoming";
@@ -36,12 +33,42 @@ const TAG_MAP = { done: "DONE", active: "NOW", upcoming: "UPCOMING" };
 
 export default function DailyMission({ missionItems, eventType, eventLabel, date, athleteId, onToast }) {
   const [doneSet, setDoneSet] = useState(
-    () => new Set((missionItems || []).filter(i => i.logged).map(i => i.meal_type))
+    () => new Set((missionItems || []).filter((i) => i.logged).map((i) => i.meal_type))
   );
 
-  const items = missionItems ?? [];
-  const doneCount = items.filter(i => doneSet.has(i.meal_type)).length;
-  const pct = items.length > 0 ? Math.round((doneCount / items.length) * 100) : 0;
+  // Phase machine: 'closed' | 'voice' | 'text'
+  const [phase, setPhase]               = useState("closed");
+  const [activeWindow, setActiveWindow] = useState(null);
+  const [cameraAvailable, setCameraAvailable] = useState(true);
+
+  const photoInputRef = useRef(null);
+
+  // Check camera once on mount
+  useEffect(() => {
+    async function checkCamera() {
+      try {
+        if (!navigator.mediaDevices?.enumerateDevices) {
+          setCameraAvailable(false);
+          return;
+        }
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasCamera = devices.some((d) => d.kind === "videoinput");
+        if (!hasCamera) { setCameraAvailable(false); return; }
+        // Permission state check (where supported)
+        if (navigator.permissions?.query) {
+          const perm = await navigator.permissions.query({ name: "camera" });
+          if (perm.state === "denied") setCameraAvailable(false);
+        }
+      } catch {
+        // enumerateDevices failed — assume camera present, let the input handle it
+      }
+    }
+    void checkCamera();
+  }, []);
+
+  const items     = missionItems ?? [];
+  const doneCount = items.filter((i) => doneSet.has(i.meal_type)).length;
+  const pct       = items.length > 0 ? Math.round((doneCount / items.length) * 100) : 0;
 
   const dayLabel = eventLabel
     || (eventType ? eventType.charAt(0).toUpperCase() + eventType.slice(1) + " Day" : "Today");
@@ -49,27 +76,41 @@ export default function DailyMission({ missionItems, eventType, eventLabel, date
     ? new Date(date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })
     : "";
 
-  async function handleToggle(item) {
-    const wasDone = doneSet.has(item.meal_type);
-    setDoneSet(prev => {
-      const next = new Set(prev);
-      wasDone ? next.delete(item.meal_type) : next.add(item.meal_type);
-      return next;
-    });
-    if (!wasDone) {
-      onToast?.("✓ Logged — fuel score updating");
-      try {
-        await fetch(`${API}/api/meal-logs/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            athlete_id:  athleteId,
-            meal_type:   item.meal_type,
-            description: item.label,
-            logged_at:   new Date().toISOString(),
-          }),
-        });
-      } catch (_) {}
+  function pickDirect(method, item) {
+    setActiveWindow(item);
+    if (method === "photo") {
+      setTimeout(() => photoInputRef.current?.click(), 60);
+    } else if (method === "voice") {
+      setPhase("voice");
+    } else if (method === "text") {
+      setPhase("text");
+    }
+  }
+
+  function handlePhotoSelected(e) {
+    const file = e.target.files?.[0];
+    if (!file || !activeWindow) return;
+    handleLogged(activeWindow, { method: "photo", file });
+    e.target.value = "";
+  }
+
+  async function handleLogged(item, result) {
+    setDoneSet((prev) => new Set([...prev, item.meal_type]));
+    onToast?.("Logged ✓ — nice work");
+    setPhase("closed");
+
+    try {
+      const form = new FormData();
+      form.append("method", result.method);
+      if (result.text)                            form.append("text",  result.text);
+      if (result.method === "photo" && result.file) form.append("photo", result.file, "meal.jpg");
+      if (result.method === "voice" && result.blob) form.append("audio", result.blob, "meal.webm");
+      await fetch(
+        `${API}/api/athletes/${athleteId}/windows/${item.meal_type}/capture`,
+        { method: "POST", body: form }
+      );
+    } catch (_) {
+      // Offline — done state is already set; server will sync on next load
     }
   }
 
@@ -91,41 +132,67 @@ export default function DailyMission({ missionItems, eventType, eventLabel, date
   }
 
   return (
-    <div style={s.card}>
-      <div style={s.header}>
-        <div>
-          <div style={s.eyebrow}>{dayLabel} · {dateStr}</div>
-          <div style={s.title}>Today's Mission</div>
-        </div>
-        <div style={s.progress}>
-          <div style={s.count}>
-            {doneCount}<span style={s.denom}>/{items.length}</span>
+    <>
+      <div style={s.card}>
+        <div style={s.header}>
+          <div>
+            <div style={s.eyebrow}>{dayLabel} · {dateStr}</div>
+            <div style={s.title}>Today's Mission</div>
           </div>
-          <span style={s.completeLabel}>complete</span>
-          <div style={s.bar}><div style={{ ...s.barFill, width: `${pct}%` }} /></div>
+          <div style={s.progress}>
+            <div style={s.count}>
+              {doneCount}<span style={s.denom}>/{items.length}</span>
+            </div>
+            <span style={s.completeLabel}>complete</span>
+            <div style={s.bar}><div style={{ ...s.barFill, width: `${pct}%` }} /></div>
+          </div>
         </div>
+
+        {items.map((item, idx) => {
+          const isDone   = doneSet.has(item.meal_type) || item.logged;
+          const status   = isDone ? "done" : getMissionStatus(item);
+          const enriched = { ...item, state: status, tag: TAG_MAP[status] || "UPCOMING", sub: item.macro_focus };
+          return (
+            <div key={item.meal_type} style={idx === items.length - 1 ? { borderBottom: "none" } : {}}>
+              <MissionItem
+                item={enriched}
+                isDone={isDone}
+                cameraAvailable={cameraAvailable}
+                onPhoto={() => pickDirect("photo", item)}
+                onVoice={() => pickDirect("voice", item)}
+                onText={() => pickDirect("text", item)}
+              />
+            </div>
+          );
+        })}
       </div>
 
-      {items.map((item, idx) => {
-        const isDone   = doneSet.has(item.meal_type) || item.logged;
-        const status   = isDone ? "done" : getMissionStatus(item);
-        const enriched = {
-          ...item,
-          state: status,
-          tag:   TAG_MAP[status] || "UPCOMING",
-          sub:   item.macro_focus,
-        };
-        return (
-          <div key={item.meal_type} style={idx === items.length - 1 ? { borderBottom: "none" } : {}}>
-            <MissionItem
-              item={enriched}
-              isDone={isDone}
-              onToggle={() => handleToggle(item)}
-            />
-          </div>
-        );
-      })}
-    </div>
+      {/* Hidden photo file input */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: "none" }}
+        onChange={handlePhotoSelected}
+      />
+
+      {phase === "voice" && activeWindow && (
+        <VoiceCapture
+          window={activeWindow}
+          onLogged={(result) => handleLogged(activeWindow, result)}
+          onClose={() => setPhase("closed")}
+          onPermissionDenied={() => setPhase("closed")}
+        />
+      )}
+      {phase === "text" && activeWindow && (
+        <TextCapture
+          window={activeWindow}
+          onLogged={(result) => handleLogged(activeWindow, result)}
+          onClose={() => setPhase("closed")}
+        />
+      )}
+    </>
   );
 }
 

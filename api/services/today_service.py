@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from api.services.meal_timing import compute_meal_slots
 
 
 def compute_logged_totals(meal_logs: list) -> dict:
@@ -471,7 +472,7 @@ MACRO_FOCUS_MAP = {
     "power-snack":                  "Fast Carbs",
     "halftime-fueling":             "Fast Carbs",
     "recovery-fuel":                "Recovery Focus",
-    "recovery-dinner":              "High Protein + Carbs",
+    "recovery-dinner":              "Recovery Fuel",
     "between-games":                "Electrolytes + Carbs",
     # Underscore variants
     "pre_game_breakfast":           "High Carbs",
@@ -543,4 +544,279 @@ def calculate_performance_forecast(traffic_light: dict) -> dict:
         "energy_reserves":   round(pct("calories")  * 0.60 + pct("carbs_g")   * 0.40),
         "second_half_power": round(pct("iron_mg")   * 0.50 + pct("carbs_g")   * 0.30 + pct("water_oz")  * 0.20),
         "mental_focus":      round(pct("calories")  * 0.40 + pct("water_oz")  * 0.35 + pct("protein_g") * 0.25),
+    }
+
+
+# ── TODAY VIEW ──────────────────────────────────────────────────────────────
+
+_READINESS_LABELS = {
+    "elite": "Elite",
+    "pro":   "Pro Level",
+    "game":  "Game Ready",
+    "track": "On Track",
+    "build": "Building",
+    "start": "Getting Started",
+}
+
+_READINESS_LINES: dict = {
+    "elite": {
+        "game":     ["Your fueling is dialed in — you're ready to compete.", "Stay sharp and hydrated heading into kickoff."],
+        "practice": ["Elite fuel score — bring that energy to training.", "Your consistency is building real match fitness."],
+        "rest":     ["Your recovery fueling is elite — the gains are locking in now.", "This is how your body builds the next level."],
+        "any":      ["Your fueling is dialed in today.", "Keep this rhythm through the week."],
+    },
+    "pro": {
+        "game":     ["Strong fuel score — your tank is loaded for today.", "One more window to hit Elite status."],
+        "rest":     ["Strong recovery score — your body is getting exactly what it needs.", "One more window to lock in elite recovery."],
+        "any":      ["Strong fuel score today — the plan is working.", "One more window to hit Elite status."],
+    },
+    "game": {
+        "game":     ["Your tank is loaded for today's competition.", "Stay hydrated heading into kickoff."],
+        "practice": ["Game-ready fuel score — great prep for training.", "Hit your next window to keep the momentum."],
+        "rest":     ["Solid rest-day fueling — you're building tomorrow's energy.", "Complete your next window to keep the recovery going."],
+        "any":      ["Solid fueling today — you're on the right track.", "Complete your next window to push your score higher."],
+    },
+    "track": {
+        "game":     ["Good start — complete your next window before the game.", "Every logged window adds to your energy reserves."],
+        "rest":     ["Good start on your recovery day — keep the fuel windows coming.", "Rest days that are fueled well lead to stronger training this week."],
+        "any":      ["Good start — hit your next window to keep momentum.", "Consistent fueling is how you build match fitness."],
+    },
+    "build": {
+        "game":     ["Game day is here — let's get your fuel windows in.", "Even one more completed window makes a difference."],
+        "rest":     ["Rest days are when your body actually gets stronger from the week.", "Keep fueling and you come back faster."],
+        "any":      ["Every completed window improves your score.", "Focus on your next fuel window to get back on track."],
+    },
+    "start": {
+        "rest":     ["Rest days need fuel too — let's hit the next window together.", "Your body rebuilds between sessions. Give it what it needs."],
+        "any":      ["Let's get your fuel windows going.", "Complete the next window to start building momentum."],
+    },
+}
+
+
+def _score_band(score: int) -> str:
+    if score >= 90: return "elite"
+    if score >= 80: return "pro"
+    if score >= 70: return "game"
+    if score >= 60: return "track"
+    if score >= 50: return "build"
+    return "start"
+
+
+def _readiness_lines(score: int, event_type: str) -> list:
+    band = _score_band(score)
+    et = (event_type or "rest").lower()
+    if et in ("tournament",): et = "game"
+    if et in ("training", "strength"): et = "practice"
+    # "rest" is kept as its own key — recovery tone, not generic
+    lines_map = _READINESS_LINES.get(band, {})
+    return lines_map.get(et) or lines_map.get("any") or ["Your fueling is on track.", "Keep going."]
+
+
+def compute_readiness(logged_count: int, total_count: int, event_type: str) -> dict:
+    bonus = round(35 * (logged_count / total_count)) if total_count > 0 else 0
+    score = max(40, min(100, 55 + bonus))
+    band  = _score_band(score)
+    return {
+        "score": score,
+        "word":  _READINESS_LABELS[band],
+        "lines": _readiness_lines(score, event_type),
+    }
+
+
+def assign_window_status(windows: list) -> list:
+    next_assigned = False
+    result = []
+    for w in windows:
+        if w.get("logged"):
+            result.append({**w, "status": "done"})
+        elif not next_assigned:
+            result.append({**w, "status": "next"})
+            next_assigned = True
+        else:
+            result.append({**w, "status": "upcoming"})
+    return result
+
+
+def _ensure_window_logs_table(conn) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS window_logs (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id      INTEGER NOT NULL,
+            window_id       TEXT NOT NULL,
+            log_date        TEXT NOT NULL,
+            method          TEXT NOT NULL DEFAULT 'photo',
+            text            TEXT,
+            photo_url       TEXT,
+            thumb_url       TEXT,
+            audio_url       TEXT,
+            nutrient_status TEXT NOT NULL DEFAULT 'none',
+            logged_by       TEXT,
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(athlete_id, window_id, log_date)
+        )
+    """)
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(window_logs)").fetchall()]
+    if "logged_by" not in cols:
+        conn.execute("ALTER TABLE window_logs ADD COLUMN logged_by TEXT")
+    if "audio_url" not in cols:
+        conn.execute("ALTER TABLE window_logs ADD COLUMN audio_url TEXT")
+    conn.commit()
+
+
+def record_window_capture(
+    athlete_id: int,
+    window_id: str,
+    method: str,
+    text: str | None,
+    photo_url: str | None,
+    thumb_url: str | None,
+    conn,
+    audio_url: str | None = None,
+) -> int:
+    """Insert (or replace) a window_logs row and mark meal_plans.logged for backward compat."""
+    _ensure_window_logs_table(conn)
+    today = date.today().isoformat()
+    cur = conn.execute(
+        """INSERT INTO window_logs
+               (athlete_id, window_id, log_date, method, text, photo_url, thumb_url,
+                audio_url, nutrient_status, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'none', ?)
+           ON CONFLICT(athlete_id, window_id, log_date) DO UPDATE SET
+               method=excluded.method, text=excluded.text,
+               photo_url=excluded.photo_url, thumb_url=excluded.thumb_url,
+               audio_url=excluded.audio_url,
+               nutrient_status='none'""",
+        (athlete_id, window_id, today, method, text, photo_url, thumb_url,
+         audio_url, datetime.now().isoformat()),
+    )
+    conn.commit()
+    # Keep meal_plans.logged in sync for the Meal Plan tab
+    conn.execute(
+        "UPDATE meal_plans SET logged = 1 WHERE athlete_id = ? AND plan_date = ? AND slot_name = ?",
+        (athlete_id, today, window_id),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def build_today_view(athlete_id: int, conn) -> dict | None:
+    from api.services.nutrition_analysis import get_week_start, get_week_dates
+
+    today_str = date.today().isoformat()
+    _ensure_window_logs_table(conn)
+
+    ath = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
+    if not ath:
+        return None
+    athlete = dict(ath)
+
+    events = [dict(r) for r in conn.execute(
+        "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time",
+        (athlete_id, today_str),
+    ).fetchall()]
+    today_event = events[0] if events else None
+    event_type  = today_event["event_type"] if today_event else "rest"
+    start_time  = today_event["start_time"] if today_event else None
+    duration_h  = today_event["duration_hours"] if today_event else None
+    double_day  = len(events) >= 2
+    second_start = events[1]["start_time"] if double_day else None
+
+    slot_defs = compute_meal_slots(
+        event_type, start_time, duration_h,
+        double_day=double_day, second_start_time=second_start,
+    )
+
+    plan_rows = conn.execute(
+        "SELECT id, slot_name, logged FROM meal_plans WHERE athlete_id = ? AND plan_date = ?",
+        (athlete_id, today_str),
+    ).fetchall()
+    logged_map = {r["slot_name"]: {"id": r["id"], "logged": bool(r["logged"])} for r in plan_rows}
+
+    # window_logs: photo/text/voice capture records for today
+    wl_rows = conn.execute(
+        "SELECT * FROM window_logs WHERE athlete_id = ? AND log_date = ?",
+        (athlete_id, today_str),
+    ).fetchall()
+    wl_map = {r["window_id"]: dict(r) for r in wl_rows}
+
+    windows = []
+    for sd in slot_defs:
+        if sd.get("is_hydration") or sd.get("double_day_alert"):
+            continue
+        sn = sd["slot_name"]
+        plan_info = logged_map.get(sn, {})
+        wl = wl_map.get(sn)
+        # logged = True if captured OR if Meal Plan tab marked it done
+        logged = bool(wl is not None) or bool(plan_info.get("logged", False))
+        windows.append({
+            "id":            plan_info.get("id"),
+            "slot_name":     sn,
+            "display_label": sd.get("display_label", sn),
+            "eat_by_time":   sd.get("eat_by_time", ""),
+            "macro_focus":   get_macro_focus(sn),
+            "logged":        logged,
+            "log": {
+                "logged":          logged,
+                "method":          wl["method"] if wl else None,
+                "photo_thumb_url": wl["thumb_url"] if wl else None,
+                "nutrient_status": wl["nutrient_status"] if wl else "none",
+            },
+        })
+    windows = assign_window_status(windows)
+
+    logged_count = sum(1 for w in windows if w.get("logged"))
+    readiness = compute_readiness(logged_count, len(windows), event_type)
+
+    next_game_row = conn.execute(
+        "SELECT * FROM events WHERE athlete_id = ? AND event_date > ? "
+        "AND event_type IN ('game', 'tournament') ORDER BY event_date LIMIT 1",
+        (athlete_id, today_str),
+    ).fetchone()
+    next_game = None
+    if next_game_row:
+        ng = dict(next_game_row)
+        days_away = (date.fromisoformat(ng["event_date"]) - date.today()).days
+        next_game = {
+            "event_date": ng["event_date"],
+            "event_type": ng["event_type"],
+            "event_name": ng.get("event_name"),
+            "start_time": ng.get("start_time"),
+            "days_away":  days_away,
+        }
+
+    week_start_str = get_week_start()
+    week_dates     = get_week_dates(week_start_str)
+    DAY_ABBR       = ["M", "T", "W", "T", "F", "S", "S"]
+    readiness_grid = []
+    for i, d in enumerate(week_dates):
+        d_ev = conn.execute(
+            "SELECT event_type, start_time, duration_hours FROM events WHERE athlete_id = ? AND event_date = ? LIMIT 1",
+            (athlete_id, d),
+        ).fetchone()
+        d_et  = d_ev["event_type"] if d_ev else "rest"
+        d_st  = d_ev["start_time"] if d_ev else None
+        d_dur = d_ev["duration_hours"] if d_ev else None
+        d_slots = [s for s in compute_meal_slots(d_et, d_st, d_dur)
+                   if not s.get("is_hydration") and not s.get("double_day_alert")]
+        d_total = len(d_slots)
+        d_logged = conn.execute(
+            "SELECT COUNT(*) as cnt FROM meal_plans WHERE athlete_id = ? AND plan_date = ? AND logged = 1",
+            (athlete_id, d),
+        ).fetchone()["cnt"]
+
+        score = None
+        if d <= today_str and d_total > 0:
+            bonus = round(35 * (d_logged / d_total))
+            score = max(40, min(100, 55 + bonus))
+
+        readiness_grid.append({"date": d, "day": DAY_ABBR[i], "score": score, "is_today": d == today_str})
+
+    return {
+        "athlete":        {"first_name": athlete["first_name"], "sport": athlete.get("sport", "soccer")},
+        "today_event":    today_event,
+        "day_type":       event_type,
+        "readiness":      readiness,
+        "windows":        windows,
+        "next_game":      next_game,
+        "readiness_grid": readiness_grid,
     }

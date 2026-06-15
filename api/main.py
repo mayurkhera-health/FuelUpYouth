@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, today, water, knowledge, legal, library
+from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth
 
 app = FastAPI(
     title="FuelUp Youth Soccer Nutrition API",
@@ -21,6 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router,      prefix="/api/auth",      tags=["0. Auth"])
 app.include_router(parents.router,   prefix="/api/parents",   tags=["1. Parental Consent"])
 app.include_router(athletes.router,  prefix="/api/athletes",  tags=["2. Athlete Profiles"])
 app.include_router(events.router,    prefix="/api/events",    tags=["3. Schedule"])
@@ -30,7 +31,8 @@ app.include_router(recipes.router,   prefix="/api/recipes",   tags=["7. Recipe D
 app.include_router(analysis.router,  prefix="/api/analysis",  tags=["9. Nutrient Gap Analysis"])
 app.include_router(reports.router,       prefix="/api/reports",       tags=["11. Reports"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["12. Notifications"])
-app.include_router(meal_plans.router,   prefix="/api/meal-plans",   tags=["10. Meal Planner"])
+app.include_router(meal_plans.router,            prefix="/api/meal-plans",   tags=["10. Meal Planner"])
+app.include_router(meal_plan_selections.router,  prefix="/api/meal-plan",    tags=["10b. Meal Plan Selections"])
 app.include_router(today.router,        prefix="/api/athletes",     tags=["13. Today Screen"])
 app.include_router(water.router,        prefix="/api/water-log",    tags=["14. Water Log"])
 app.include_router(knowledge.router,    prefix="/api/knowledge",    tags=["15. Knowledge Base"])
