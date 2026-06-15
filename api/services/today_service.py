@@ -459,7 +459,18 @@ def get_mission_items(
 # for any callers using underscore-style keys.
 
 MACRO_FOCUS_MAP = {
-    # Core slots from compute_meal_slots (hyphen-separated)
+    # ── New engine keys (window_templates.py) ─────────────────────────────────
+    "everyday_breakfast":     "Balanced Fuel",
+    "everyday_lunch":         "High Carbs",
+    "everyday_snack":         "Quick Fuel",
+    "everyday_dinner":        "High Protein + Carbs",
+    "pre_event_meal":         "High Carbs",
+    "fuel_after_primary":     "Recovery Focus",
+    "fuel_after_second":      "High Protein + Carbs",
+    "quick_morning_snack":    "Fast Carbs",
+    "proper_breakfast_after": "Balanced Fuel",
+    # Tournament / double-session keyed variants handled by prefix matching below
+    # ── Legacy compute_meal_slots keys (hyphen-separated) ─────────────────────
     "breakfast":                    "Balanced Fuel",
     "mid-morning-snack":            "Quick Fuel",
     "lunch":                        "High Carbs",
@@ -506,6 +517,18 @@ def get_macro_focus(meal_type: str) -> str:
         return "Fuel Window"
     if meal_type in MACRO_FOCUS_MAP:
         return MACRO_FOCUS_MAP[meal_type]
+    # Handle tournament/double-session keyed variants: "fuel_after_primary_1", "between_games_1_2", etc.
+    _PREFIX_MAP = {
+        "fuel_after_primary":     "Recovery Focus",
+        "fuel_after_second":      "High Protein + Carbs",
+        "pre_event_meal":         "High Carbs",
+        "between_games":          "Electrolytes + Carbs",
+        "between_sessions":       "Electrolytes + Carbs",
+        "proper_breakfast_after": "Balanced Fuel",
+    }
+    for prefix, focus in _PREFIX_MAP.items():
+        if meal_type.startswith(prefix):
+            return focus
     key = meal_type.lower().replace(" ", "_").replace("-", "_")
     return MACRO_FOCUS_MAP.get(key, "Fuel Window")
 
@@ -705,6 +728,7 @@ def record_window_capture(
 
 def build_today_view(athlete_id: int, conn, today: str | None = None) -> dict | None:
     from api.services.nutrition_analysis import get_week_start, get_week_dates
+    from api.services.window_templates import generate_windows_for_day
 
     # INVARIANT: use the client's local date so timezone-shifted athletes
     # see the correct day's windows. Falls back to server UTC if not provided.
@@ -721,16 +745,11 @@ def build_today_view(athlete_id: int, conn, today: str | None = None) -> dict | 
         (athlete_id, today_str),
     ).fetchall()]
     today_event = events[0] if events else None
-    event_type  = today_event["event_type"] if today_event else "rest"
-    start_time  = today_event["start_time"] if today_event else None
-    duration_h  = today_event["duration_hours"] if today_event else None
-    double_day  = len(events) >= 2
-    second_start = events[1]["start_time"] if double_day else None
 
-    slot_defs = compute_meal_slots(
-        event_type, start_time, duration_h,
-        double_day=double_day, second_start_time=second_start,
-    )
+    # Window engine — single source of truth
+    engine_result   = generate_windows_for_day(athlete_id, today_str, events)
+    event_type      = engine_result["day_type"]
+    template_windows = engine_result["windows"]
 
     plan_rows = conn.execute(
         "SELECT id, slot_name, logged FROM meal_plans WHERE athlete_id = ? AND plan_date = ?",
@@ -746,19 +765,19 @@ def build_today_view(athlete_id: int, conn, today: str | None = None) -> dict | 
     wl_map = {r["window_id"]: dict(r) for r in wl_rows}
 
     windows = []
-    for sd in slot_defs:
-        if sd.get("is_hydration") or sd.get("double_day_alert"):
+    for tw in template_windows:
+        if tw.get("is_nudge_only"):
             continue
-        sn = sd["slot_name"]
+        sn        = tw["key"]
         plan_info = logged_map.get(sn, {})
-        wl = wl_map.get(sn)
-        # logged = True if captured OR if Meal Plan tab marked it done
-        logged = bool(wl is not None) or bool(plan_info.get("logged", False))
+        wl        = wl_map.get(sn)
+        # logged = True if captured via window_logs OR if Meal Plan tab marked it done
+        logged    = bool(wl is not None) or bool(plan_info.get("logged", False))
         windows.append({
             "id":            plan_info.get("id"),
             "slot_name":     sn,
-            "display_label": sd.get("display_label", sn),
-            "eat_by_time":   sd.get("eat_by_time", ""),
+            "display_label": tw["label"],
+            "eat_by_time":   tw["time_display"],
             "macro_focus":   get_macro_focus(sn),
             "logged":        logged,
             "log": {

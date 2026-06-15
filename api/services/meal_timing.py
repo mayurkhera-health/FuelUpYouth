@@ -393,57 +393,56 @@ def compute_meal_slots(
 
 def generate_day_windows(athlete_id: int, plan_date: str, conn) -> dict:
     """
-    Single window engine for the Day Timeline.
-    Wraps compute_meal_slots() (already used by Today) — R1 invariant preserved.
+    Single window engine for the Day Timeline (Meal Plan tab).
+    Delegates to window_templates.generate_windows_for_day() — single source of truth.
 
     Returns skeleton dict: { date, day_type, event, windows[] }
     Callers attach items[] and ideas[] before returning to client.
     """
-    event_row = conn.execute(
-        "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time LIMIT 1",
+    from api.services.window_templates import generate_windows_for_day
+
+    event_rows = conn.execute(
+        "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time",
         (athlete_id, plan_date),
-    ).fetchone()
+    ).fetchall()
+    events = [dict(r) for r in event_rows]
+    first_event = events[0] if events else None
 
-    if event_row:
-        event = dict(event_row)
-        event_type     = event["event_type"]
-        start_time     = event.get("start_time")
-        duration_hours = event.get("duration_hours") or 1.5
-    else:
-        event, event_type, start_time, duration_hours = None, "rest", None, None
-
-    slot_defs = compute_meal_slots(event_type, start_time, duration_hours)
+    result     = generate_windows_for_day(athlete_id, plan_date, events)
+    day_type   = result["day_type"]
+    tw_list    = result["windows"]
 
     event_info = None
-    if event and start_time:
-        event_end = _add(start_time, duration_hours or 1.5)
-        event_info = {
-            "label":         event.get("event_name") or event_type.capitalize(),
-            "start_display": _fmt(start_time),
-            "end_display":   _fmt(event_end),
-            "sort_time":     start_time,
-        }
+    if first_event:
+        start_time     = first_event.get("start_time")
+        duration_hours = first_event.get("duration_hours") or 1.5
+        if start_time:
+            event_end = _add(start_time, duration_hours)
+            event_info = {
+                "label":         first_event.get("event_name") or first_event["event_type"].capitalize(),
+                "start_display": _fmt(start_time),
+                "end_display":   _fmt(event_end),
+                "sort_time":     start_time,
+            }
 
     windows = []
-    for sd in slot_defs:
-        if sd.get("double_day_alert"):
+    for tw in tw_list:
+        if tw.get("is_nudge_only"):
             continue
-        sname        = sd["slot_name"]
-        category_key = _CATEGORY_BY_SLOT.get(sname, "balanced" if not sd["is_hydration"] else "hydrate")
         windows.append({
-            "window_id":      f"w_{sname}",
-            "window_key":     sname,
-            "label":          sd["display_label"],
-            "category_key":   category_key,
-            "category_label": _CATEGORY_LABELS[category_key],
-            "time_display":   sd["eat_by_time"],
-            "sort_time":      _display_time_to_sort(sd["eat_by_time"]),
-            "why":            _WHY_LINES[category_key],
+            "window_id":      f"w_{tw['key']}",
+            "window_key":     tw["key"],
+            "label":          tw["label"],
+            "category_key":   tw["category_key"],
+            "category_label": tw["category_label"],
+            "time_display":   tw["time_display"],
+            "sort_time":      tw["sort_time"],
+            "why":            tw["why"],
         })
 
     return {
         "date":     plan_date,
-        "day_type": event_type,
+        "day_type": day_type,
         "event":    event_info,
         "windows":  windows,
     }

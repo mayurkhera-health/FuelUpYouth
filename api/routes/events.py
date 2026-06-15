@@ -1,8 +1,9 @@
 import urllib.request
 from fastapi import APIRouter, HTTPException
 from typing import List
-from api.models import EventCreate, EventResponse
+from api.models import EventCreate, EventUpdate, EventResponse
 from api.database import get_conn
+from api.services.window_templates import on_event_added_or_changed
 
 router = APIRouter()
 
@@ -32,7 +33,39 @@ def create_event(data: EventCreate):
         )
         conn.commit()
         row = conn.execute("SELECT * FROM events WHERE rowid = last_insert_rowid()").fetchone()
+        on_event_added_or_changed(data.athlete_id, data.event_date, conn)
         return dict(row)
+    finally:
+        conn.close()
+
+
+@router.put("/{event_id}", response_model=EventResponse)
+def update_event(event_id: int, data: EventUpdate):
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Event not found.")
+        existing = dict(row)
+
+        new_name     = data.event_name     if data.event_name     is not None else existing["event_name"]
+        new_type     = data.event_type     if data.event_type     is not None else existing["event_type"]
+        new_date     = data.event_date     if data.event_date     is not None else existing["event_date"]
+        new_start    = data.start_time     if data.start_time     is not None else existing["start_time"]
+        new_dur      = data.duration_hours if data.duration_hours is not None else existing["duration_hours"]
+        new_city     = data.city           if data.city           is not None else existing["city"]
+
+        conn.execute(
+            "UPDATE events SET event_name=?, event_type=?, event_date=?, start_time=?, duration_hours=?, city=? WHERE id=?",
+            (new_name, new_type, new_date, new_start, new_dur, new_city, event_id),
+        )
+        conn.commit()
+        updated = dict(conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone())
+        on_event_added_or_changed(existing["athlete_id"], new_date, conn)
+        # Also recalculate old date if date changed
+        if data.event_date and data.event_date != existing["event_date"]:
+            on_event_added_or_changed(existing["athlete_id"], existing["event_date"], conn)
+        return updated
     finally:
         conn.close()
 
@@ -72,10 +105,13 @@ def get_event(event_id: int):
 def delete_event(event_id: int):
     conn = get_conn()
     try:
-        if not conn.execute("SELECT id FROM events WHERE id = ?", (event_id,)).fetchone():
+        row = conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+        if not row:
             raise HTTPException(404, "Event not found.")
+        ev = dict(row)
         conn.execute("DELETE FROM events WHERE id = ?", (event_id,))
         conn.commit()
+        on_event_added_or_changed(ev["athlete_id"], ev["event_date"], conn)
         return {"message": "Event deleted.", "event_id": event_id}
     finally:
         conn.close()

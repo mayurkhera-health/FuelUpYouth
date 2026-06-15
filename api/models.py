@@ -61,6 +61,15 @@ class EventCreate(BaseModel):
     city: Optional[str] = None
 
 
+class EventUpdate(BaseModel):
+    event_name: Optional[str] = None
+    event_type: Optional[str] = None
+    event_date: Optional[str] = None  # YYYY-MM-DD
+    start_time: Optional[str] = None  # HH:MM
+    duration_hours: Optional[float] = None
+    city: Optional[str] = None
+
+
 class EventResponse(BaseModel):
     id: int
     athlete_id: int
