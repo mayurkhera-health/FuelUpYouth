@@ -1,7 +1,6 @@
 """Voice meal analyzer: parse STT transcript via Bedrock + USDA FDC nutrition lookup."""
-import json
 
-from api.services.bedrock_client import converse_text, extract_json
+from api.services.bedrock_client import converse_text, parse_json_from_llm
 from api.services.fdc_client import (
     best_match,
     macros_for_portion,
@@ -51,7 +50,7 @@ def detect_foods_from_text(transcription: str) -> list:
         temperature=0.2,
     )
 
-    parsed = json.loads(extract_json(text))
+    parsed = parse_json_from_llm(text)
     foods = parsed.get("foods") or []
     if not isinstance(foods, list):
         raise ValueError("Text extraction output missing foods array")

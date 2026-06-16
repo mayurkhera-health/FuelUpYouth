@@ -468,20 +468,8 @@ Return ONLY valid JSON — no markdown, no preamble:
   ]
 }}"""
 
-    msg = _client().messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=900,
-        system=SCIENCE_SYSTEM,
-        messages=[{"role": "user", "content": user_content}],
-    )
     try:
-        raw = msg.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.strip()
-        return json.loads(raw)
+        return _json_completion(user_content, max_tokens=900)
     except Exception:
         return {
             "grade_headline": f"Keep going, {name}!",

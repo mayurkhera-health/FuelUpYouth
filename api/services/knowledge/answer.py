@@ -3,15 +3,18 @@ RAG answer orchestration for the Nutrition Coach.
 Bedrock answers ONLY from approved-organization knowledge excerpts.
 """
 
+import logging
 from typing import Optional
 
-from api.services.bedrock_client import converse_text
+from api.services.bedrock_client import converse_text, is_configured
 from api.services.knowledge.approved_sources import list_sources
 from api.services.knowledge.retrieval import retrieve, KnowledgeChunk
 from api.services.knowledge.calculations import (
     iron_rda, calcium_rda, protein_range, hydration_needs,
     pre_training_meal_window, post_training_recovery_window, calorie_estimate,
 )
+
+logger = logging.getLogger(__name__)
 
 _FALLBACK = (
     "I don't have enough approved information from our trusted sports nutrition sources "
@@ -93,6 +96,11 @@ KNOWLEDGE EXCERPTS:
 
 
 def _call_bedrock(system_prompt: str, user_question: str) -> str:
+    if not is_configured():
+        raise RuntimeError(
+            "AWS Bedrock is not configured. Set AWS_REGION, AWS_ACCESS_KEY_ID, "
+            "AWS_SECRET_ACCESS_KEY, and BEDROCK_MODEL_ID on the server."
+        )
     return converse_text(system=system_prompt, user=user_question, max_tokens=512, temperature=0.3)
 
 
@@ -135,7 +143,17 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
         }
 
     calc_result = _maybe_calculate(question, athlete)
-    chunks = retrieve(question, top_n=5)
+
+    try:
+        chunks = retrieve(question, top_n=5)
+    except Exception:
+        logger.exception("Knowledge retrieval failed for question=%r", question[:80])
+        return {
+            "answer": _FALLBACK,
+            "citations": [],
+            "calculation": calc_result,
+            "sources": list_sources(),
+        }
 
     if not chunks:
         return {
@@ -146,7 +164,16 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
         }
 
     system_prompt = _build_system_prompt(chunks, calc_result)
-    answer_text = _call_bedrock(system_prompt, question)
+    try:
+        answer_text = _call_bedrock(system_prompt, question)
+    except Exception:
+        logger.exception("Bedrock call failed for Nutrition Coach")
+        return {
+            "answer": _FALLBACK,
+            "citations": _citations_from_chunks(chunks),
+            "calculation": calc_result,
+            "sources": list_sources(),
+        }
 
     return {
         "answer": answer_text,

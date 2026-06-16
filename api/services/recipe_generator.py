@@ -1,8 +1,7 @@
 """Recipe generator agent: FDC ingredient lookup + Bedrock recipe composition."""
-import json
 
 from api.services import claude_ai
-from api.services.bedrock_client import converse_text, extract_json
+from api.services.bedrock_client import converse_text, parse_json_from_llm
 from api.services.recipe_categories import gather_ingredients, resolve_category
 
 
@@ -63,9 +62,11 @@ Return ONLY valid JSON:
   "carbs_g": number,
   "fat_g": number,
   "ingredients": ["quantity + ingredient", ...],
-  "preparation_notes": "step-by-step instructions",
+  "preparation_notes": "single-line steps separated by periods or semicolons",
   "tags": ["tag1", "tag2"]
-}}"""
+}}
+
+Important: preparation_notes must be one JSON string on a single line (no raw line breaks)."""
 
     text = converse_text(
         system=claude_ai.SCIENCE_SYSTEM,
@@ -73,7 +74,7 @@ Return ONLY valid JSON:
         max_tokens=1024,
         temperature=0.7,
     )
-    llm_recipe = json.loads(extract_json(text))
+    llm_recipe = parse_json_from_llm(text)
 
     recipe = {
         "name": llm_recipe["name"],

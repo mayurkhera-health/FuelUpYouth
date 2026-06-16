@@ -1,8 +1,25 @@
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 load_dotenv()
 
+import logging
 from pathlib import Path
 from fastapi import FastAPI
+
+from api.startup import run_startup
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        run_startup()
+    except Exception:
+        logger.exception("Startup migrations/ingest failed — coach may be unavailable")
+    yield
+
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth
@@ -11,6 +28,7 @@ app = FastAPI(
     title="FuelUp Youth Soccer Nutrition API",
     description="Science-backed pediatric sports nutrition platform for athletes ages 13-17. Educational food guidance — NOT medical nutrition therapy.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

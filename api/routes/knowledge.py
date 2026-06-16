@@ -61,6 +61,41 @@ def get_approved_sources():
     return {"sources": list_sources()}
 
 
+@router.get("/health")
+def coach_health():
+    """Diagnostics for the Nutrition Coach pipeline (no admin key required)."""
+    from api.services.bedrock_client import is_configured, model_id
+    from api.database import get_conn
+
+    conn = get_conn()
+    try:
+        chunk_count = conn.execute(
+            """SELECT COUNT(*) FROM knowledge_chunks kc
+               JOIN knowledge_items ki ON kc.item_id = ki.id
+               WHERE ki.review_status = 'approved'"""
+        ).fetchone()[0]
+        item_count = conn.execute(
+            "SELECT COUNT(*) FROM knowledge_items WHERE review_status = 'approved'"
+        ).fetchone()[0]
+    except Exception as exc:
+        return {
+            "status": "degraded",
+            "error": str(exc),
+            "bedrock_configured": is_configured(),
+            "bedrock_model_id": model_id(),
+        }
+    finally:
+        conn.close()
+
+    return {
+        "status": "ok" if chunk_count > 0 and is_configured() else "degraded",
+        "approved_items": item_count,
+        "approved_chunks": chunk_count,
+        "bedrock_configured": is_configured(),
+        "bedrock_model_id": model_id(),
+    }
+
+
 @router.post("/ask")
 def ask_knowledge(body: AskRequest):
     """Nutrition Coach — answers from approved sports nutrition sources with citations."""
