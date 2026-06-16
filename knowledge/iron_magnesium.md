@@ -1,10 +1,10 @@
 ---
 title: "Iron and Magnesium Requirements for Youth Athletes"
 category: "micronutrients"
-source: "NIH Office of Dietary Supplements / ACSM / Academy of Nutrition and Dietetics / Dietitians of Canada"
+organization: aap
+source: "American Academy of Pediatrics"
 source_urls:
-  - "https://ods.od.nih.gov/factsheets/Iron-HealthProfessional/"
-  - "https://ods.od.nih.gov/factsheets/Magnesium-HealthProfessional/"
+  - "https://www.aap.org/en/patient-care/healthy-active-living-for-families/"
 last_reviewed_date: "2026-06-10"
 applicable_age_range: "9-17"
 tags: ["iron", "magnesium", "minerals", "female-athletes", "fatigue", "performance", "RDA"]

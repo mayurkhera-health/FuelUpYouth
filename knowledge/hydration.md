@@ -1,9 +1,10 @@
 ---
 title: "Hydration Guidelines for Youth Soccer Athletes"
 category: "hydration"
-source: "ACSM Position Stand on Exercise and Fluid Replacement / NIH / Everett MD 2025"
+organization: acsm
+source: "American College of Sports Medicine"
 source_urls:
-  - "https://journals.lww.com/acsm-msse/Fulltext/2007/02000/Exercise_and_Fluid_Replacement.22.aspx"
+  - "https://www.acsm.org/education-resources/trending-topics-resources/hydration"
 last_reviewed_date: "2026-06-10"
 applicable_age_range: "9-17"
 tags: ["hydration", "water", "electrolytes", "sweat", "game-day", "performance"]

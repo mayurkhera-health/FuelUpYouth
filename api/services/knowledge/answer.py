@@ -1,19 +1,23 @@
 """
-RAG answer orchestration.
-Bedrock receives retrieved knowledge chunks + optional calculation result.
-Answers ONLY from the provided context.
+RAG answer orchestration for the Nutrition Coach.
+Bedrock answers ONLY from approved-organization knowledge excerpts.
 """
 
 from typing import Optional
 
 from api.services.bedrock_client import converse_text
+from api.services.knowledge.approved_sources import list_sources
 from api.services.knowledge.retrieval import retrieve, KnowledgeChunk
 from api.services.knowledge.calculations import (
     iron_rda, calcium_rda, protein_range, hydration_needs,
     pre_training_meal_window, post_training_recovery_window, calorie_estimate,
 )
 
-_FALLBACK = "I don't have enough approved information to answer that confidently. Please consult a registered sports dietitian or the athlete's physician for personalised guidance."
+_FALLBACK = (
+    "I don't have enough approved information from our trusted sports nutrition sources "
+    "to answer that confidently. Please consult a registered sports dietitian or the "
+    "athlete's physician for personalised guidance."
+)
 
 _SAFETY_TERMS = [
     "faint", "fainting", "unconscious", "chest pain", "can't breathe",
@@ -54,7 +58,12 @@ def _build_system_prompt(chunks: list, calc_result: Optional[dict]) -> str:
     if chunks:
         for i, c in enumerate(chunks, 1):
             heading = f" — {c.heading}" if c.heading else ""
-            chunks_text += f"\n[{i}] {c.title}{heading} (Source: {c.source})\n{c.content}\n"
+            org = c.organization_name or c.source
+            chunks_text += (
+                f"\n[{i}] {c.title}{heading}\n"
+                f"Organization: {org}\n"
+                f"{c.content}\n"
+            )
     else:
         chunks_text = "(No relevant knowledge excerpts found)"
 
@@ -66,16 +75,17 @@ def _build_system_prompt(chunks: list, calc_result: Optional[dict]) -> str:
             f"Source: {calc_result.get('source', '')}"
         )
 
-    return f"""You are FuelUp's nutrition assistant for youth soccer athletes ages 9-17.
+    return f"""You are FuelUp's Nutrition Coach for youth soccer athletes ages 9-17.
 
 STRICT RULES — follow these exactly:
-1. Answer ONLY from the knowledge excerpts provided below. Never invent nutritional values, formulas, or dosages not present in the excerpts.
+1. Answer ONLY from the knowledge excerpts provided below (from trusted sports nutrition organizations). Never invent nutritional values, formulas, or dosages.
 2. If the excerpts do not contain enough information to answer, respond with exactly: "{_FALLBACK}"
-3. End every answer with: "Source: [title of the knowledge item you used]"
+3. Do NOT include inline source citations in your answer text — sources are shown separately in the app.
 4. Write for a youth athlete aged 9-17 — keep language simple, supportive, and practical.
 5. Whenever possible, give "what to do today" guidance.
 6. NEVER provide medical diagnosis, treatment advice, or supplement dosing.
-7. For ANY of these situations — injury, fainting, chest pain, eating disorder, severe dehydration, signs of anorexia or bulimia, extreme restriction, unintentional weight loss — respond with: "This sounds like something important to discuss with a doctor or qualified sports dietitian. Please reach out to a professional right away."
+7. Never recommend supplements for athletes under 18.
+8. For ANY of these situations — injury, fainting, chest pain, eating disorder, severe dehydration, signs of anorexia or bulimia, extreme restriction, unintentional weight loss — respond with: "This sounds like something important to discuss with a doctor or qualified sports dietitian. Please reach out to a professional right away."
 
 KNOWLEDGE EXCERPTS:
 {chunks_text}
@@ -86,17 +96,42 @@ def _call_bedrock(system_prompt: str, user_question: str) -> str:
     return converse_text(system=system_prompt, user=user_question, max_tokens=512, temperature=0.3)
 
 
+def _citations_from_chunks(chunks: list[KnowledgeChunk]) -> list[dict]:
+    citations = []
+    seen: set[str] = set()
+    for c in chunks:
+        key = f"{c.organization_id}:{c.title}"
+        if key in seen:
+            continue
+        seen.add(key)
+        page_url = c.source_urls[0] if c.source_urls else c.organization_url
+        citations.append({
+            "title": c.title,
+            "source": c.organization_name or c.source,
+            "organization_id": c.organization_id,
+            "organization_name": c.organization_name,
+            "organization_url": c.organization_url,
+            "url": page_url,
+            "heading": c.heading,
+        })
+    return citations
+
+
 def answer_with_knowledge(question: str, athlete: dict) -> dict:
     """
-    Main RAG entry point.
-    Returns {"answer": str, "citations": list, "calculation": dict|None}.
+    Main RAG entry point for the Nutrition Coach.
+    Returns {"answer", "citations", "calculation", "sources"}.
     """
     if _detect_safety_flag(question):
         return {
-            "answer": "This sounds like something important to discuss with a doctor or qualified sports dietitian. Please reach out to a professional right away.",
+            "answer": (
+                "This sounds like something important to discuss with a doctor or "
+                "qualified sports dietitian. Please reach out to a professional right away."
+            ),
             "citations": [],
             "calculation": None,
             "safety_flag": True,
+            "sources": list_sources(),
         }
 
     calc_result = _maybe_calculate(question, athlete)
@@ -107,29 +142,15 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
             "answer": _FALLBACK,
             "citations": [],
             "calculation": calc_result,
+            "sources": list_sources(),
         }
 
     system_prompt = _build_system_prompt(chunks, calc_result)
     answer_text = _call_bedrock(system_prompt, question)
 
-    citations = [
-        {
-            "title": c.title,
-            "source": c.source,
-            "url": c.source_urls[0] if c.source_urls else None,
-            "heading": c.heading,
-        }
-        for c in chunks
-    ]
-    seen = set()
-    unique_citations = []
-    for cit in citations:
-        if cit["title"] not in seen:
-            seen.add(cit["title"])
-            unique_citations.append(cit)
-
     return {
         "answer": answer_text,
-        "citations": unique_citations,
+        "citations": _citations_from_chunks(chunks),
         "calculation": calc_result,
+        "sources": list_sources(),
     }

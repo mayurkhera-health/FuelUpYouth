@@ -224,8 +224,11 @@ def test_citations_included_in_answer():
         chunk_id=1, item_id=1, slug="iron_magnesium",
         title="Iron and Magnesium Requirements",
         category="micronutrients",
-        source="NIH Office of Dietary Supplements",
-        source_urls=["https://ods.od.nih.gov/factsheets/Iron-HealthProfessional/"],
+        source="American Academy of Pediatrics",
+        source_urls=["https://www.aap.org/en/patient-care/healthy-active-living-for-families/"],
+        organization_id="aap",
+        organization_name="American Academy of Pediatrics",
+        organization_url="https://www.aap.org",
         applicable_age_range="9-17", tags=["iron"],
         review_status="approved", heading="Daily Iron Requirements",
         content="Female athletes age 14-18 need 15mg iron per day.",
@@ -233,7 +236,7 @@ def test_citations_included_in_answer():
     )
 
     with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):
-        with patch("api.services.knowledge.answer._call_claude",
+        with patch("api.services.knowledge.answer._call_bedrock",
                    return_value="Female athletes need 15mg iron. Source: Iron and Magnesium Requirements"):
             result = answer_with_knowledge(
                 "how much iron does a girl need",
@@ -260,7 +263,11 @@ def test_calculation_included_when_relevant():
         chunk_id=1, item_id=1, slug="iron_magnesium",
         title="Iron and Magnesium Requirements",
         category="micronutrients",
-        source="NIH", source_urls=[],
+        source="American Academy of Pediatrics",
+        source_urls=["https://www.aap.org"],
+        organization_id="aap",
+        organization_name="American Academy of Pediatrics",
+        organization_url="https://www.aap.org",
         applicable_age_range="9-17", tags=["iron"],
         review_status="approved", heading="Iron RDA",
         content="Female athletes age 14-18 need 15mg iron per day.",
@@ -268,7 +275,7 @@ def test_calculation_included_when_relevant():
     )
 
     with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):
-        with patch("api.services.knowledge.answer._call_claude", return_value="15mg"):
+        with patch("api.services.knowledge.answer._call_bedrock", return_value="15mg"):
             result = answer_with_knowledge(
                 "how much iron does she need",
                 {"id": 1, "first_name": "Maya", "age": 15, "gender": "female",

@@ -1,7 +1,8 @@
 ---
 title: "Weekly Fuel Quality Assessment for Youth Athletes"
 category: "weekly-checkin"
-source: "Academy of Nutrition and Dietetics / Everett MD 2025"
+organization: and
+source: "Academy of Nutrition and Dietetics"
 source_urls:
   - "https://www.eatright.org/fitness/sports-and-performance"
 last_reviewed_date: "2026-06-10"

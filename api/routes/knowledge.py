@@ -7,6 +7,7 @@ import os
 from api.database import get_conn
 from api.services.knowledge.ingest import ingest_file, ingest_all
 from api.services.knowledge.answer import answer_with_knowledge
+from api.services.knowledge.approved_sources import list_sources
 
 router = APIRouter()
 
@@ -52,6 +53,28 @@ def trigger_ingest(file_path: Optional[str] = None,
     if file_path:
         return ingest_file(file_path)
     return ingest_all()
+
+
+@router.get("/sources")
+def get_approved_sources():
+    """Trusted organizations the Nutrition Coach draws from."""
+    return {"sources": list_sources()}
+
+
+@router.post("/ask")
+def ask_knowledge(body: AskRequest):
+    """Nutrition Coach — answers from approved sports nutrition sources with citations."""
+    conn = get_conn()
+    try:
+        athlete = conn.execute(
+            "SELECT * FROM athletes WHERE id = ?", (body.athlete_id,)
+        ).fetchone()
+        if not athlete:
+            raise HTTPException(404, "Athlete not found.")
+        athlete_dict = dict(athlete)
+    finally:
+        conn.close()
+    return answer_with_knowledge(body.question, athlete_dict)
 
 
 @router.get("/{slug}")
@@ -120,19 +143,3 @@ def archive_item(slug: str, x_admin_key: Optional[str] = Header(None)):
         return {"slug": slug, "review_status": "archived", "message": "Item archived (not deleted)."}
     finally:
         conn.close()
-
-
-@router.post("/ask")
-def ask_knowledge(body: AskRequest):
-    """Public endpoint — athletes/parents ask questions."""
-    conn = get_conn()
-    try:
-        athlete = conn.execute(
-            "SELECT * FROM athletes WHERE id = ?", (body.athlete_id,)
-        ).fetchone()
-        if not athlete:
-            raise HTTPException(404, "Athlete not found.")
-        athlete_dict = dict(athlete)
-    finally:
-        conn.close()
-    return answer_with_knowledge(body.question, athlete_dict)

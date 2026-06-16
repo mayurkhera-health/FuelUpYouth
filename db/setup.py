@@ -156,6 +156,7 @@ def init_db():
             source TEXT,
             source_urls TEXT,
             last_reviewed_date TEXT,
+            organization TEXT,
             applicable_age_range TEXT,
             tags TEXT,
             review_status TEXT DEFAULT 'draft',
@@ -227,6 +228,11 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_athlete_logins_email
             ON athlete_logins(email);
     """)
+
+    # Lightweight migrations for existing databases
+    cols = {row[1] for row in cursor.execute("PRAGMA table_info(knowledge_items)")}
+    if "organization" not in cols:
+        cursor.execute("ALTER TABLE knowledge_items ADD COLUMN organization TEXT")
 
     conn.commit()
     conn.close()
