@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from api.database import get_conn
+from api.services.knowledge.embedding_utils import EMBEDDING_MODEL, embed_text, pack_embedding
 
 
 def _parse_frontmatter(text: str) -> tuple[dict, str]:
@@ -125,9 +126,23 @@ def ingest_file(file_path: str) -> dict:
 
         conn.execute("DELETE FROM knowledge_chunks WHERE item_id = ?", (item_id,))
         for i, chunk in enumerate(chunks):
+            embedding_json = None
+            try:
+                embedding_json = pack_embedding(embed_text(chunk["content"]))
+            except Exception:
+                pass
             conn.execute(
-                "INSERT INTO knowledge_chunks (item_id, chunk_index, heading, content) VALUES (?, ?, ?, ?)",
-                (item_id, i, chunk["heading"], chunk["content"]),
+                """INSERT INTO knowledge_chunks
+                   (item_id, chunk_index, heading, content, embedding, embedding_model)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    item_id,
+                    i,
+                    chunk["heading"],
+                    chunk["content"],
+                    embedding_json,
+                    EMBEDDING_MODEL if embedding_json else None,
+                ),
             )
         conn.commit()
 

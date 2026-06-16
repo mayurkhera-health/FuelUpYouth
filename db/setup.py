@@ -171,6 +171,8 @@ def init_db():
             chunk_index INTEGER NOT NULL,
             heading TEXT,
             content TEXT NOT NULL,
+            embedding TEXT,
+            embedding_model TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 

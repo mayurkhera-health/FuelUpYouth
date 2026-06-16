@@ -7,6 +7,7 @@ import re
 import boto3
 
 DEFAULT_BEDROCK_MODEL = "mistral.ministral-3-8b-instruct"
+DEFAULT_EMBED_MODEL = "amazon.titan-embed-text-v2:0"
 
 
 def _region() -> str:
@@ -15,6 +16,10 @@ def _region() -> str:
 
 def model_id() -> str:
     return os.getenv("BEDROCK_MODEL_ID", DEFAULT_BEDROCK_MODEL)
+
+
+def embed_model_id() -> str:
+    return os.getenv("BEDROCK_EMBED_MODEL_ID", DEFAULT_EMBED_MODEL)
 
 
 def _client():
@@ -147,3 +152,22 @@ def converse_vision(
         inferenceConfig={"maxTokens": max_tokens, "temperature": temperature},
     )
     return _extract_text(response)
+
+
+def embed_text(text: str, *, model: str | None = None) -> list[float]:
+    """Return a dense embedding vector for semantic retrieval."""
+    trimmed = (text or "").strip()
+    if not trimmed:
+        raise ValueError("Cannot embed empty text")
+
+    response = _client().invoke_model(
+        modelId=model or embed_model_id(),
+        body=json.dumps({"inputText": trimmed[:8000]}),
+        contentType="application/json",
+        accept="application/json",
+    )
+    payload = json.loads(response["body"].read())
+    vector = payload.get("embedding")
+    if not vector:
+        raise RuntimeError("Bedrock embedding response missing 'embedding'")
+    return vector

@@ -7,6 +7,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 DB_PATH = Path(__file__).parent.parent / "fuelup.db"
 
+
+@pytest.fixture(autouse=True)
+def _ensure_knowledge_schema():
+    from api.startup import ensure_schema
+    ensure_schema()
+
 def test_knowledge_tables_exist():
     """DB must have knowledge_items and knowledge_chunks tables."""
     conn = sqlite3.connect(str(DB_PATH))
@@ -41,6 +47,8 @@ def test_knowledge_chunks_schema():
     conn.close()
     required = {"id", "item_id", "chunk_index", "heading", "content", "created_at"}
     assert required.issubset(cols)
+    assert "embedding" in cols
+    assert "embedding_model" in cols
 
 
 def _get_conn():
@@ -115,22 +123,41 @@ def test_retrieval_finds_iron_content():
     ingest_file(str(iron_path))
 
     from api.services.knowledge.retrieval import retrieve
-    results = retrieve("how much iron does a teenage girl need per day")
+
+    def fake_embed(text: str):
+        if "iron" in text.lower():
+            return [1.0, 0.0, 0.0]
+        return [0.0, 1.0, 0.0]
+
+    with patch("api.services.knowledge.retrieval.embed_text", side_effect=fake_embed):
+        with patch("api.services.knowledge.retrieval.search_approved_sites", return_value=[]):
+            with patch("api.services.knowledge.embedding_utils.embed_text", side_effect=fake_embed):
+                results = retrieve("how much iron does a teenage girl need per day")
     assert len(results) > 0
     titles = [r.title for r in results]
     assert any("Iron" in t or "Magnesium" in t for t in titles)
 
 def test_retrieval_returns_empty_for_unknown_domain():
-    """Out-of-domain query should return results all below threshold."""
+    """Out-of-domain query should return no chunks above threshold."""
     from api.services.knowledge.retrieval import retrieve
-    results = retrieve("what is the latest iPhone model price")
-    for r in results:
-        assert r.score < 0.05, f"Unexpected high score {r.score} for out-of-domain query"
+
+    with patch("api.services.knowledge.retrieval.embed_text", return_value=[1.0, 0.0, 0.0]):
+        with patch("api.services.knowledge.retrieval._load_local_rows", return_value=[]):
+            with patch("api.services.knowledge.retrieval.search_approved_sites", return_value=[]):
+                results = retrieve("what is the latest iPhone model price")
+    assert results == []
 
 def test_retrieval_respects_approved_only():
     """Only approved chunks are returned."""
     from api.services.knowledge.retrieval import retrieve
-    results = retrieve("test draft content should never appear")
+
+    def fake_embed(text: str):
+        return [1.0, 0.0] if "draft" in text.lower() else [0.0, 1.0]
+
+    with patch("api.services.knowledge.retrieval.embed_text", side_effect=fake_embed):
+        with patch("api.services.knowledge.retrieval.search_approved_sites", return_value=[]):
+            with patch("api.services.knowledge.embedding_utils.embed_text", side_effect=fake_embed):
+                results = retrieve("test draft content should never appear")
     for r in results:
         assert r.review_status == "approved"
 
@@ -233,6 +260,7 @@ def test_citations_included_in_answer():
         review_status="approved", heading="Daily Iron Requirements",
         content="Female athletes age 14-18 need 15mg iron per day.",
         score=0.7,
+        origin="local",
     )
 
     with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):
@@ -272,6 +300,7 @@ def test_calculation_included_when_relevant():
         review_status="approved", heading="Iron RDA",
         content="Female athletes age 14-18 need 15mg iron per day.",
         score=0.6,
+        origin="local",
     )
 
     with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):

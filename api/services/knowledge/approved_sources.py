@@ -96,6 +96,29 @@ def list_sources() -> list[dict]:
     return [{"id": s.id, "name": s.name, "url": s.url} for s in APPROVED_SOURCES]
 
 
+def approved_domains() -> list[str]:
+    """Unique hostnames allowed for live web search."""
+    seen: set[str] = set()
+    domains: list[str] = []
+    for source in APPROVED_SOURCES:
+        for domain in source.domains:
+            if domain not in seen:
+                seen.add(domain)
+                domains.append(domain)
+    return domains
+
+
+def match_approved_source(url: str) -> Optional[ApprovedSource]:
+    """Return the approved org for a URL host, if any."""
+    host = urlparse(url).netloc.lower().removeprefix("www.")
+    if not host:
+        return None
+    for org in APPROVED_SOURCES:
+        if any(host == d or host.endswith("." + d) for d in org.domains):
+            return org
+    return None
+
+
 def is_approved_org_id(org_id: str | None) -> bool:
     return bool(org_id and org_id in _APPROVED_IDS)
 

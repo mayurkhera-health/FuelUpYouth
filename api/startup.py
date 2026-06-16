@@ -42,6 +42,8 @@ def _ensure_knowledge_tables(conn: sqlite3.Connection) -> None:
             chunk_index INTEGER NOT NULL,
             heading TEXT,
             content TEXT NOT NULL,
+            embedding TEXT,
+            embedding_model TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -67,6 +69,17 @@ def ensure_schema() -> None:
         if cols and "organization" not in cols:
             conn.execute("ALTER TABLE knowledge_items ADD COLUMN organization TEXT")
             logger.info("Added knowledge_items.organization column")
+
+        chunk_cols = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(knowledge_chunks)").fetchall()
+        }
+        if chunk_cols and "embedding" not in chunk_cols:
+            conn.execute("ALTER TABLE knowledge_chunks ADD COLUMN embedding TEXT")
+            logger.info("Added knowledge_chunks.embedding column")
+        if chunk_cols and "embedding_model" not in chunk_cols:
+            conn.execute("ALTER TABLE knowledge_chunks ADD COLUMN embedding_model TEXT")
+            logger.info("Added knowledge_chunks.embedding_model column")
 
         conn.commit()
     finally:
@@ -114,9 +127,22 @@ def ensure_knowledge_ingested(force: bool = False) -> None:
         logger.error("Knowledge ingest error: %s", err)
 
 
+def ensure_knowledge_embeddings() -> None:
+    """Backfill Bedrock embeddings for ingested chunks missing vectors."""
+    from api.services.knowledge.retrieval import backfill_missing_embeddings
+
+    try:
+        updated = backfill_missing_embeddings()
+        if updated:
+            logger.info("Backfilled embeddings for %s knowledge chunks", updated)
+    except Exception:
+        logger.exception("Knowledge embedding backfill failed")
+
+
 def run_startup() -> None:
     """Called once when the API process starts."""
     if not DB_PATH.parent.exists():
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     ensure_schema()
     ensure_knowledge_ingested()
+    ensure_knowledge_embeddings()
