@@ -89,6 +89,12 @@ STRICT RULES — follow these exactly:
 6. NEVER provide medical diagnosis, treatment advice, or supplement dosing.
 7. Never recommend supplements for athletes under 18.
 8. For ANY of these situations — injury, fainting, chest pain, eating disorder, severe dehydration, signs of anorexia or bulimia, extreme restriction, unintentional weight loss — respond with: "This sounds like something important to discuss with a doctor or qualified sports dietitian. Please reach out to a professional right away."
+9. Format your answer as **Markdown**:
+   - Use **bold** for the main takeaway or action step
+   - Use bullet lists (`- item`) when giving 2–4 practical tips
+   - Keep paragraphs short (2–3 sentences max)
+   - Do NOT use headings (`#`), code blocks, tables, or inline source citations
+   - Plain sentences are fine when a list is not needed
 
 KNOWLEDGE EXCERPTS:
 {chunks_text}
@@ -136,6 +142,7 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
                 "This sounds like something important to discuss with a doctor or "
                 "qualified sports dietitian. Please reach out to a professional right away."
             ),
+            "format": "markdown",
             "citations": [],
             "calculation": None,
             "safety_flag": True,
@@ -150,6 +157,7 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
         logger.exception("Knowledge retrieval failed for question=%r", question[:80])
         return {
             "answer": _FALLBACK,
+            "format": "markdown",
             "citations": [],
             "calculation": calc_result,
             "sources": list_sources(),
@@ -158,6 +166,7 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
     if not chunks:
         return {
             "answer": _FALLBACK,
+            "format": "markdown",
             "citations": [],
             "calculation": calc_result,
             "sources": list_sources(),
@@ -170,6 +179,7 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
         logger.exception("Bedrock call failed for Nutrition Coach")
         return {
             "answer": _FALLBACK,
+            "format": "markdown",
             "citations": _citations_from_chunks(chunks),
             "calculation": calc_result,
             "sources": list_sources(),
@@ -177,6 +187,7 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
 
     return {
         "answer": answer_text,
+        "format": "markdown",
         "citations": _citations_from_chunks(chunks),
         "calculation": calc_result,
         "sources": list_sources(),
