@@ -21,6 +21,7 @@ def _require_admin(x_admin_key: Optional[str] = Header(None)):
 class AskRequest(BaseModel):
     question: str
     athlete_id: int
+    is_first_message: bool = False
 
 
 class StatusUpdate(BaseModel):
@@ -135,4 +136,4 @@ def ask_knowledge(body: AskRequest):
         athlete_dict = dict(athlete)
     finally:
         conn.close()
-    return answer_with_knowledge(body.question, athlete_dict)
+    return answer_with_knowledge(body.question, athlete_dict, body.is_first_message)

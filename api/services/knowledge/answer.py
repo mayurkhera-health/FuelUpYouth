@@ -106,8 +106,59 @@ HARD CONSTRAINTS (non-negotiable):
 - If you cannot give safe advice given these constraints, say so clearly and recommend consulting a registered sports dietitian."""
 
 
-def _build_system_prompt(chunks: list, calc_result: Optional[dict], athlete: dict) -> str:
+def _build_personalization_block(athlete: dict) -> str:
+    """
+    Extracts blueprint-backed macro/micro focus points to give Claude
+    enough context to open with one personalised sentence.
+    Only injected on the first message of a thread.
+    """
+    name = athlete.get("first_name", "this athlete")
+    position = athlete.get("position") or "soccer player"
+    level = athlete.get("competition_level") or "youth"
+
+    carb_line = protein_line = ""
+    priority_micros: list[str] = []
+
+    raw_bp = athlete.get("blueprint_json")
+    if raw_bp:
+        try:
+            bp = json.loads(raw_bp) if isinstance(raw_bp, str) else raw_bp
+            macros = bp.get("macros", {})
+            carb_line = macros.get("carbs", {}).get("athlete_explanation", "")[:180]
+            protein_line = macros.get("protein", {}).get("athlete_explanation", "")[:180]
+            micros = bp.get("micronutrients", {})
+            # Surface only the critical/important micros so the opener is relevant
+            for micro, data in micros.items():
+                if isinstance(data, dict) and data.get("urgency_level") in ("critical", "important"):
+                    priority_micros.append(micro)
+        except Exception:
+            pass
+
+    micro_note = f"Priority micronutrients for this athlete: {', '.join(priority_micros)}." if priority_micros else ""
+
+    return (
+        f"FIRST MESSAGE PERSONALISATION:\n"
+        f"This is the first question {name} has asked in this conversation. "
+        f"Begin your response with exactly ONE warm, personal sentence that references their "
+        f"specific profile — they are a {level} {position}. "
+        f"Draw on whichever of the following blueprint points is most relevant to the question:\n"
+        f"- Carbs: {carb_line}\n"
+        f"- Protein: {protein_line}\n"
+        f"- {micro_note}\n"
+        f"Rules for the opening sentence: use {name}'s name, reference their role (position/level), "
+        f"and connect their specific nutritional focus to the question topic. "
+        f"Do NOT mention raw numbers, grams, or calories. One sentence only — then answer the question normally."
+    )
+
+
+def _build_system_prompt(
+    chunks: list,
+    calc_result: Optional[dict],
+    athlete: dict,
+    is_first_message: bool = False,
+) -> str:
     athlete_block = _build_athlete_safety_block(athlete)
+    personalization_block = _build_personalization_block(athlete) if is_first_message else ""
 
     chunks_text = ""
     if chunks:
@@ -125,10 +176,12 @@ def _build_system_prompt(chunks: list, calc_result: Optional[dict], athlete: dic
             f"Source: {calc_result.get('source', '')}"
         )
 
+    personalization_section = f"\n{personalization_block}\n" if personalization_block else ""
+
     return f"""You are FuelUp's nutrition assistant for youth soccer athletes ages 9-17.
 
 {athlete_block}
-
+{personalization_section}
 STRICT RULES — follow these exactly:
 1. Answer ONLY from the knowledge excerpts provided below. Never invent nutritional values, formulas, or dosages not present in the excerpts.
 2. If the excerpts do not contain enough information to answer, respond with exactly: "{_FALLBACK}"
@@ -147,10 +200,11 @@ def _call_bedrock(system_prompt: str, user_question: str) -> str:
     return converse_text(system=system_prompt, user=user_question, max_tokens=512, temperature=0.3)
 
 
-def answer_with_knowledge(question: str, athlete: dict) -> dict:
+def answer_with_knowledge(question: str, athlete: dict, is_first_message: bool = False) -> dict:
     """
     Main RAG entry point.
     Returns {"answer": str, "citations": list, "calculation": dict|None}.
+    is_first_message=True adds a one-time personalised opener drawn from the athlete's blueprint.
     """
     if _detect_safety_flag(question):
         return {
@@ -170,7 +224,7 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
             "calculation": calc_result,
         }
 
-    system_prompt = _build_system_prompt(chunks, calc_result, athlete)
+    system_prompt = _build_system_prompt(chunks, calc_result, athlete, is_first_message)
     answer_text = _call_bedrock(system_prompt, question)
 
     citations = [
