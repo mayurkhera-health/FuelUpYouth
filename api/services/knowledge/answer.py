@@ -148,6 +148,29 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
             "calculation": None,
             "sources": list_sources(),
         }
+    except RuntimeError as e:
+        logger.exception("Recipe generation failed for category=%s", category)
+        detail = str(e)
+        if "FDC_API_KEY" in detail:
+            msg = (
+                "Recipe generation is temporarily unavailable — the server is missing its "
+                "USDA ingredient database key. Please try again later."
+            )
+        else:
+            msg = (
+                "Sorry, I couldn't generate a recipe right now. "
+                "Try again in a moment or ask a general fueling question."
+            )
+        return {
+            "answer": msg,
+            "format": "markdown",
+            "intent": "recipe",
+            "recipe": None,
+            "source_ingredients": [],
+            "citations": [],
+            "calculation": None,
+            "sources": list_sources(),
+        }
     except Exception:
         logger.exception("Recipe generation failed for category=%s", category)
         return {
@@ -169,9 +192,14 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
     restriction_note = ""
     if allergies:
         restriction_note = f" It's free of your listed allergens ({', '.join(allergies)})."
+    source_note = (
+        "built from USDA-verified ingredients"
+        if result.get("ingredient_source") == "fdc"
+        else "built for your fueling window"
+    )
     answer = (
         f"Here's a **{profile['label']}** recipe for {first_name} — "
-        f"built from USDA-verified ingredients.{restriction_note}"
+        f"{source_note}.{restriction_note}"
     )
 
     return {

@@ -147,14 +147,54 @@ def score_food(food: dict, profile: dict) -> float:
     return score
 
 
+def _curated_ingredients(
+    profile: dict,
+    allergies: list,
+    dietary_restrictions: list,
+    max_ingredients: int,
+) -> list:
+    """Fallback when FDC is unavailable — use category search queries as ingredient hints."""
+    from api.services.fdc_client import passes_allergen_filter
+
+    mid = (profile["target_calories"]["min"] + profile["target_calories"]["max"]) / 2
+    per_cal = mid / max(min(len(profile["fdc_search_queries"]), 4), 1)
+    candidates = []
+    for query in profile["fdc_search_queries"]:
+        label = query.strip().title()
+        if not passes_allergen_filter(label, allergies):
+            continue
+        candidates.append({
+            "fdc_id": None,
+            "name": label,
+            "calories": round(per_cal),
+            "protein_g": round(per_cal * 0.12, 1),
+            "carbs_g": round(per_cal * 0.55, 1),
+            "fat_g": round(per_cal * 0.08, 1),
+            "score": 1.0,
+        })
+        if len(candidates) >= max_ingredients:
+            break
+
+    if not candidates:
+        raise ValueError(
+            f"No ingredients found for category '{profile['key']}' after applying restrictions."
+        )
+    return candidates
+
+
 def gather_ingredients(
     category: str,
     allergies: list | None = None,
     dietary_restrictions: list | None = None,
     max_ingredients: int = 8,
-) -> list:
+) -> tuple[list, str]:
+    """
+    Returns (ingredients, source) where source is 'fdc' or 'curated'.
+    Falls back to curated category hints when FDC_API_KEY is not set.
+    """
     from api.services.fdc_client import (
         FDC_NUTRIENT_IDS,
+        is_configured as fdc_configured,
         nutrient_value,
         passes_allergen_filter,
         passes_dietary_filter,
@@ -164,32 +204,39 @@ def gather_ingredients(
     profile = resolve_category(category)
     allergies = allergies or []
     dietary_restrictions = dietary_restrictions or []
+
+    if not fdc_configured():
+        return _curated_ingredients(profile, allergies, dietary_restrictions, max_ingredients), "curated"
+
     seen: set[int] = set()
     candidates = []
 
-    for query in profile["fdc_search_queries"]:
-        for food in search_foods(query, page_size=4):
-            fdc_id = food.get("fdcId")
-            if fdc_id in seen:
-                continue
-            seen.add(fdc_id)
-            desc = food.get("description", "")
-            if not passes_allergen_filter(desc, allergies):
-                continue
-            if not passes_dietary_filter(food, dietary_restrictions):
-                continue
-            candidates.append({
-                "fdc_id": fdc_id,
-                "name": desc,
-                "calories": nutrient_value(food, FDC_NUTRIENT_IDS["calories"]),
-                "protein_g": nutrient_value(food, FDC_NUTRIENT_IDS["protein"]),
-                "carbs_g": nutrient_value(food, FDC_NUTRIENT_IDS["carbs"]),
-                "fat_g": nutrient_value(food, FDC_NUTRIENT_IDS["fat"]),
-                "score": score_food(food, profile),
-            })
+    try:
+        for query in profile["fdc_search_queries"]:
+            for food in search_foods(query, page_size=4):
+                fdc_id = food.get("fdcId")
+                if fdc_id in seen:
+                    continue
+                seen.add(fdc_id)
+                desc = food.get("description", "")
+                if not passes_allergen_filter(desc, allergies):
+                    continue
+                if not passes_dietary_filter(food, dietary_restrictions):
+                    continue
+                candidates.append({
+                    "fdc_id": fdc_id,
+                    "name": desc,
+                    "calories": nutrient_value(food, FDC_NUTRIENT_IDS["calories"]),
+                    "protein_g": nutrient_value(food, FDC_NUTRIENT_IDS["protein"]),
+                    "carbs_g": nutrient_value(food, FDC_NUTRIENT_IDS["carbs"]),
+                    "fat_g": nutrient_value(food, FDC_NUTRIENT_IDS["fat"]),
+                    "score": score_food(food, profile),
+                })
+    except RuntimeError:
+        return _curated_ingredients(profile, allergies, dietary_restrictions, max_ingredients), "curated"
 
     if not candidates:
-        raise ValueError(f"No ingredients found for category '{category}' after applying restrictions.")
+        return _curated_ingredients(profile, allergies, dietary_restrictions, max_ingredients), "curated"
 
     candidates.sort(key=lambda x: x["score"], reverse=True)
-    return candidates[:max_ingredients]
+    return candidates[:max_ingredients], "fdc"

@@ -14,26 +14,29 @@ from api.services import recipe_generator
 @patch("api.services.recipe_generator.gather_ingredients")
 @patch("api.services.recipe_generator.converse_text")
 def test_generate_recipe_full_pipeline(mock_converse, mock_gather):
-    mock_gather.return_value = [
-        {
-            "fdcId": 173944,
-            "name": "Bananas, raw",
-            "calories": 89,
-            "protein_g": 1.1,
-            "carbs_g": 22.8,
-            "fat_g": 0.3,
-            "score": 10,
-        },
-        {
-            "fdcId": 173904,
-            "name": "Oats, rolled, dry",
-            "calories": 379,
-            "protein_g": 13.2,
-            "carbs_g": 67.7,
-            "fat_g": 6.5,
-            "score": 8,
-        },
-    ]
+    mock_gather.return_value = (
+        [
+            {
+                "fdcId": 173944,
+                "name": "Bananas, raw",
+                "calories": 89,
+                "protein_g": 1.1,
+                "carbs_g": 22.8,
+                "fat_g": 0.3,
+                "score": 10,
+            },
+            {
+                "fdcId": 173904,
+                "name": "Oats, rolled, dry",
+                "calories": 379,
+                "protein_g": 13.2,
+                "carbs_g": 67.7,
+                "fat_g": 6.5,
+                "score": 8,
+            },
+        ],
+        "fdc",
+    )
     mock_converse.return_value = json.dumps({
         "name": "Quick Halftime Banana Bites",
         "category": "halftime",
@@ -62,6 +65,16 @@ def test_generate_recipe_unknown_category_raises(mock_gather):
     mock_gather.side_effect = ValueError('Unknown category "invalid"')
     with pytest.raises(ValueError, match="Unknown category"):
         recipe_generator.generate_recipe(category="invalid")
+
+
+def test_gather_ingredients_curated_fallback_without_fdc_key():
+    from api.services.recipe_categories import gather_ingredients
+
+    with patch.dict("os.environ", {}, clear=True):
+        ingredients, source = gather_ingredients("halftime")
+    assert source == "curated"
+    assert len(ingredients) >= 3
+    assert all(i["name"] for i in ingredients)
 
 
 def test_resolve_category_halftime():

@@ -45,6 +45,11 @@ def _api_key() -> str:
     return key
 
 
+def is_configured() -> bool:
+    """True when USDA FDC API key is available."""
+    return bool(os.getenv("FDC_API_KEY"))
+
+
 def nutrient_value(food: dict, nutrient_id: int) -> float:
     for n in food.get("foodNutrients") or []:
         if n.get("nutrientId") == nutrient_id:

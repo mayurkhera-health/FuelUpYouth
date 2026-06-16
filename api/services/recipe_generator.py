@@ -15,7 +15,7 @@ def generate_recipe(
     Returns { recipe, source_ingredients } matching the mobile RecipeGenerateResponse shape.
     """
     profile = resolve_category(category)
-    ingredients = gather_ingredients(category, allergies, dietary_restrictions)
+    ingredients, ingredient_source = gather_ingredients(category, allergies, dietary_restrictions)
 
     ingredient_lines = "\n".join(
         f"- {i['name']} (per 100g: {round(i['calories'])} kcal, "
@@ -91,4 +91,5 @@ Important: preparation_notes must be one JSON string on a single line (no raw li
     return {
         "recipe": recipe,
         "source_ingredients": [i["name"] for i in ingredients],
+        "ingredient_source": ingredient_source,
     }
