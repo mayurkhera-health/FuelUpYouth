@@ -6,7 +6,7 @@ Bedrock answers ONLY from approved-organization knowledge excerpts.
 import logging
 from typing import Optional
 
-from api.services.bedrock_client import converse_text, is_configured
+from api.services.bedrock_client import converse_text, is_configured, parse_json_from_llm
 from api.services.knowledge.approved_sources import list_sources
 from api.services.knowledge.retrieval import retrieve, KnowledgeChunk
 from api.services.knowledge.calculations import (
@@ -29,6 +29,27 @@ _SAFETY_TERMS = [
     "vomiting blood", "not eating",
 ]
 
+
+_CLASSIFIER_SYSTEM = """You route Nutrition Coach questions for youth soccer athletes ages 9-17.
+
+Choose exactly ONE path:
+- "knowledge" — sports nutrition education, timing guidance, hydration advice, micronutrients, what types of foods to eat (without requesting a full recipe with ingredients), calculations, safety.
+- "recipe" — user wants a concrete meal or snack recipe with ingredients and preparation steps, or asks to generate, create, make, build, or suggest a specific dish.
+
+If path is "recipe", set recipe_category to the best match:
+halftime | pre_game | post_game | breakfast | lunch | dinner | snack | hydration
+
+Examples:
+- "What should I eat before a game?" → knowledge
+- "How much water on practice days?" → knowledge
+- "Generate a halftime snack recipe" → recipe, halftime
+- "Give me something to eat after the game" → recipe, post_game
+- "Recipe for breakfast" → recipe, breakfast
+- Recipe request with unclear timing → recipe, snack
+
+Return ONLY valid JSON, no markdown:
+{"path": "knowledge" | "recipe", "recipe_category": null | "category_key"}"""
+
 _CALC_KEYWORDS = {
     "iron": lambda q, a: iron_rda(a.get("age", 14), a.get("gender", "female")),
     "calcium": lambda q, a: calcium_rda(a.get("age", 14)),
@@ -43,6 +64,126 @@ _CALC_KEYWORDS = {
 def _detect_safety_flag(question: str) -> bool:
     q = question.lower()
     return any(term in q for term in _SAFETY_TERMS)
+
+
+def _classify_coach_path(question: str, athlete: dict) -> dict:
+    """
+    LLM router: choose knowledge RAG vs recipe generation.
+    Returns {"path": "knowledge"|"recipe", "recipe_category": str|None}.
+    """
+    if not is_configured():
+        return {"path": "knowledge", "recipe_category": None}
+
+    first = athlete.get("first_name", "athlete")
+    age = athlete.get("age", "unknown")
+    user = f"Athlete: {first}, age {age}.\nQuestion: {question.strip()}"
+
+    try:
+        text = converse_text(
+            system=_CLASSIFIER_SYSTEM,
+            user=user,
+            max_tokens=80,
+            temperature=0.1,
+        )
+        parsed = parse_json_from_llm(text)
+    except Exception:
+        logger.exception("Coach path classification failed for question=%r", question[:80])
+        return {"path": "knowledge", "recipe_category": None}
+
+    path = parsed.get("path", "knowledge")
+    if path not in ("knowledge", "recipe"):
+        path = "knowledge"
+
+    category = parsed.get("recipe_category")
+    if path != "recipe":
+        return {"path": "knowledge", "recipe_category": None}
+
+    from api.services.recipe_categories import resolve_category
+
+    try:
+        resolved = resolve_category(category or "snack")
+        return {"path": "recipe", "recipe_category": resolved["key"]}
+    except ValueError:
+        return {"path": "recipe", "recipe_category": "snack"}
+
+
+def _parse_allergies(raw) -> list:
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return [a.strip() for a in raw if a and str(a).strip().lower() != "none"]
+    return [a.strip() for a in str(raw).split(",") if a.strip().lower() != "none"]
+
+
+def _parse_dietary(raw) -> list:
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return [d.strip() for d in raw if d and str(d).strip().lower() != "none"]
+    return [d.strip() for d in str(raw).split(",") if d.strip().lower() != "none"]
+
+
+def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
+    from api.services import recipe_generator
+    from api.services.recipe_categories import resolve_category
+
+    allergies = _parse_allergies(athlete.get("allergies"))
+    dietary = _parse_dietary(athlete.get("dietary_restrictions"))
+
+    try:
+        result = recipe_generator.generate_recipe(
+            category,
+            allergies=allergies,
+            dietary_restrictions=dietary,
+            athlete=athlete,
+        )
+    except ValueError as e:
+        return {
+            "answer": f"I couldn't build a recipe for that category: {e}",
+            "format": "markdown",
+            "intent": "recipe",
+            "recipe": None,
+            "source_ingredients": [],
+            "citations": [],
+            "calculation": None,
+            "sources": list_sources(),
+        }
+    except Exception:
+        logger.exception("Recipe generation failed for category=%s", category)
+        return {
+            "answer": (
+                "Sorry, I couldn't generate a recipe right now. "
+                "Try again in a moment or ask a general fueling question."
+            ),
+            "format": "markdown",
+            "intent": "recipe",
+            "recipe": None,
+            "source_ingredients": [],
+            "citations": [],
+            "calculation": None,
+            "sources": list_sources(),
+        }
+
+    profile = resolve_category(category)
+    first_name = athlete.get("first_name", "athlete")
+    restriction_note = ""
+    if allergies:
+        restriction_note = f" It's free of your listed allergens ({', '.join(allergies)})."
+    answer = (
+        f"Here's a **{profile['label']}** recipe for {first_name} — "
+        f"built from USDA-verified ingredients.{restriction_note}"
+    )
+
+    return {
+        "answer": answer,
+        "format": "markdown",
+        "intent": "recipe",
+        "recipe": result["recipe"],
+        "source_ingredients": result.get("source_ingredients", []),
+        "citations": [],
+        "calculation": None,
+        "sources": list_sources(),
+    }
 
 
 def _maybe_calculate(question: str, athlete: dict) -> Optional[dict]:
@@ -148,6 +289,10 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
             "safety_flag": True,
             "sources": list_sources(),
         }
+
+    route = _classify_coach_path(question, athlete)
+    if route["path"] == "recipe" and route["recipe_category"]:
+        return _answer_with_recipe(question, athlete, route["recipe_category"])
 
     calc_result = _maybe_calculate(question, athlete)
 

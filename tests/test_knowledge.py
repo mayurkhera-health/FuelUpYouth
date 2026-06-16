@@ -282,6 +282,84 @@ def test_safety_guardrail_in_system_prompt():
     assert "professional" in prompt.lower()
     assert "eating" in prompt.lower()
 
+def test_classify_coach_path_parses_recipe_route():
+    from api.services.knowledge.answer import _classify_coach_path
+
+    with patch("api.services.knowledge.answer.is_configured", return_value=True):
+        with patch("api.services.knowledge.answer.converse_text", return_value='{"path": "recipe", "recipe_category": "post_game"}'):
+            route = _classify_coach_path(
+                "Make me something for after the game",
+                {"first_name": "Alex", "age": 14},
+            )
+    assert route == {"path": "recipe", "recipe_category": "post_game"}
+
+
+def test_classify_coach_path_defaults_to_knowledge_on_bad_json():
+    from api.services.knowledge.answer import _classify_coach_path
+
+    with patch("api.services.knowledge.answer.is_configured", return_value=True):
+        with patch("api.services.knowledge.answer.converse_text", return_value="not json"):
+            route = _classify_coach_path(
+                "How much iron do I need?",
+                {"first_name": "Alex", "age": 14},
+            )
+    assert route == {"path": "knowledge", "recipe_category": None}
+
+
+def test_coach_routes_recipe_requests():
+    """Recipe-style questions should invoke the recipe generator, not RAG."""
+    from api.services.knowledge.answer import answer_with_knowledge
+
+    mock_recipe = {
+        "recipe": {
+            "name": "Quick Halftime Bites",
+            "category": "halftime",
+            "calories": 180,
+            "protein_g": 3,
+            "carbs_g": 40,
+            "fat_g": 1,
+            "ingredients": ["1 banana", "2 tbsp honey"],
+            "preparation_notes": "Slice and serve.",
+            "tags": ["halftime"],
+        },
+        "source_ingredients": ["Bananas, raw"],
+    }
+
+    with patch("api.services.knowledge.answer._classify_coach_path", return_value={"path": "recipe", "recipe_category": "halftime"}):
+        with patch("api.services.recipe_generator.generate_recipe", return_value=mock_recipe):
+            result = answer_with_knowledge(
+                "Generate a halftime snack recipe for me",
+                {
+                    "id": 1,
+                    "first_name": "Alex",
+                    "age": 14,
+                    "gender": "female",
+                    "weight_lbs": 120,
+                    "allergies": "[]",
+                    "dietary_restrictions": None,
+                },
+            )
+
+    assert result["intent"] == "recipe"
+    assert result["recipe"]["name"] == "Quick Halftime Bites"
+    assert result["source_ingredients"] == ["Bananas, raw"]
+    assert "halftime" in result["answer"].lower()
+
+
+def test_coach_skips_recipe_for_general_questions():
+    """General fueling questions should not trigger recipe generation."""
+    from api.services.knowledge.answer import answer_with_knowledge
+
+    with patch("api.services.knowledge.answer._classify_coach_path", return_value={"path": "knowledge", "recipe_category": None}):
+        with patch("api.services.recipe_generator.generate_recipe") as mock_gen:
+            with patch("api.services.knowledge.answer.retrieve", return_value=[]):
+                answer_with_knowledge(
+                    "What should I eat before a game?",
+                    {"id": 1, "first_name": "Alex", "age": 14, "gender": "female", "weight_lbs": 120},
+                )
+    mock_gen.assert_not_called()
+
+
 def test_calculation_included_when_relevant():
     """Iron question for a known athlete should produce a non-None result."""
     from api.services.knowledge.answer import answer_with_knowledge
