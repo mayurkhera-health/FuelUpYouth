@@ -117,17 +117,22 @@ def build_weekly_report(athlete_id: int, week_start: str, conn) -> dict:
 
     week_start_date = date.fromisoformat(week_start)
     week_end_date   = week_start_date + timedelta(days=6)
+    today_str       = date.today().isoformat()
 
-    daily_scores: list        = []
-    week_fuel_scores: list    = []
-    nutrient_totals: dict     = {}
-    nutrient_targets: dict    = {}
-    days_with_data            = 0
+    # Per-day data
+    raw_days: list         = []   # enriched per-day dicts used to build dots
+    week_fuel_scores: list = []
+    nutrient_totals: dict  = {}
+    nutrient_targets: dict = {}
+    days_with_data         = 0
+    game_days              = 0
 
     for i in range(7):
         day_str  = (week_start_date + timedelta(days=i)).isoformat()
         day_date = date.fromisoformat(day_str)
         abbr     = day_date.strftime("%a")[:2]
+        is_today  = day_str == today_str
+        is_future = day_date > date.today()
 
         targets_row = conn.execute(
             "SELECT * FROM daily_targets WHERE athlete_id = ? AND target_date = ?",
@@ -138,6 +143,34 @@ def build_weekly_report(athlete_id: int, week_start: str, conn) -> dict:
             "SELECT event_type, event_name FROM events WHERE athlete_id = ? AND event_date = ?",
             (athlete_id, day_str),
         ).fetchone()
+        event_type = event_row["event_type"] if event_row else None
+
+        if event_type in ("game", "tournament"):
+            game_days += 1
+            day_type = "game"
+        elif event_type in ("practice", "training", "strength"):
+            day_type = "practice"
+        else:
+            day_type = "rest"
+
+        # Window logs count → confirmed_count for the dot
+        wl_row = conn.execute(
+            "SELECT COUNT(DISTINCT slot_name) FROM window_logs WHERE athlete_id = ? AND DATE(logged_at) = ?",
+            (athlete_id, day_str),
+        ).fetchone()
+        confirmed_count = wl_row[0] if wl_row else 0
+
+        # Fall back to meal_logs if no window_logs
+        if confirmed_count == 0:
+            ml_row = conn.execute(
+                "SELECT COUNT(*) FROM meal_logs WHERE athlete_id = ? AND DATE(logged_at) = ?",
+                (athlete_id, day_str),
+            ).fetchone()
+            if ml_row and ml_row[0] > 0:
+                confirmed_count = 1
+
+        # Past days always have at least one applicable window; future days have none
+        applicable_count = 0 if is_future else 1
 
         meal_rows = conn.execute(
             "SELECT * FROM meal_logs WHERE athlete_id = ? AND DATE(logged_at) = ?",
@@ -172,29 +205,25 @@ def build_weekly_report(athlete_id: int, week_start: str, conn) -> dict:
                         nutrient_targets.get(nutrient, 0) + (val or 0)
                     )
 
-        daily_scores.append({
-            "date":       day_str,
-            "abbr":       abbr,
-            "fuel_score": fuel_score,
-            "event_type": event_row["event_type"] if event_row else None,
-            "event_name": event_row["event_name"] if event_row else None,
+        raw_days.append({
+            "date":            day_str,
+            "day_abbr":        abbr,
+            "day_num":         day_date.day,
+            "fuel_score":      fuel_score,
+            "event_type":      event_type,
+            "day_type":        day_type,
+            "confirmed_count": confirmed_count,
+            "applicable_count": applicable_count,
+            "is_today":        is_today,
+            "is_future":       is_future,
         })
 
     avg_score    = round(sum(week_fuel_scores) / len(week_fuel_scores)) if week_fuel_scores else 0
     letter_grade = score_to_grade(avg_score)
     streak       = _compute_streak(athlete_id, conn)
 
-    first_event = conn.execute(
-        "SELECT MIN(event_date) FROM events WHERE athlete_id = ?", (athlete_id,)
-    ).fetchone()
-    season_start = (first_event[0] if first_event and first_event[0] else week_start)
-    season_week  = max(
-        1, ((week_start_date - date.fromisoformat(season_start)).days // 7) + 1
-    )
-
     ranked_gaps  = _rank_gaps(nutrient_totals, nutrient_targets, days_with_data, athlete["gender"])
     critical_gap = ranked_gaps[0] if ranked_gaps else None
-    fix_foods    = FIX_FOODS.get(critical_gap["nutrient"], []) if critical_gap else []
 
     next_week_start = week_end_date + timedelta(days=1)
     next_week_end   = next_week_start + timedelta(days=6)
@@ -217,49 +246,70 @@ def build_weekly_report(athlete_id: int, week_start: str, conn) -> dict:
         "streak":       streak,
     })
 
-    tips = narrative.get("next_week_tips") or []
-    padded_tips = tips + ["Focus on balanced meals and hydration."] * max(0, len(next_events) - len(tips))
+    # Safety flag: iron below 75% for female athletes
+    safety_flag = None
+    if athlete.get("gender") in ("girl", "female") and critical_gap and critical_gap["nutrient"] == "iron_mg":
+        if critical_gap["avg_pct"] < 75:
+            safety_flag = {"flag_key": "low_iron", "message": "Iron levels below target this week"}
+
+    # Flatten what_went_well list → single string for narrative
+    wwwell_items = narrative.get("what_went_well") or [
+        {"text": f"Logged {days_with_data} days this week", "stat": f"{days_with_data}/7"},
+    ]
+    what_went_well_str = " · ".join(
+        item["text"] if isinstance(item, dict) else str(item)
+        for item in wwwell_items[:2]
+    )
+
+    summary_paragraphs = narrative.get("summary_paragraphs") or []
+    next_action_text = summary_paragraphs[2] if len(summary_paragraphs) > 2 else (
+        f"Focus on {critical_gap['label'].lower()} next week." if critical_gap else "Keep building your fueling routine."
+    )
+
+    # Build dots — the per-day week strip
+    dots = [
+        {
+            "date":             d["date"],
+            "day_abbr":         d["day_abbr"],
+            "day_num":          d["day_num"],
+            "applicable_count": d["applicable_count"],
+            "confirmed_count":  d["confirmed_count"],
+            "event_type":       d["event_type"],
+            "day_type":         d["day_type"],
+            "is_today":         d["is_today"],
+            "is_future":        d["is_future"],
+        }
+        for d in raw_days
+    ]
 
     return {
-        "week_start":  week_start,
-        "week_end":    week_end_date.isoformat(),
-        "season_week": season_week,
+        "week_start": week_start,
+        "week_end":   week_end_date.isoformat(),
         "athlete": {
             "id":         athlete["id"],
             "first_name": athlete["first_name"],
             "gender":     athlete["gender"],
         },
-        "grade": {
-            "letter":      letter_grade,
-            "score":       avg_score,
-            "days_logged": days_with_data,
-            "streak":      streak,
-            "headline":    narrative.get("grade_headline", f"Great week, {athlete['first_name']}!"),
-            "summary":     narrative.get("grade_summary", "Keep building those habits."),
+        "streak":     streak,
+        "disclaimer": "FuelUp provides food education guidance — not medical nutrition therapy.",
+        "load": {
+            "game_days": game_days,
+            "is_high":   game_days >= 2,
         },
-        "what_went_well": narrative.get("what_went_well") or [
-            {"text": f"Logged {days_with_data} days this week", "stat": f"{days_with_data}/7"},
-        ],
-        "critical_gap": {
-            "nutrient":       critical_gap["nutrient"]  if critical_gap else None,
-            "label":          critical_gap["label"]     if critical_gap else None,
-            "emoji":          critical_gap["emoji"]     if critical_gap else None,
-            "avg_amount":     critical_gap["avg_amount"] if critical_gap else 0,
-            "target":         critical_gap["target"]    if critical_gap else 0,
-            "unit":           critical_gap["unit"]      if critical_gap else "",
-            "weekly_avg_pct": critical_gap["avg_pct"]   if critical_gap else 0,
-            "why":            narrative.get("critical_gap_why", ""),
-            "fix_foods":      fix_foods,
+        "rates": {
+            "pre_fuel":  None,
+            "recovery":  None,
+            "hydration": None,
         },
-        "daily_scores": daily_scores,
-        "next_week": [
-            {
-                "event_type": e["event_type"],
-                "event_name": e["event_name"],
-                "event_date": e["event_date"],
-                "prep_tip":   tip,
-            }
-            for e, tip in zip(next_events, padded_tips)
-        ],
-        "summary": narrative.get("summary_paragraphs") or [],
+        "dots": dots,
+        "safety_flag": safety_flag,
+        "narrative": {
+            "what_went_well": what_went_well_str,
+            "flag_narrative": narrative.get("critical_gap_why", ""),
+            "encouragement":  narrative.get("grade_headline", f"Keep it up, {athlete['first_name']}!"),
+        },
+        "next_action": {
+            "action": next_action_text,
+            "reason": narrative.get("critical_gap_why", ""),
+        },
     }
