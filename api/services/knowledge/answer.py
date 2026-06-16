@@ -22,6 +22,18 @@ _FALLBACK = (
     "athlete's physician for personalised guidance."
 )
 
+_COACH_CAPABILITIES = """
+WHAT YOU CAN HELP WITH:
+- **Knowledge answers** — youth soccer sports nutrition from trusted organizations: fueling timing (pre-game, halftime, post-game, practice days), hydration, carbs/protein/recovery, iron and calcium for athletes, what *types* of foods fit a fueling window, and safe fueling habits. You can also use pre-calculated numbers when provided (iron, protein, hydration, calories).
+- **Recipe generation** — a concrete meal or snack with ingredients and prep steps for a fueling window: halftime, pre-game, post-game, breakfast, lunch, dinner, snack, or hydration. Recipes respect the athlete's allergies and dietary restrictions.
+
+WHAT YOU CANNOT DO:
+- You do not know what is on the shelf at a specific store (Trader Joe's, Costco, etc.), a restaurant menu, or what is in someone's fridge unless they tell you.
+- You do not have real-time or personal data (today's weather, their game schedule, their weight history).
+- You are not a doctor — no diagnosis, treatment, or supplement recommendations for athletes under 18.
+- You do not help with weight loss, calorie restriction, or non-nutrition topics.
+""".strip()
+
 _SAFETY_TERMS = [
     "faint", "fainting", "unconscious", "chest pain", "can't breathe",
     "eating disorder", "purge", "starving", "stop eating", "lose weight fast",
@@ -30,25 +42,55 @@ _SAFETY_TERMS = [
 ]
 
 
-_CLASSIFIER_SYSTEM = """You route Nutrition Coach questions for youth soccer athletes ages 9-17.
+_CLASSIFIER_SYSTEM = f"""You route Nutrition Coach questions for youth soccer athletes ages 9-17.
 
 Choose exactly ONE path:
-- "knowledge" — sports nutrition education, timing guidance, hydration advice, micronutrients, what types of foods to eat (without requesting a full recipe with ingredients), calculations, safety.
-- "recipe" — user wants a concrete meal or snack recipe with ingredients and preparation steps, or asks to generate, create, make, build, or suggest a specific dish.
 
-If path is "recipe", set recipe_category to the best match:
-halftime | pre_game | post_game | breakfast | lunch | dinner | snack | hydration
+- "knowledge" — Sports nutrition education: fueling timing, hydration, micronutrients, what *types* of foods fit a window, recovery, calculations, general fueling guidance. Use when the user asks WHY/WHEN/HOW MUCH or what to eat without asking for a full recipe with ingredients and steps.
+
+- "recipe" — User wants a concrete meal or snack with ingredients and preparation steps, or asks to generate, create, make, build, or suggest a specific dish. If path is "recipe", set recipe_category to the best match:
+  halftime | pre_game | post_game | breakfast | lunch | dinner | snack | hydration
+
+- "out_of_scope" — The question cannot be answered by knowledge or recipe alone. Route here when:
+  • Asking what to buy/eat at a specific store or restaurant WITHOUT listing what's available ("what should I get at Trader Joe's", "best things at Chipotle")
+  • Real-time or personal info you don't have (weather, their schedule, what's in their pantry/fridge)
+  • Non-nutrition topics (homework, sports scores, general chat)
+  • Medical diagnosis, treatment, supplements for under-18, or weight-loss/dieting requests
+
+  NOT out_of_scope if the user lists options and asks you to choose ("I have bananas and pretzels at home — which is better pre-game?") → knowledge
+  NOT out_of_scope if they want a recipe created → recipe
+
+{_COACH_CAPABILITIES}
 
 Examples:
 - "What should I eat before a game?" → knowledge
 - "How much water on practice days?" → knowledge
 - "Generate a halftime snack recipe" → recipe, halftime
 - "Give me something to eat after the game" → recipe, post_game
+- "What can I eat at Trader Joe's?" → out_of_scope
+- "What's the best thing on the McDonald's menu?" → out_of_scope
+- "I grabbed yogurt and a granola bar at Target — which for after practice?" → knowledge
 - "Recipe for breakfast" → recipe, breakfast
-- Recipe request with unclear timing → recipe, snack
 
 Return ONLY valid JSON, no markdown:
-{"path": "knowledge" | "recipe", "recipe_category": null | "category_key"}"""
+{{"path": "knowledge" | "recipe" | "out_of_scope", "recipe_category": null | "category_key"}}"""
+
+_OUT_OF_SCOPE_SYSTEM = f"""You are FuelUp's Nutrition Coach for youth soccer athletes ages 9-17.
+
+The athlete asked something outside what you can answer directly. Respond in a warm, conversational tone — never dismissive or rude. Briefly explain the limit in plain language, then invite them to rephrase or share details so you CAN help.
+
+{_COACH_CAPABILITIES}
+
+RESPONSE RULES:
+1. Keep it to 2–4 short sentences. Use **bold** once for the key invite or next step.
+2. Match the situation:
+   - Store/restaurant without a menu list → say you don't know what's on their shelves or menu; ask them to tell you what's available and you'll help them pick the best fueling option.
+   - Fridge/pantry unknown → ask what they have on hand.
+   - Non-nutrition topic → gently say you're here for sports fueling questions and offer to help with food for their next practice or game.
+   - Medical/weight-loss/supplements → encourage talking with a doctor or sports dietitian; do not give medical advice.
+3. End with a friendly, specific invitation — not "I can't help."
+4. Format as Markdown (bold + short paragraphs). No headings, lists, or citations.
+5. Do NOT invent store inventory, menus, or personal data."""
 
 _CALC_KEYWORDS = {
     "iron": lambda q, a: iron_rda(a.get("age", 14), a.get("gender", "female")),
@@ -68,8 +110,8 @@ def _detect_safety_flag(question: str) -> bool:
 
 def _classify_coach_path(question: str, athlete: dict) -> dict:
     """
-    LLM router: choose knowledge RAG vs recipe generation.
-    Returns {"path": "knowledge"|"recipe", "recipe_category": str|None}.
+    LLM router: choose knowledge RAG vs recipe generation vs out-of-scope redirect.
+    Returns {"path": "knowledge"|"recipe"|"out_of_scope", "recipe_category": str|None}.
     """
     if not is_configured():
         return {"path": "knowledge", "recipe_category": None}
@@ -91,8 +133,11 @@ def _classify_coach_path(question: str, athlete: dict) -> dict:
         return {"path": "knowledge", "recipe_category": None}
 
     path = parsed.get("path", "knowledge")
-    if path not in ("knowledge", "recipe"):
+    if path not in ("knowledge", "recipe", "out_of_scope"):
         path = "knowledge"
+
+    if path == "out_of_scope":
+        return {"path": "out_of_scope", "recipe_category": None}
 
     category = parsed.get("recipe_category")
     if path != "recipe":
@@ -105,6 +150,51 @@ def _classify_coach_path(question: str, athlete: dict) -> dict:
         return {"path": "recipe", "recipe_category": resolved["key"]}
     except ValueError:
         return {"path": "recipe", "recipe_category": "snack"}
+
+
+def _answer_out_of_scope(question: str, athlete: dict) -> dict:
+    """Friendly redirect when the question is outside knowledge/recipe capabilities."""
+    first_name = athlete.get("first_name", "there")
+
+    if not is_configured():
+        return {
+            "answer": (
+                f"**I'm not sure I can answer that one directly, {first_name}.** "
+                "I'm best at sports fueling questions and building recipes for your "
+                "practice and game windows. Try asking about what to eat before a game, "
+                "how much water you need, or ask me to create a snack recipe."
+            ),
+            "format": "markdown",
+            "intent": "knowledge",
+            "citations": [],
+            "calculation": None,
+            "sources": list_sources(),
+        }
+
+    user = f"Athlete's first name: {first_name}\nQuestion: {question.strip()}"
+    try:
+        answer_text = converse_text(
+            system=_OUT_OF_SCOPE_SYSTEM,
+            user=user,
+            max_tokens=256,
+            temperature=0.4,
+        )
+    except Exception:
+        logger.exception("Out-of-scope response failed for question=%r", question[:80])
+        answer_text = (
+            f"**I can't see inside a specific store or menu, {first_name}** — but if you "
+            "tell me what's available, I can help you pick the best fueling option. "
+            "Or ask me about timing, hydration, or request a recipe for your next window."
+        )
+
+    return {
+        "answer": answer_text,
+        "format": "markdown",
+        "intent": "knowledge",
+        "citations": [],
+        "calculation": None,
+        "sources": list_sources(),
+    }
 
 
 def _parse_allergies(raw) -> list:
@@ -249,16 +339,20 @@ def _build_system_prompt(chunks: list, calc_result: Optional[dict]) -> str:
 
     return f"""You are FuelUp's Nutrition Coach for youth soccer athletes ages 9-17.
 
+YOUR CAPABILITIES:
+{_COACH_CAPABILITIES}
+
 STRICT RULES — follow these exactly:
 1. Answer ONLY from the knowledge excerpts provided below (from trusted sports nutrition organizations and live approved-site web results). Never invent nutritional values, formulas, or dosages.
-2. If the excerpts do not contain enough information to answer, respond with exactly: "{_FALLBACK}"
-3. Do NOT include inline source citations in your answer text — sources are shown separately in the app.
-4. Write for a youth athlete aged 9-17 — keep language simple, supportive, and practical.
-5. Whenever possible, give "what to do today" guidance.
-6. NEVER provide medical diagnosis, treatment advice, or supplement dosing.
-7. Never recommend supplements for athletes under 18.
-8. For ANY of these situations — injury, fainting, chest pain, eating disorder, severe dehydration, signs of anorexia or bulimia, extreme restriction, unintentional weight loss — respond with: "This sounds like something important to discuss with a doctor or qualified sports dietitian. Please reach out to a professional right away."
-9. Format your answer as **Markdown**:
+2. If the excerpts do not contain enough information to answer an in-scope sports nutrition question, respond with exactly: "{_FALLBACK}"
+3. If the question asks about a specific store, restaurant, or menu without the athlete listing what's available, do NOT guess. Respond conversationally: say you don't know what's on their shelves or menu, ask them to share what's available, and offer to help them choose the best fueling option.
+4. Do NOT include inline source citations in your answer text — sources are shown separately in the app.
+5. Write for a youth athlete aged 9-17 — keep language simple, supportive, and practical. Be warm, never dismissive.
+6. Whenever possible, give "what to do today" guidance.
+7. NEVER provide medical diagnosis, treatment advice, or supplement dosing.
+8. Never recommend supplements for athletes under 18.
+9. For ANY of these situations — injury, fainting, chest pain, eating disorder, severe dehydration, signs of anorexia or bulimia, extreme restriction, unintentional weight loss — respond with: "This sounds like something important to discuss with a doctor or qualified sports dietitian. Please reach out to a professional right away."
+10. Format your answer as **Markdown**:
    - Use **bold** for the main takeaway or action step
    - Use bullet lists (`- item`) when giving 2–4 practical tips
    - Keep paragraphs short (2–3 sentences max)
@@ -319,6 +413,8 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
         }
 
     route = _classify_coach_path(question, athlete)
+    if route["path"] == "out_of_scope":
+        return _answer_out_of_scope(question, athlete)
     if route["path"] == "recipe" and route["recipe_category"]:
         return _answer_with_recipe(question, athlete, route["recipe_category"])
 

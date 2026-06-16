@@ -281,6 +281,43 @@ def test_safety_guardrail_in_system_prompt():
     assert "medical" in prompt.lower()
     assert "professional" in prompt.lower()
     assert "eating" in prompt.lower()
+    assert "YOUR CAPABILITIES" in prompt
+    assert "Trader Joe" in prompt or "store" in prompt.lower()
+
+
+def test_classifier_system_prompt_documents_capabilities():
+    from api.services.knowledge.answer import _CLASSIFIER_SYSTEM
+    assert "out_of_scope" in _CLASSIFIER_SYSTEM
+    assert "recipe" in _CLASSIFIER_SYSTEM
+    assert "knowledge" in _CLASSIFIER_SYSTEM
+
+
+def test_classify_coach_path_parses_out_of_scope_route():
+    from api.services.knowledge.answer import _classify_coach_path
+
+    with patch("api.services.knowledge.answer.is_configured", return_value=True):
+        with patch("api.services.knowledge.answer.converse_text", return_value='{"path": "out_of_scope", "recipe_category": null}'):
+            route = _classify_coach_path(
+                "What should I eat at Trader Joe's?",
+                {"first_name": "Alex", "age": 14},
+            )
+    assert route == {"path": "out_of_scope", "recipe_category": None}
+
+
+def test_coach_routes_out_of_scope_without_retrieval():
+    from api.services.knowledge.answer import answer_with_knowledge
+
+    with patch("api.services.knowledge.answer._classify_coach_path", return_value={"path": "out_of_scope", "recipe_category": None}):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch("api.services.knowledge.answer.converse_text", return_value="I don't know what's at Trader Joe's — **tell me what you see** and I'll help you pick."):
+                with patch("api.services.knowledge.answer.retrieve") as mock_retrieve:
+                    result = answer_with_knowledge(
+                        "What should I eat at Trader Joe's?",
+                        {"id": 1, "first_name": "Alex", "age": 14, "gender": "female", "weight_lbs": 120},
+                    )
+    mock_retrieve.assert_not_called()
+    assert "Trader Joe" in result["answer"]
+    assert result["citations"] == []
 
 def test_classify_coach_path_parses_recipe_route():
     from api.services.knowledge.answer import _classify_coach_path
