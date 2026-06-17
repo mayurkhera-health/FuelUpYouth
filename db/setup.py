@@ -329,6 +329,11 @@ def seed_fueling_foods(conn=None):
         with open(csv_path, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
+                name = row["name"].strip()
+                category = row["category"].strip()
+                if not name or not category:
+                    print(f"Seeder: skipping row with missing name/category: {dict(row)}")
+                    continue
                 conn.execute(
                     """
                     INSERT INTO fueling_foods (name, category, role, allergen_tags, soft_hint, is_active)
@@ -341,8 +346,8 @@ def seed_fueling_foods(conn=None):
                         is_active     = 1
                     """,
                     (
-                        row["name"].strip(),
-                        row["category"].strip(),
+                        name,
+                        category,
                         row.get("role", "").strip() or None,
                         row.get("allergen_tags", "").strip(),
                         row.get("soft_hint", "").strip(),
