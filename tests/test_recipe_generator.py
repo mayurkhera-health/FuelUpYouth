@@ -13,7 +13,7 @@ from api.services import recipe_generator
 
 @patch("api.services.recipe_generator.converse_text")
 def test_generate_recipe_agent_picks_from_library(mock_converse):
-    mock_converse.return_value = json.dumps({"recipe_id": "R011"})
+    mock_converse.return_value = json.dumps({"recipe_ids": ["R011"]})
 
     result = recipe_generator.generate_recipe(
         category="halftime",

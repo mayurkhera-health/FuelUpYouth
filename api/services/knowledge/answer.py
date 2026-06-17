@@ -216,6 +216,27 @@ def _parse_dietary(raw) -> list:
     return [d.strip() for d in str(raw).split(",") if d.strip().lower() != "none"]
 
 
+def _format_history(history: list[dict] | None) -> str:
+    if not history:
+        return ""
+    lines = []
+    for turn in history[-12:]:
+        role = turn.get("role")
+        content = (turn.get("content") or "").strip()
+        if not content or role not in ("user", "coach"):
+            continue
+        label = "Athlete" if role == "user" else "Coach"
+        lines.append(f"{label}: {content}")
+    if not lines:
+        return ""
+    return "PRIOR CONVERSATION (for context only — do not repeat verbatim):\n" + "\n".join(lines) + "\n\n"
+
+
+def _question_with_history(question: str, history: list[dict] | None) -> str:
+    prefix = _format_history(history)
+    return f"{prefix}{question}" if prefix else question
+
+
 def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
     from api.services import recipe_generator
     from api.services.recipe_categories import resolve_category
@@ -224,12 +245,13 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
     dietary = _parse_dietary(athlete.get("dietary_restrictions"))
 
     try:
-        result = recipe_generator.generate_recipe(
+        result = recipe_generator.generate_recipe_options(
             category,
             allergies=allergies,
             dietary_restrictions=dietary,
             athlete=athlete,
             question=question,
+            count=3,
         )
     except ValueError as e:
         return {
@@ -237,6 +259,7 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
             "format": "markdown",
             "intent": "recipe",
             "recipe": None,
+            "recipes": [],
             "source_ingredients": [],
             "citations": [],
             "calculation": None,
@@ -252,6 +275,7 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
             "format": "markdown",
             "intent": "recipe",
             "recipe": None,
+            "recipes": [],
             "source_ingredients": [],
             "citations": [],
             "calculation": None,
@@ -262,17 +286,26 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
     first_name = athlete.get("first_name", "athlete")
     restriction_note = ""
     if allergies:
-        restriction_note = f" It's free of your listed allergens ({', '.join(allergies)})."
-    answer = (
-        f"Here's a **{profile['label']}** pick for {first_name} — "
-        f"from our science-backed recipe library.{restriction_note}"
-    )
+        restriction_note = f" They're free of your listed allergens ({', '.join(allergies)})."
+    option_count = len(result.get("recipes") or [])
+    if option_count > 1:
+        answer = (
+            f"Here are **{option_count} {profile['label'].lower()}** options for {first_name} — "
+            f"from our science-backed recipe library.{restriction_note} "
+            f"**Tap one to select it**, then add your pick to your meal plan."
+        )
+    else:
+        answer = (
+            f"Here's a **{profile['label']}** pick for {first_name} — "
+            f"from our science-backed recipe library.{restriction_note}"
+        )
 
     return {
         "answer": answer,
         "format": "markdown",
         "intent": "recipe",
         "recipe": result["recipe"],
+        "recipes": result.get("recipes", []),
         "source_ingredients": result.get("source_ingredients", []),
         "citations": [],
         "calculation": None,
@@ -370,11 +403,17 @@ def _citations_from_chunks(chunks: list[KnowledgeChunk]) -> list[dict]:
     return citations
 
 
-def answer_with_knowledge(question: str, athlete: dict) -> dict:
+def answer_with_knowledge(
+    question: str,
+    athlete: dict,
+    history: list[dict] | None = None,
+    is_first_message: bool = False,
+) -> dict:
     """
     Main RAG entry point for the Nutrition Coach.
     Returns {"answer", "citations", "calculation", "sources"}.
     """
+    contextual_question = _question_with_history(question, history)
     if _detect_safety_flag(question):
         return {
             "answer": (
@@ -388,16 +427,16 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
             "sources": list_sources(),
         }
 
-    route = _classify_coach_path(question, athlete)
+    route = _classify_coach_path(contextual_question, athlete)
     if route["path"] == "out_of_scope":
-        return _answer_out_of_scope(question, athlete)
+        return _answer_out_of_scope(contextual_question, athlete)
     if route["path"] == "recipe" and route["recipe_category"]:
-        return _answer_with_recipe(question, athlete, route["recipe_category"])
+        return _answer_with_recipe(contextual_question, athlete, route["recipe_category"])
 
-    calc_result = _maybe_calculate(question, athlete)
+    calc_result = _maybe_calculate(contextual_question, athlete)
 
     try:
-        chunks = retrieve(question, top_n=5)
+        chunks = retrieve(contextual_question, top_n=5)
     except Exception:
         logger.exception("Knowledge retrieval failed for question=%r", question[:80])
         return {
@@ -419,7 +458,7 @@ def answer_with_knowledge(question: str, athlete: dict) -> dict:
 
     system_prompt = _build_system_prompt(chunks, calc_result)
     try:
-        answer_text = _call_bedrock(system_prompt, question)
+        answer_text = _call_bedrock(system_prompt, contextual_question)
     except Exception:
         logger.exception("Bedrock call failed for Nutrition Coach")
         return {

@@ -46,14 +46,15 @@ def _compact_recipes(recipes: list[dict]) -> list[dict]:
     ]
 
 
-def _choose_recipe_with_agent(
+def _choose_recipes_with_agent(
     candidates: list[dict],
     profile: dict,
     question: str | None,
     allergies: list | None,
     dietary_restrictions: list | None,
     athlete: dict | None,
-) -> dict:
+    count: int = 3,
+) -> list[dict]:
     restrictions = []
     if allergies:
         restrictions.append(f"Allergens to avoid: {', '.join(allergies)}")
@@ -70,13 +71,14 @@ def _choose_recipe_with_agent(
         )
 
     user_request = question or f"Suggest a {profile['label'].lower()} recipe."
+    pick_count = min(max(count, 1), len(candidates))
 
     prompt = f"""You are FuelUp's recipe selector for youth soccer athletes ages 9-17.
 
 FuelUp provides food education guidance — not medical nutrition therapy.
 Never recommend supplements for athletes under 18.
 
-You are selecting an existing recipe from FuelUp's curated recipe library — not writing a new one.
+You are selecting existing recipes from FuelUp's curated recipe library — not writing new ones.
 
 USER REQUEST: {user_request}
 
@@ -86,17 +88,17 @@ TARGET CALORIES: {profile['target_calories']['min']}–{profile['target_calories
 RESTRICTIONS: {restrictions_text}
 {athlete_ctx}
 
-AVAILABLE RECIPES — these are the only valid options. You MUST pick exactly ONE recipe_id from this list:
+AVAILABLE RECIPES — these are the only valid options. You MUST pick recipe_ids only from this list:
 {json.dumps(_compact_recipes(candidates), indent=2)}
 
 RULES:
-1. Return only a recipe_id that appears in AVAILABLE RECIPES.
-2. Pick the recipe that best matches what the user asked for.
-3. If the user has no specific preference, pick the best fit for the fueling window and athlete context.
+1. Return exactly {pick_count} distinct recipe_id values when possible.
+2. Order them from best match to next-best for the user's request.
+3. Pick variety when the user has no strong preference.
 4. Never invent recipes, ingredients, or IDs.
 
 Return ONLY valid JSON:
-{{"recipe_id": "R010"}}"""
+{{"recipe_ids": ["R010", "R015", "R020"]}}"""
 
     text = converse_text(
         system=claude_ai.SCIENCE_SYSTEM,
@@ -105,23 +107,63 @@ Return ONLY valid JSON:
         temperature=0.3,
     )
     parsed = parse_json_from_llm(text)
-    recipe_id = str(parsed.get("recipe_id", "")).upper()
     by_id = {r["id"]: r for r in candidates}
-    if recipe_id in by_id:
-        return by_id[recipe_id]
-    return candidates[0]
+
+    raw_ids = parsed.get("recipe_ids")
+    if not isinstance(raw_ids, list):
+        single = parsed.get("recipe_id")
+        raw_ids = [single] if single else []
+
+    selected: list[dict] = []
+    seen: set[str] = set()
+    for rid in raw_ids:
+        rid = str(rid).upper()
+        if rid in by_id and rid not in seen:
+            selected.append(by_id[rid])
+            seen.add(rid)
+        if len(selected) >= pick_count:
+            break
+
+    for candidate in candidates:
+        if candidate["id"] not in seen:
+            selected.append(candidate)
+            seen.add(candidate["id"])
+        if len(selected) >= pick_count:
+            break
+
+    return selected[:pick_count]
 
 
-def generate_recipe(
+def _choose_recipe_with_agent(
+    candidates: list[dict],
+    profile: dict,
+    question: str | None,
+    allergies: list | None,
+    dietary_restrictions: list | None,
+    athlete: dict | None,
+) -> dict:
+    return _choose_recipes_with_agent(
+        candidates,
+        profile,
+        question,
+        allergies,
+        dietary_restrictions,
+        athlete,
+        count=1,
+    )[0]
+
+
+def generate_recipe_options(
     category: str,
     allergies: list | None = None,
     dietary_restrictions: list | None = None,
     athlete: dict | None = None,
     question: str | None = None,
+    count: int = 3,
 ) -> dict:
     """
-    Returns { recipe, source_ingredients, ingredient_source } matching the mobile RecipeGenerateResponse shape.
-    Sends all valid library recipes to the agent, which picks the best match for the request.
+    Returns up to `count` recipe options from the library for the Nutrition Coach.
+    Shape: { recipes: [{recipe, source_ingredients}, ...], recipe, source_ingredients, ingredient_source }
     """
     profile = resolve_category(category)
     candidates = recipe_db.get_valid_recipes(
@@ -135,18 +177,54 @@ def generate_recipe(
             "with the given allergies and dietary restrictions."
         )
 
-    db_recipe = _choose_recipe_with_agent(
+    db_recipes = _choose_recipes_with_agent(
         candidates,
         profile,
         question,
         allergies,
         dietary_restrictions,
         athlete,
+        count=count,
     )
 
-    ingredients = [i.strip() for i in db_recipe["ingredients"].split(",") if i.strip()]
+    options = []
+    for db_recipe in db_recipes:
+        ingredients = [i.strip() for i in db_recipe["ingredients"].split(",") if i.strip()]
+        options.append({
+            "recipe": _recipe_db_to_response(db_recipe, profile["key"]),
+            "source_ingredients": ingredients,
+        })
+
+    first = options[0]
     return {
-        "recipe": _recipe_db_to_response(db_recipe, profile["key"]),
-        "source_ingredients": ingredients,
+        "recipes": options,
+        "recipe": first["recipe"],
+        "source_ingredients": first["source_ingredients"],
         "ingredient_source": "recipe_library",
+    }
+
+
+def generate_recipe(
+    category: str,
+    allergies: list | None = None,
+    dietary_restrictions: list | None = None,
+    athlete: dict | None = None,
+    question: str | None = None,
+) -> dict:
+    """
+    Returns { recipe, source_ingredients, ingredient_source } matching the mobile RecipeGenerateResponse shape.
+    Sends all valid library recipes to the agent, which picks the best match for the request.
+    """
+    result = generate_recipe_options(
+        category,
+        allergies=allergies,
+        dietary_restrictions=dietary_restrictions,
+        athlete=athlete,
+        question=question,
+        count=1,
+    )
+    return {
+        "recipe": result["recipe"],
+        "source_ingredients": result["source_ingredients"],
+        "ingredient_source": result["ingredient_source"],
     }

@@ -22,6 +22,8 @@ def _require_admin(x_admin_key: Optional[str] = Header(None)):
 class AskRequest(BaseModel):
     question: str
     athlete_id: int
+    is_first_message: bool = False
+    history: list[dict] = []
 
 
 class StatusUpdate(BaseModel):
@@ -109,7 +111,12 @@ def ask_knowledge(body: AskRequest):
         athlete_dict = dict(athlete)
     finally:
         conn.close()
-    return answer_with_knowledge(body.question, athlete_dict)
+    return answer_with_knowledge(
+        body.question,
+        athlete_dict,
+        history=body.history,
+        is_first_message=body.is_first_message,
+    )
 
 
 @router.get("/{slug}")

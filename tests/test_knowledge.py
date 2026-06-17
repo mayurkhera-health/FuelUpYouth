@@ -363,7 +363,13 @@ def test_coach_routes_recipe_requests():
     }
 
     with patch("api.services.knowledge.answer._classify_coach_path", return_value={"path": "recipe", "recipe_category": "halftime"}):
-        with patch("api.services.recipe_generator.generate_recipe", return_value=mock_recipe):
+        with patch("api.services.recipe_generator.generate_recipe_options") as mock_gen:
+            mock_gen.return_value = {
+                "recipes": [{"recipe": mock_recipe["recipe"], "source_ingredients": mock_recipe["source_ingredients"]}],
+                "recipe": mock_recipe["recipe"],
+                "source_ingredients": mock_recipe["source_ingredients"],
+                "ingredient_source": "recipe_library",
+            }
             result = answer_with_knowledge(
                 "Generate a halftime snack recipe for me",
                 {
@@ -388,7 +394,7 @@ def test_coach_skips_recipe_for_general_questions():
     from api.services.knowledge.answer import answer_with_knowledge
 
     with patch("api.services.knowledge.answer._classify_coach_path", return_value={"path": "knowledge", "recipe_category": None}):
-        with patch("api.services.recipe_generator.generate_recipe") as mock_gen:
+        with patch("api.services.recipe_generator.generate_recipe_options") as mock_gen:
             with patch("api.services.knowledge.answer.retrieve", return_value=[]):
                 answer_with_knowledge(
                     "What should I eat before a game?",
