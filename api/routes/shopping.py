@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
 from api.database import get_conn
 from api.models import ShoppingItemCreate, ShoppingItemPatch, ShoppingPref, PersonalFood, FoodSubmission
 from api.services.shopping_service import build_essentials, build_share_text, CATEGORY_ORDER, CATEGORY_LABELS
@@ -7,18 +8,15 @@ router = APIRouter()
 
 
 def _get_or_create_list(athlete_id: int, week_start: str, conn) -> int:
-    row = conn.execute(
-        "SELECT id FROM shopping_lists WHERE athlete_id = ? AND week_start = ?",
-        (athlete_id, week_start),
-    ).fetchone()
-    if row:
-        return row["id"]
     conn.execute(
-        "INSERT INTO shopping_lists (athlete_id, week_start) VALUES (?, ?)",
+        "INSERT OR IGNORE INTO shopping_lists (athlete_id, week_start) VALUES (?, ?)",
         (athlete_id, week_start),
     )
     conn.commit()
-    return conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    return conn.execute(
+        "SELECT id FROM shopping_lists WHERE athlete_id = ? AND week_start = ?",
+        (athlete_id, week_start),
+    ).fetchone()[0]
 
 
 @router.get("/essentials")
@@ -79,7 +77,7 @@ def add_item(data: ShoppingItemCreate):
             (list_id, data.name, data.category),
         ).fetchone()
         if existing:
-            return dict(existing)
+            return JSONResponse(content=dict(existing), status_code=200)
         conn.execute(
             "INSERT INTO shopping_list_items (list_id, name, category, source) VALUES (?, ?, ?, ?)",
             (list_id, data.name, data.category, data.source),
@@ -131,6 +129,8 @@ def delete_item(item_id: int):
 def set_pref(data: ShoppingPref):
     conn = get_conn()
     try:
+        if not conn.execute("SELECT id FROM athletes WHERE id = ?", (data.athlete_id,)).fetchone():
+            raise HTTPException(404, "Athlete not found.")
         conn.execute(
             """INSERT INTO athlete_food_prefs (athlete_id, food_name, preference, category)
                VALUES (?, ?, ?, ?)
