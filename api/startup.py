@@ -81,6 +81,14 @@ def ensure_schema() -> None:
             conn.execute("ALTER TABLE knowledge_chunks ADD COLUMN embedding_model TEXT")
             logger.info("Added knowledge_chunks.embedding_model column")
 
+        selection_cols = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(meal_plan_selections)").fetchall()
+        }
+        if selection_cols and "recipe_json" not in selection_cols:
+            conn.execute("ALTER TABLE meal_plan_selections ADD COLUMN recipe_json TEXT")
+            logger.info("Added meal_plan_selections.recipe_json column")
+
         conn.commit()
     finally:
         conn.close()

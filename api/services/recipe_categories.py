@@ -1,4 +1,4 @@
-"""Meal-timing category profiles for USDA FDC ingredient search + LLM recipe composition."""
+"""Meal-timing category profiles for filtering and selecting recipes from the FuelUp library."""
 
 # Aliases map backend timing categories and mobile keys to profile keys.
 CATEGORY_ALIASES = {

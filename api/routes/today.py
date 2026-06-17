@@ -1,4 +1,5 @@
 import io
+import json
 import uuid
 import base64
 from datetime import date as dt_date, timedelta
@@ -75,16 +76,20 @@ def get_day_timeline(athlete_id: int, date: str = None):
         skeleton = generate_day_windows(athlete_id, plan_date, conn)
 
         rows = conn.execute(
-            "SELECT id, window_key, item_text, added_by FROM meal_plan_selections "
-            "WHERE athlete_id = ? AND plan_date = ?",
+            "SELECT id, window_key, item_text, added_by, recipe_json "
+            "FROM meal_plan_selections WHERE athlete_id = ? AND plan_date = ?",
             (athlete_id, plan_date),
         ).fetchall()
         by_key: dict = {}
         for row in rows:
             r = dict(row)
-            by_key.setdefault(r["window_key"], []).append(
-                {"id": r["id"], "text": r["item_text"], "added_by": r["added_by"]}
-            )
+            item = {"id": r["id"], "text": r["item_text"], "added_by": r["added_by"]}
+            if r.get("recipe_json"):
+                try:
+                    item["recipe"] = json.loads(r["recipe_json"])
+                except json.JSONDecodeError:
+                    pass
+            by_key.setdefault(r["window_key"], []).append(item)
 
         enriched = [
             {

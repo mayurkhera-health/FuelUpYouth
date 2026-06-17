@@ -127,23 +127,70 @@ Return JSON:
         return {"report_text": "Weekly report unavailable.", "weekly_fuel_score": 0}
 
 
-def prompt4_recipe_swap(athlete: dict, disliked_recipe: str, meal_timing_category: str) -> dict:
-    """Prompt 4: Generate 3 alternatives when athlete dislikes a recipe."""
+def prompt4_recipe_swap(athlete: dict, disliked_recipe: str, meal_timing_category: str, recipes: list) -> dict:
+    """Prompt 4: Pick 3 library alternatives when athlete dislikes a recipe."""
+    compact = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "ingredients": r["ingredients"],
+            "calories": r["macros"]["calories"],
+            "dietary": r["dietary"],
+            "allergens": r["allergens"],
+        }
+        for r in recipes
+        if r["name"].lower() != disliked_recipe.strip().lower()
+    ]
     try:
-        return _json_completion(f"""Generate 3 alternative meal suggestions.
+        result = _json_completion(f"""Select 3 alternative recipes from FuelUp's curated recipe library.
 
 ATHLETE: {athlete['first_name']}, age {athlete['age']}, gender {athlete['gender']}, weight {athlete['weight_lbs']}lbs
 Allergies: {athlete.get('allergies','None')} | Diet restrictions: {athlete.get('dietary_restrictions','None')}
 
-DISLIKED: {disliked_recipe}
+DISLIKED RECIPE: {disliked_recipe} — do NOT suggest this recipe again.
 MEAL TIMING CATEGORY: {meal_timing_category}
 
-Alternatives must: match nutritional goals for this timing, avoid all allergens/restrictions, appeal to a 13-17 year old, be realistic for a family to prepare.
+AVAILABLE RECIPES — pick exactly 3 different recipe_ids from this list only:
+{json.dumps(compact, indent=2)}
+
+RULES:
+1. Only use recipe_ids from AVAILABLE RECIPES — never invent new meals.
+2. Each alternative must match category "{meal_timing_category}".
+3. Avoid all allergens and honor dietary restrictions.
+4. Pick options that feel meaningfully different from the disliked recipe.
+5. Alternatives should appeal to a 13-17 year old and be realistic for a family to prepare.
 
 Return JSON:
-{{"alternatives": [{{"name": "Recipe name", "description": "1-2 sentences", "ingredients": "main ingredients", "why_it_works": "brief science reason", "macros": {{"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0}}, "prep_time_min": 0, "dietary_tags": [], "allergens": []}}], "powered_by_note": "Nutrition data — Powered by Edamam"}}""", max_tokens=1500)
+{{"alternatives": [{{"recipe_id": "R010", "why_it_works": "brief science reason"}}]}}""", max_tokens=1500)
+        by_id = {r["id"]: r for r in recipes}
+        alternatives = []
+        for alt in result.get("alternatives", [])[:3]:
+            recipe = by_id.get(str(alt.get("recipe_id", "")).upper())
+            if not recipe:
+                continue
+            m = recipe["macros"]
+            alternatives.append({
+                "recipe_id": recipe["id"],
+                "name": recipe["name"],
+                "description": f"{recipe['timing']} — {recipe['ingredients']}",
+                "ingredients": recipe["ingredients"],
+                "why_it_works": alt.get("why_it_works", "Matches this fueling window."),
+                "macros": {
+                    "calories": m["calories"],
+                    "carbs_g": m["carbs_g"],
+                    "protein_g": m["protein_g"],
+                    "fat_g": m["fat_g"],
+                },
+                "prep_time_min": 10,
+                "dietary_tags": recipe.get("dietary", []),
+                "allergens": recipe.get("allergens", []),
+            })
+        return {
+            "alternatives": alternatives,
+            "powered_by_note": "FuelUp curated recipe library",
+        }
     except Exception:
-        return {"alternatives": [], "powered_by_note": "Powered by Edamam"}
+        return {"alternatives": [], "powered_by_note": "FuelUp curated recipe library"}
 
 
 def prompt5_hydration(athlete: dict, event: dict, weather: dict, sweat_output: dict) -> dict:
@@ -189,8 +236,10 @@ Dairy-free: {dairy_free}
 TASK: Assign one recipe_id to every meal slot in the 7-day schedule below.
 Each slot maps to a specific clinical eating window — match the recipe to that window's nutritional requirements above.
 
+AVAILABLE RECIPES come from FuelUp's curated recipe library. You are selecting existing recipes — never inventing new meals.
+
 RULES:
-1. Only use recipe IDs from AVAILABLE RECIPES — never invent IDs.
+1. Only use recipe IDs from AVAILABLE RECIPES — never invent IDs or new dishes.
 2. Each slot has a recipe_category — only pick a recipe whose category matches exactly.
 3. Do not repeat the same recipe_id more than twice across the entire week.
 4. Vary protein sources: rotate chicken, fish, plant-based, eggs across days.

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-CLI for running FuelUp AI agents locally (voice meal, recipe generator).
+CLI for running FuelUp AI agents locally (voice meal, recipe selector).
 
-Requires FDC_API_KEY and AWS credentials in .env or environment.
+Requires AWS credentials in .env or environment. Voice meal analysis also uses FDC_API_KEY.
 
 Usage:
   python scripts/run_agents.py voice "grilled chicken and brown rice"
@@ -51,7 +51,7 @@ def _print_voice(result: dict):
 def _print_recipe(result: dict):
     r = result["recipe"]
     print(f"\n{_hr('═')}")
-    print("  RECIPE GENERATOR")
+    print("  RECIPE SELECTOR")
     print(_hr("═"))
     print(f"\n  {r['name']}")
     print(f"  Category: {r['category']}")
@@ -60,7 +60,7 @@ def _print_recipe(result: dict):
         f"C {r['carbs_g']}g · F {r['fat_g']}g"
     )
     print(f"  Tags: {', '.join(r.get('tags', []))}\n")
-    print("  Source ingredients (USDA FDC):")
+    print("  Library ingredients:")
     for name in result.get("source_ingredients", []):
         print(f"    • {name}")
     print("\n  Recipe ingredients:")
@@ -162,7 +162,7 @@ def cmd_demo(args):
 
     print("\n⏳ Running voice meal analyzer…")
     cmd_voice(SimpleNamespace(text=meal, allergies=args.allergies, mock=args.mock, json=False))
-    print("\n⏳ Running recipe generator…")
+    print("\n⏳ Running recipe selector…")
     cmd_recipe(
         SimpleNamespace(
             category=category,
@@ -187,7 +187,7 @@ def main():
     voice.add_argument("--mock", action="store_true", help="Print mock output (no API keys)")
     voice.add_argument("--json", action="store_true", help="Also print raw JSON")
 
-    recipe = sub.add_parser("recipe", help="Generate a recipe for a category")
+    recipe = sub.add_parser("recipe", help="Select a recipe from the library for a category")
     recipe.add_argument("category", help="Recipe category (e.g. halftime, pre_game)")
     recipe.add_argument("--allergies", help="Comma-separated allergens to avoid")
     recipe.add_argument("--dietary", help="Comma-separated dietary restrictions")

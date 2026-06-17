@@ -188,6 +188,7 @@ def init_db():
             plan_date   TEXT NOT NULL,
             window_key  TEXT NOT NULL,
             item_text   TEXT NOT NULL,
+            recipe_json TEXT,
             added_by    TEXT NOT NULL DEFAULT 'parent',
             created_at  TEXT DEFAULT CURRENT_TIMESTAMP
         );

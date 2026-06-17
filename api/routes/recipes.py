@@ -28,7 +28,7 @@ def list_recipes(category: Optional[str] = None, dietary: Optional[str] = None, 
     dietary_list = dietary.split(",") if dietary else None
     allergen_list = avoid_allergens.split(",") if avoid_allergens else None
     recipes = recipe_db.get_recipes(category=category, dietary=dietary_list, allergens_to_avoid=allergen_list)
-    return {"recipes": recipes, "count": len(recipes), "powered_by": "Edamam"}
+    return {"recipes": recipes, "count": len(recipes), "powered_by": "FuelUp Recipe Library"}
 
 
 @router.get("/categories")
@@ -64,7 +64,7 @@ def generate_recipe(req: RecipeGenerateRequest):
     except RuntimeError as e:
         raise HTTPException(503, str(e))
     except Exception as e:
-        raise HTTPException(500, f"Recipe generation failed: {e}")
+        raise HTTPException(500, f"Recipe selection failed: {e}")
 
 
 @router.get("/{recipe_id}")
@@ -72,7 +72,7 @@ def get_recipe(recipe_id: str):
     recipe = recipe_db.get_recipe_by_id(recipe_id.upper())
     if not recipe:
         raise HTTPException(404, f"Recipe {recipe_id} not found.")
-    return {**recipe, "powered_by": "Powered by Edamam — developer.edamam.com"}
+    return {**recipe, "powered_by": "FuelUp Recipe Library"}
 
 
 @router.post("/swap")
@@ -82,8 +82,15 @@ def picky_eater_swap(req: RecipeSwapRequest):
         row = conn.execute("SELECT * FROM athletes WHERE id = ?", (req.athlete_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Athlete not found.")
-        result = claude_ai.prompt4_recipe_swap(dict(row), req.disliked_recipe, req.meal_timing_category)
-        result["attribution"] = "Nutrition data — Powered by Edamam (developer.edamam.com)"
+        allergens = _parse_allergies(dict(row).get("allergies"))
+        candidates = recipe_db.get_recipes(
+            category=req.meal_timing_category,
+            allergens_to_avoid=allergens,
+        )
+        result = claude_ai.prompt4_recipe_swap(
+            dict(row), req.disliked_recipe, req.meal_timing_category, candidates,
+        )
+        result["attribution"] = "FuelUp curated recipe library"
         return result
     finally:
         conn.close()

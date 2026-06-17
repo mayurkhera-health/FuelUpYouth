@@ -25,9 +25,10 @@ _FALLBACK = (
 _COACH_CAPABILITIES = """
 WHAT YOU CAN HELP WITH:
 - **Knowledge answers** — youth soccer sports nutrition from trusted organizations: fueling timing (pre-game, halftime, post-game, practice days), hydration, carbs/protein/recovery, iron and calcium for athletes, what *types* of foods fit a fueling window, and safe fueling habits. You can also use pre-calculated numbers when provided (iron, protein, hydration, calories).
-- **Recipe generation** — a concrete meal or snack with ingredients and prep steps for a fueling window: halftime, pre-game, post-game, breakfast, lunch, dinner, snack, or hydration. Recipes respect the athlete's allergies and dietary restrictions.
+- **Recipe recommendations** — suggest a science-backed meal or snack from FuelUp's curated recipe library for a fueling window: halftime, pre-game, post-game, breakfast, lunch, dinner, snack, or hydration. Valid library recipes are filtered for the athlete's allergies and dietary restrictions, then the best match is selected for what they asked.
 
 WHAT YOU CANNOT DO:
+- You do not invent new recipes — recommendations come only from FuelUp's curated recipe library.
 - You do not know what is on the shelf at a specific store (Trader Joe's, Costco, etc.), a restaurant menu, or what is in someone's fridge unless they tell you.
 - You do not have real-time or personal data (today's weather, their game schedule, their weight history).
 - You are not a doctor — no diagnosis, treatment, or supplement recommendations for athletes under 18.
@@ -48,29 +49,29 @@ Choose exactly ONE path:
 
 - "knowledge" — Sports nutrition education: fueling timing, hydration, micronutrients, what *types* of foods fit a window, recovery, calculations, general fueling guidance. Use when the user asks WHY/WHEN/HOW MUCH or what to eat without asking for a full recipe with ingredients and steps.
 
-- "recipe" — User wants a concrete meal or snack with ingredients and preparation steps, or asks to generate, create, make, build, or suggest a specific dish. If path is "recipe", set recipe_category to the best match:
+- "recipe" — User wants a concrete meal or snack recommendation with ingredients, or asks to suggest, recommend, pick, find, or get a specific dish from our recipe library. If path is "recipe", set recipe_category to the best match:
   halftime | pre_game | post_game | breakfast | lunch | dinner | snack | hydration
 
-- "out_of_scope" — The question cannot be answered by knowledge or recipe alone. Route here when:
+- "out_of_scope" — The question cannot be answered by knowledge or recipe selection alone. Route here when:
   • Asking what to buy/eat at a specific store or restaurant WITHOUT listing what's available ("what should I get at Trader Joe's", "best things at Chipotle")
   • Real-time or personal info you don't have (weather, their schedule, what's in their pantry/fridge)
   • Non-nutrition topics (homework, sports scores, general chat)
   • Medical diagnosis, treatment, supplements for under-18, or weight-loss/dieting requests
 
   NOT out_of_scope if the user lists options and asks you to choose ("I have bananas and pretzels at home — which is better pre-game?") → knowledge
-  NOT out_of_scope if they want a recipe created → recipe
+  NOT out_of_scope if they want a recipe from our library → recipe
 
 {_COACH_CAPABILITIES}
 
 Examples:
 - "What should I eat before a game?" → knowledge
 - "How much water on practice days?" → knowledge
-- "Generate a halftime snack recipe" → recipe, halftime
+- "Suggest a halftime snack" → recipe, halftime
 - "Give me something to eat after the game" → recipe, post_game
 - "What can I eat at Trader Joe's?" → out_of_scope
 - "What's the best thing on the McDonald's menu?" → out_of_scope
 - "I grabbed yogurt and a granola bar at Target — which for after practice?" → knowledge
-- "Recipe for breakfast" → recipe, breakfast
+- "Recommend a breakfast recipe" → recipe, breakfast
 
 Return ONLY valid JSON, no markdown:
 {{"path": "knowledge" | "recipe" | "out_of_scope", "recipe_category": null | "category_key"}}"""
@@ -110,7 +111,7 @@ def _detect_safety_flag(question: str) -> bool:
 
 def _classify_coach_path(question: str, athlete: dict) -> dict:
     """
-    LLM router: choose knowledge RAG vs recipe generation vs out-of-scope redirect.
+    LLM router: choose knowledge RAG vs recipe library selection vs out-of-scope redirect.
     Returns {"path": "knowledge"|"recipe"|"out_of_scope", "recipe_category": str|None}.
     """
     if not is_configured():
@@ -160,9 +161,10 @@ def _answer_out_of_scope(question: str, athlete: dict) -> dict:
         return {
             "answer": (
                 f"**I'm not sure I can answer that one directly, {first_name}.** "
-                "I'm best at sports fueling questions and building recipes for your "
-                "practice and game windows. Try asking about what to eat before a game, "
-                "how much water you need, or ask me to create a snack recipe."
+                "I'm best at sports fueling questions and recommending recipes from our "
+                "science-backed library for your practice and game windows. Try asking about "
+                "what to eat before a game, how much water you need, or ask me to suggest "
+                "a snack for halftime."
             ),
             "format": "markdown",
             "intent": "knowledge",
@@ -184,7 +186,8 @@ def _answer_out_of_scope(question: str, athlete: dict) -> dict:
         answer_text = (
             f"**I can't see inside a specific store or menu, {first_name}** — but if you "
             "tell me what's available, I can help you pick the best fueling option. "
-            "Or ask me about timing, hydration, or request a recipe for your next window."
+            "Or ask me about timing, hydration, or request a recipe recommendation "
+            "for your next window."
         )
 
     return {
@@ -226,33 +229,11 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
             allergies=allergies,
             dietary_restrictions=dietary,
             athlete=athlete,
+            question=question,
         )
     except ValueError as e:
         return {
-            "answer": f"I couldn't build a recipe for that category: {e}",
-            "format": "markdown",
-            "intent": "recipe",
-            "recipe": None,
-            "source_ingredients": [],
-            "citations": [],
-            "calculation": None,
-            "sources": list_sources(),
-        }
-    except RuntimeError as e:
-        logger.exception("Recipe generation failed for category=%s", category)
-        detail = str(e)
-        if "FDC_API_KEY" in detail:
-            msg = (
-                "Recipe generation is temporarily unavailable — the server is missing its "
-                "USDA ingredient database key. Please try again later."
-            )
-        else:
-            msg = (
-                "Sorry, I couldn't generate a recipe right now. "
-                "Try again in a moment or ask a general fueling question."
-            )
-        return {
-            "answer": msg,
+            "answer": f"I couldn't find a matching library recipe for that category: {e}",
             "format": "markdown",
             "intent": "recipe",
             "recipe": None,
@@ -262,10 +243,10 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
             "sources": list_sources(),
         }
     except Exception:
-        logger.exception("Recipe generation failed for category=%s", category)
+        logger.exception("Recipe selection failed for category=%s", category)
         return {
             "answer": (
-                "Sorry, I couldn't generate a recipe right now. "
+                "Sorry, I couldn't recommend a recipe right now. "
                 "Try again in a moment or ask a general fueling question."
             ),
             "format": "markdown",
@@ -282,14 +263,9 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
     restriction_note = ""
     if allergies:
         restriction_note = f" It's free of your listed allergens ({', '.join(allergies)})."
-    source_note = (
-        "built from USDA-verified ingredients"
-        if result.get("ingredient_source") == "fdc"
-        else "built for your fueling window"
-    )
     answer = (
-        f"Here's a **{profile['label']}** recipe for {first_name} — "
-        f"{source_note}.{restriction_note}"
+        f"Here's a **{profile['label']}** pick for {first_name} — "
+        f"from our science-backed recipe library.{restriction_note}"
     )
 
     return {
