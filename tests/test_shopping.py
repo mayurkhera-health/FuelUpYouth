@@ -251,3 +251,46 @@ def test_build_essentials_liked_personal_food_appears(conn):
     result = build_essentials(aid, "2026-06-16", conn)
     all_names = [f["name"] for g in result["groups"] for f in g["foods"]]
     assert "Homemade granola" in all_names
+
+
+# ── build_share_text ──────────────────────────────────────────────────────────
+
+from api.services.shopping_service import build_share_text
+
+
+def test_share_text_header_contains_week_date():
+    text = build_share_text("2026-06-16", [])
+    assert "Week of" in text
+    assert "16 Jun" in text or "Jun" in text  # strftime %-d %b
+
+
+def test_share_text_unchecked_item_uses_empty_checkbox():
+    items = [{"name": "Bananas", "category": "pre_fuel", "checked": False}]
+    text = build_share_text("2026-06-16", items)
+    assert "☐ Bananas" in text
+
+
+def test_share_text_checked_item_uses_filled_checkbox():
+    items = [{"name": "Eggs", "category": "breakfast", "checked": True}]
+    text = build_share_text("2026-06-16", items)
+    assert "☑ Eggs" in text
+
+
+def test_share_text_groups_items_by_category_label():
+    items = [
+        {"name": "Eggs", "category": "breakfast", "checked": False},
+        {"name": "Bananas", "category": "pre_fuel", "checked": False},
+    ]
+    text = build_share_text("2026-06-16", items)
+    assert "Breakfast" in text
+    assert "Pre-Practice & Game Fuel" in text
+    # breakfast comes before pre_fuel in the output
+    assert text.index("Breakfast") < text.index("Pre-Practice")
+
+
+def test_share_text_unknown_category_is_silently_dropped():
+    items = [{"name": "Mystery food", "category": "unknown_cat", "checked": False}]
+    text = build_share_text("2026-06-16", items)
+    # Unknown category falls into by_cat.setdefault which adds it, but CATEGORY_ORDER
+    # loop won't include it — verify the food name does NOT appear
+    assert "Mystery food" not in text

@@ -172,7 +172,7 @@ def build_essentials(athlete_id: int, week_start: str, conn) -> dict:
 
 # ── Share text generation ─────────────────────────────────────────────────────
 
-def build_share_text(week_start: str, groups: list, items: list) -> str:
+def build_share_text(week_start: str, items: list) -> str:
     """Produce plain-text Shopping List for clipboard / share sheet."""
     try:
         monday = date.fromisoformat(week_start)
