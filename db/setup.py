@@ -16,9 +16,10 @@ def init_db():
         # Use a named shared-cache URI so the schema written here is visible
         # to every get_conn() call in the same process (test isolation).
         # The module-level connection keeps the DB alive after init_db returns.
-        _persistent_memory_conn = sqlite3.connect(
-            "file::memory:?cache=shared", uri=True, check_same_thread=False
-        )
+        if _persistent_memory_conn is None:
+            _persistent_memory_conn = sqlite3.connect(
+                "file::memory:?cache=shared", uri=True, check_same_thread=False
+            )
         conn = _persistent_memory_conn
     else:
         conn = sqlite3.connect(db_path)
