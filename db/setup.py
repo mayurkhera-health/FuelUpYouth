@@ -3,9 +3,25 @@ import os
 import sqlite3
 from pathlib import Path
 
+# When DB_PATH=:memory: (used in tests), the SQLite shared-cache in-memory
+# database is destroyed as soon as all connections to it are closed.  We keep
+# a module-level connection open so the DB survives across get_conn() calls.
+_persistent_memory_conn = None
+
+
 def init_db():
+    global _persistent_memory_conn
     db_path = os.getenv("DB_PATH", str(Path(__file__).resolve().parent.parent / "fuelup.db"))
-    conn = sqlite3.connect(db_path)
+    if db_path == ":memory:":
+        # Use a named shared-cache URI so the schema written here is visible
+        # to every get_conn() call in the same process (test isolation).
+        # The module-level connection keeps the DB alive after init_db returns.
+        _persistent_memory_conn = sqlite3.connect(
+            "file::memory:?cache=shared", uri=True, check_same_thread=False
+        )
+        conn = _persistent_memory_conn
+    else:
+        conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     cursor.executescript("""
@@ -226,10 +242,67 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_athlete_logins_email
             ON athlete_logins(email);
+
+        CREATE TABLE IF NOT EXISTS fueling_foods (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            name         TEXT NOT NULL UNIQUE,
+            category     TEXT NOT NULL,
+            role         TEXT,
+            allergen_tags TEXT DEFAULT '',
+            soft_hint    TEXT DEFAULT '',
+            is_active    INTEGER NOT NULL DEFAULT 1
+        );
+
+        CREATE TABLE IF NOT EXISTS athlete_food_prefs (
+            athlete_id   INTEGER NOT NULL,
+            food_name    TEXT NOT NULL,
+            preference   TEXT NOT NULL,
+            category     TEXT,
+            PRIMARY KEY (athlete_id, food_name)
+        );
+
+        CREATE TABLE IF NOT EXISTS shopping_lists (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id   INTEGER NOT NULL,
+            week_start   TEXT NOT NULL,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, week_start)
+        );
+
+        CREATE TABLE IF NOT EXISTS shopping_list_items (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            list_id      INTEGER NOT NULL,
+            name         TEXT NOT NULL,
+            category     TEXT NOT NULL,
+            source       TEXT NOT NULL DEFAULT 'suggested',
+            checked      INTEGER NOT NULL DEFAULT 0,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (list_id) REFERENCES shopping_lists(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS food_submissions (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            name               TEXT NOT NULL,
+            suggested_category TEXT,
+            submitted_by       INTEGER NOT NULL,
+            status             TEXT NOT NULL DEFAULT 'pending',
+            created_at         TEXT NOT NULL DEFAULT (datetime('now'))
+        );
     """)
 
     conn.commit()
-    conn.close()
+
+    # One-time migration: purge meal_plans rows written by the legacy
+    # compute_meal_slots engine (slot names used hyphens, e.g. "pre-game-fuel").
+    # The canonical window_templates engine uses underscores ("pre_event_meal").
+    # Safe to re-run — no-op once all rows are clean.
+    conn.execute("DELETE FROM meal_plans WHERE slot_name LIKE '%-%'")
+    conn.commit()
+
+    # Do NOT close _persistent_memory_conn — closing it would destroy the
+    # shared-cache in-memory database (used in tests).
+    if conn is not _persistent_memory_conn:
+        conn.close()
     print("FuelUp database initialized.")
 
 if __name__ == "__main__":
