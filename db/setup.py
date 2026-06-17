@@ -300,6 +300,9 @@ def init_db():
     conn.execute("DELETE FROM meal_plans WHERE slot_name LIKE '%-%'")
     conn.commit()
 
+    # Seed the curated food catalog (idempotent UPSERT — safe on every startup).
+    seed_fueling_foods(conn)
+
     # Do NOT close _persistent_memory_conn — closing it would destroy the
     # shared-cache in-memory database (used in tests).
     if conn is not _persistent_memory_conn:
