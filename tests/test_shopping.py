@@ -294,3 +294,203 @@ def test_share_text_unknown_category_is_silently_dropped():
     # Unknown category falls into by_cat.setdefault which adds it, but CATEGORY_ORDER
     # loop won't include it — verify the food name does NOT appear
     assert "Mystery food" not in text
+
+
+# ── Route tests ───────────────────────────────────────────────────────────────
+
+from fastapi.testclient import TestClient
+from api.main import app
+
+
+@pytest.fixture
+def client(conn):
+    """TestClient that shares the same in-memory DB as the conn fixture."""
+    from db.setup import seed_fueling_foods
+    seed_fueling_foods(conn)
+    with TestClient(app) as c:
+        yield c
+
+
+def _make_athlete_route(client, suffix="r") -> int:
+    """Insert athlete via direct DB connection — returns athlete_id."""
+    from api.database import get_conn as _gc
+    c = _gc()
+    c.execute(
+        f"INSERT OR IGNORE INTO parents (full_name, email, consent_timestamp) "
+        f"VALUES ('P{suffix}', 'pr{suffix}@t.com', '2026-01-01')"
+    )
+    parent_id = c.execute("SELECT last_insert_rowid()").fetchone()[0]
+    c.execute(
+        "INSERT OR IGNORE INTO athletes "
+        "(parent_id, first_name, age, gender, weight_lbs, height_ft, height_in) "
+        "VALUES (?, 'Alex', 15, 'Boy', 140, 5, 8)",
+        (parent_id,),
+    )
+    athlete_id = c.execute("SELECT last_insert_rowid()").fetchone()[0]
+    c.commit()
+    c.close()
+    return athlete_id
+
+
+def test_get_essentials_rest_week(client):
+    aid = _make_athlete_route(client, "re1")
+    resp = client.get(f"/api/shopping/essentials?athlete_id={aid}&week_start=2026-06-16")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "groups" in data
+    cats = {g["category"] for g in data["groups"]}
+    assert "breakfast" in cats
+    assert "hydration" not in cats
+
+
+def test_get_essentials_header_matches_events(client):
+    aid = _make_athlete_route(client, "re2")
+    from api.database import get_conn as _gc
+    c = _gc()
+    c.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours) "
+        "VALUES (?, 'Practice', 'practice', '2026-06-16', '16:00', 1.5)", (aid,)
+    )
+    c.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours) "
+        "VALUES (?, 'Game', 'game', '2026-06-21', '10:00', 1.5)", (aid,)
+    )
+    c.commit(); c.close()
+    resp = client.get(f"/api/shopping/essentials?athlete_id={aid}&week_start=2026-06-16")
+    data = resp.json()
+    assert data["header"]["practice_count"] == 1
+    assert data["header"]["game_count"] == 1
+    assert "1 practice" in data["header"]["schedule_line"]
+    assert "1 game" in data["header"]["schedule_line"]
+
+
+def test_add_item_and_get_list(client):
+    aid = _make_athlete_route(client, "re3")
+    resp = client.post("/api/shopping/list/items", json={
+        "athlete_id": aid, "week_start": "2026-06-16",
+        "name": "Bananas", "category": "pre_fuel", "source": "suggested",
+    })
+    assert resp.status_code == 201
+    item_id = resp.json()["id"]
+    resp2 = client.get(f"/api/shopping/list?athlete_id={aid}&week_start=2026-06-16")
+    assert resp2.status_code == 200
+    items = [i for g in resp2.json()["groups"] for i in g["items"]]
+    assert any(i["id"] == item_id and i["name"] == "Bananas" for i in items)
+
+
+def test_add_item_idempotent(client):
+    aid = _make_athlete_route(client, "re4")
+    payload = {"athlete_id": aid, "week_start": "2026-06-16",
+               "name": "Bananas", "category": "pre_fuel", "source": "suggested"}
+    client.post("/api/shopping/list/items", json=payload)
+    client.post("/api/shopping/list/items", json=payload)
+    resp = client.get(f"/api/shopping/list?athlete_id={aid}&week_start=2026-06-16")
+    items = [i for g in resp.json()["groups"] for i in g["items"] if i["name"] == "Bananas"]
+    assert len(items) == 1
+
+
+def test_check_uncheck_item(client):
+    aid = _make_athlete_route(client, "re5")
+    resp = client.post("/api/shopping/list/items", json={
+        "athlete_id": aid, "week_start": "2026-06-16",
+        "name": "Bananas", "category": "pre_fuel", "source": "suggested",
+    })
+    item_id = resp.json()["id"]
+    patch = client.patch(f"/api/shopping/list/items/{item_id}", json={"checked": True})
+    assert patch.status_code == 200
+    assert patch.json()["checked"] is True
+    patch2 = client.patch(f"/api/shopping/list/items/{item_id}", json={"checked": False})
+    assert patch2.json()["checked"] is False
+
+
+def test_delete_item(client):
+    aid = _make_athlete_route(client, "re6")
+    resp = client.post("/api/shopping/list/items", json={
+        "athlete_id": aid, "week_start": "2026-06-16",
+        "name": "Bananas", "category": "pre_fuel", "source": "suggested",
+    })
+    item_id = resp.json()["id"]
+    del_resp = client.delete(f"/api/shopping/list/items/{item_id}")
+    assert del_resp.status_code == 200
+    resp2 = client.get(f"/api/shopping/list?athlete_id={aid}&week_start=2026-06-16")
+    items = [i for g in resp2.json()["groups"] for i in g["items"]]
+    assert not any(i["id"] == item_id for i in items)
+
+
+def test_set_pref_disliked_removes_from_essentials(client):
+    aid = _make_athlete_route(client, "re7")
+    client.post("/api/shopping/prefs", json={
+        "athlete_id": aid, "food_name": "Bananas", "preference": "disliked"
+    })
+    from api.database import get_conn as _gc
+    c = _gc()
+    c.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours) "
+        "VALUES (?, 'Prac', 'practice', '2026-06-16', '16:00', 1.5)", (aid,)
+    )
+    c.commit(); c.close()
+    ess = client.get(f"/api/shopping/essentials?athlete_id={aid}&week_start=2026-06-16")
+    all_names = [f["name"] for g in ess.json()["groups"] for f in g["foods"]]
+    assert "Bananas" not in all_names
+
+
+def test_game_day_has_game_flag(client):
+    aid_no_game = _make_athlete_route(client, "re8")
+    resp = client.get(f"/api/shopping/essentials?athlete_id={aid_no_game}&week_start=2026-06-16")
+    assert resp.json()["header"]["has_game"] is False
+
+    aid_game = _make_athlete_route(client, "re9")
+    from api.database import get_conn as _gc
+    c = _gc()
+    c.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours) "
+        "VALUES (?, 'Game', 'game', '2026-06-21', '10:00', 1.5)", (aid_game,)
+    )
+    c.commit(); c.close()
+    resp2 = client.get(f"/api/shopping/essentials?athlete_id={aid_game}&week_start=2026-06-16")
+    assert resp2.json()["header"]["has_game"] is True
+
+
+def test_my_foods_appears_in_suggestions(client):
+    aid = _make_athlete_route(client, "re10")
+    client.post("/api/shopping/my-foods", json={
+        "athlete_id": aid, "name": "Homemade energy balls", "category": "pre_fuel"
+    })
+    from api.database import get_conn as _gc
+    c = _gc()
+    c.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours) "
+        "VALUES (?, 'Prac', 'practice', '2026-06-16', '16:00', 1.5)", (aid,)
+    )
+    c.commit(); c.close()
+    ess = client.get(f"/api/shopping/essentials?athlete_id={aid}&week_start=2026-06-16")
+    all_names = [f["name"] for g in ess.json()["groups"] for f in g["foods"]]
+    assert "Homemade energy balls" in all_names
+
+
+def test_suggest_food_lands_as_pending(client):
+    aid = _make_athlete_route(client, "re11")
+    resp = client.post("/api/shopping/food-submissions", json={
+        "name": "Fancy new bar", "suggested_category": "pre_fuel", "submitted_by": aid
+    })
+    assert resp.status_code == 201
+    aid2 = _make_athlete_route(client, "re12")
+    ess = client.get(f"/api/shopping/essentials?athlete_id={aid2}&week_start=2026-06-16")
+    all_names = [f["name"] for g in ess.json()["groups"] for f in g["foods"]]
+    assert "Fancy new bar" not in all_names
+
+
+def test_admin_approve_promotes_food(client):
+    aid = _make_athlete_route(client, "re13")
+    sub = client.post("/api/shopping/food-submissions", json={
+        "name": "New approved food", "suggested_category": "recovery", "submitted_by": aid
+    })
+    sub_id = sub.json()["id"]
+    approve = client.post(f"/api/shopping/admin/food-submissions/{sub_id}/approve")
+    assert approve.status_code == 200
+    from api.database import get_conn as _gc
+    c = _gc()
+    row = c.execute("SELECT * FROM fueling_foods WHERE name = 'New approved food'").fetchone()
+    c.close()
+    assert row is not None
+    assert row["category"] == "recovery"

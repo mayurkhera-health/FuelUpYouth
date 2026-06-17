@@ -1,0 +1,212 @@
+from fastapi import APIRouter, HTTPException, Query
+from api.database import get_conn
+from api.models import ShoppingItemCreate, ShoppingItemPatch, ShoppingPref, PersonalFood, FoodSubmission
+from api.services.shopping_service import build_essentials, build_share_text, CATEGORY_ORDER, CATEGORY_LABELS
+
+router = APIRouter()
+
+
+def _get_or_create_list(athlete_id: int, week_start: str, conn) -> int:
+    row = conn.execute(
+        "SELECT id FROM shopping_lists WHERE athlete_id = ? AND week_start = ?",
+        (athlete_id, week_start),
+    ).fetchone()
+    if row:
+        return row["id"]
+    conn.execute(
+        "INSERT INTO shopping_lists (athlete_id, week_start) VALUES (?, ?)",
+        (athlete_id, week_start),
+    )
+    conn.commit()
+    return conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+
+@router.get("/essentials")
+def get_essentials(athlete_id: int = Query(...), week_start: str = Query(...)):
+    conn = get_conn()
+    try:
+        if not conn.execute("SELECT id FROM athletes WHERE id = ?", (athlete_id,)).fetchone():
+            raise HTTPException(404, "Athlete not found.")
+        return build_essentials(athlete_id, week_start, conn)
+    finally:
+        conn.close()
+
+
+@router.get("/list")
+def get_list(athlete_id: int = Query(...), week_start: str = Query(...)):
+    conn = get_conn()
+    try:
+        if not conn.execute("SELECT id FROM athletes WHERE id = ?", (athlete_id,)).fetchone():
+            raise HTTPException(404, "Athlete not found.")
+        list_id = _get_or_create_list(athlete_id, week_start, conn)
+        rows = conn.execute(
+            "SELECT * FROM shopping_list_items WHERE list_id = ? ORDER BY category, created_at",
+            (list_id,),
+        ).fetchall()
+        items = [dict(r) for r in rows]
+
+        by_cat: dict = {c: [] for c in CATEGORY_ORDER}
+        for item in items:
+            by_cat.setdefault(item["category"], []).append(item)
+
+        groups = [
+            {"category": cat, "label": CATEGORY_LABELS.get(cat, cat), "items": by_cat[cat]}
+            for cat in CATEGORY_ORDER
+            if by_cat.get(cat)
+        ]
+        checked_count = sum(1 for i in items if i["checked"])
+        return {
+            "list_id":       list_id,
+            "week_start":    week_start,
+            "item_count":    len(items),
+            "checked_count": checked_count,
+            "groups":        groups,
+            "share_text":    build_share_text(week_start, items),
+        }
+    finally:
+        conn.close()
+
+
+@router.post("/list/items", status_code=201)
+def add_item(data: ShoppingItemCreate):
+    conn = get_conn()
+    try:
+        if not conn.execute("SELECT id FROM athletes WHERE id = ?", (data.athlete_id,)).fetchone():
+            raise HTTPException(404, "Athlete not found.")
+        list_id = _get_or_create_list(data.athlete_id, data.week_start, conn)
+        existing = conn.execute(
+            "SELECT * FROM shopping_list_items WHERE list_id = ? AND name = ? AND category = ?",
+            (list_id, data.name, data.category),
+        ).fetchone()
+        if existing:
+            return dict(existing)
+        conn.execute(
+            "INSERT INTO shopping_list_items (list_id, name, category, source) VALUES (?, ?, ?, ?)",
+            (list_id, data.name, data.category, data.source),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM shopping_list_items WHERE rowid = last_insert_rowid()"
+        ).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+@router.patch("/list/items/{item_id}")
+def patch_item(item_id: int, data: ShoppingItemPatch):
+    conn = get_conn()
+    try:
+        if not conn.execute("SELECT id FROM shopping_list_items WHERE id = ?", (item_id,)).fetchone():
+            raise HTTPException(404, "Item not found.")
+        conn.execute(
+            "UPDATE shopping_list_items SET checked = ? WHERE id = ?",
+            (int(data.checked), item_id),
+        )
+        conn.commit()
+        updated = conn.execute(
+            "SELECT * FROM shopping_list_items WHERE id = ?", (item_id,)
+        ).fetchone()
+        row = dict(updated)
+        row["checked"] = bool(row["checked"])
+        return row
+    finally:
+        conn.close()
+
+
+@router.delete("/list/items/{item_id}")
+def delete_item(item_id: int):
+    conn = get_conn()
+    try:
+        if not conn.execute("SELECT id FROM shopping_list_items WHERE id = ?", (item_id,)).fetchone():
+            raise HTTPException(404, "Item not found.")
+        conn.execute("DELETE FROM shopping_list_items WHERE id = ?", (item_id,))
+        conn.commit()
+        return {"deleted": True, "id": item_id}
+    finally:
+        conn.close()
+
+
+@router.post("/prefs")
+def set_pref(data: ShoppingPref):
+    conn = get_conn()
+    try:
+        conn.execute(
+            """INSERT INTO athlete_food_prefs (athlete_id, food_name, preference, category)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(athlete_id, food_name) DO UPDATE SET
+                 preference = excluded.preference,
+                 category   = excluded.category""",
+            (data.athlete_id, data.food_name, data.preference, data.category),
+        )
+        conn.commit()
+        return {"set": True}
+    finally:
+        conn.close()
+
+
+@router.post("/my-foods", status_code=201)
+def save_personal_food(data: PersonalFood):
+    conn = get_conn()
+    try:
+        if not conn.execute("SELECT id FROM athletes WHERE id = ?", (data.athlete_id,)).fetchone():
+            raise HTTPException(404, "Athlete not found.")
+        conn.execute(
+            """INSERT INTO athlete_food_prefs (athlete_id, food_name, preference, category)
+               VALUES (?, ?, 'liked', ?)
+               ON CONFLICT(athlete_id, food_name) DO UPDATE SET
+                 preference = 'liked', category = excluded.category""",
+            (data.athlete_id, data.name, data.category),
+        )
+        conn.commit()
+        return {"saved": True, "name": data.name, "category": data.category}
+    finally:
+        conn.close()
+
+
+@router.post("/food-submissions", status_code=201)
+def submit_food(data: FoodSubmission):
+    conn = get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO food_submissions (name, suggested_category, submitted_by, status) "
+            "VALUES (?, ?, ?, 'pending')",
+            (data.name, data.suggested_category, data.submitted_by),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM food_submissions WHERE rowid = last_insert_rowid()"
+        ).fetchone()
+        return dict(row)
+    finally:
+        conn.close()
+
+
+@router.post("/admin/food-submissions/{submission_id}/approve")
+def approve_submission(submission_id: int):
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM food_submissions WHERE id = ?", (submission_id,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "Submission not found.")
+        sub = dict(row)
+        if sub["status"] != "pending":
+            raise HTTPException(400, f"Submission is already '{sub['status']}'.")
+        conn.execute(
+            """INSERT INTO fueling_foods (name, category, is_active)
+               VALUES (?, ?, 1)
+               ON CONFLICT(name) DO UPDATE SET
+                 category  = excluded.category,
+                 is_active = 1""",
+            (sub["name"], sub["suggested_category"] or "dinner_staple"),
+        )
+        conn.execute(
+            "UPDATE food_submissions SET status = 'approved' WHERE id = ?",
+            (submission_id,),
+        )
+        conn.commit()
+        return {"approved": True, "name": sub["name"]}
+    finally:
+        conn.close()
