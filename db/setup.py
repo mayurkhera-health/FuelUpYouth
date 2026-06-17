@@ -306,5 +306,54 @@ def init_db():
         conn.close()
     print("FuelUp database initialized.")
 
+def seed_fueling_foods(conn=None):
+    """
+    UPSERT fueling_foods from fueling_foods_seed.csv.
+    Idempotent — safe to re-run; updates existing rows by name.
+    Pass an existing conn for tests; omit for production (uses get_conn()).
+    """
+    import csv
+    from pathlib import Path
+
+    csv_path = Path(__file__).resolve().parent.parent / "fueling_foods_seed.csv"
+    if not csv_path.exists():
+        print(f"Seeder: {csv_path} not found — skipping.")
+        return
+
+    _own_conn = conn is None
+    if _own_conn:
+        from api.database import get_conn as _get_conn
+        conn = _get_conn()
+
+    try:
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                conn.execute(
+                    """
+                    INSERT INTO fueling_foods (name, category, role, allergen_tags, soft_hint, is_active)
+                    VALUES (?, ?, ?, ?, ?, 1)
+                    ON CONFLICT(name) DO UPDATE SET
+                        category      = excluded.category,
+                        role          = excluded.role,
+                        allergen_tags = excluded.allergen_tags,
+                        soft_hint     = excluded.soft_hint,
+                        is_active     = 1
+                    """,
+                    (
+                        row["name"].strip(),
+                        row["category"].strip(),
+                        row.get("role", "").strip() or None,
+                        row.get("allergen_tags", "").strip(),
+                        row.get("soft_hint", "").strip(),
+                    ),
+                )
+        conn.commit()
+        print(f"Seeder: fueling_foods upserted from {csv_path.name}")
+    finally:
+        if _own_conn:
+            conn.close()
+
+
 if __name__ == "__main__":
     init_db()
