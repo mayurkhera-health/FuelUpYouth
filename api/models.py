@@ -161,3 +161,36 @@ class OTPRequest(BaseModel):
 class OTPVerify(BaseModel):
     email: str
     code: str
+
+
+# ── Shopping / Fueling Essentials ─────────────────────────────────────────────
+
+class ShoppingItemCreate(BaseModel):
+    athlete_id: int
+    week_start: str          # ISO Monday date e.g. "2026-06-16"
+    name: str
+    category: str
+    source: str = "suggested"   # suggested | custom | pack
+
+
+class ShoppingItemPatch(BaseModel):
+    checked: bool
+
+
+class ShoppingPref(BaseModel):
+    athlete_id: int
+    food_name: str
+    preference: str          # disliked | allergic | liked
+    category: Optional[str] = None   # required when preference == "liked"
+
+
+class PersonalFood(BaseModel):
+    athlete_id: int
+    name: str
+    category: str
+
+
+class FoodSubmission(BaseModel):
+    name: str
+    suggested_category: Optional[str] = None
+    submitted_by: int        # parent_id / athlete user id
