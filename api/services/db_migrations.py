@@ -12,6 +12,7 @@ def run_all():
         _create_confirmations(conn)
         _create_report_config(conn)
         _create_shopping_tables(conn)
+        _create_expo_push_tokens(conn)
         conn.commit()
     finally:
         conn.close()
@@ -58,6 +59,28 @@ def _create_report_config(conn):
         "INSERT OR IGNORE INTO report_config (key, value, description) VALUES (?, ?, ?)",
         _DEFAULT_CONFIG,
     )
+
+
+def _create_expo_push_tokens(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS expo_push_tokens (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id  INTEGER,
+            parent_id   INTEGER,
+            token       TEXT NOT NULL UNIQUE,
+            platform    TEXT,
+            created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_expo_tokens_athlete
+            ON expo_push_tokens (athlete_id)
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_expo_tokens_parent
+            ON expo_push_tokens (parent_id)
+    """)
 
 
 def _create_shopping_tables(conn):

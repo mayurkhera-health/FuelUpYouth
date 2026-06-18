@@ -19,6 +19,35 @@ class PushSubscription(BaseModel):
     auth: str
 
 
+class ExpoTokenPayload(BaseModel):
+    token: str
+    platform: Optional[str] = None
+    athlete_id: Optional[int] = None
+    parent_id: Optional[int] = None
+
+
+@router.post("/expo-token")
+def register_expo_token(data: ExpoTokenPayload):
+    if not data.athlete_id and not data.parent_id:
+        return {"message": "No profile id provided."}
+    conn = get_conn()
+    try:
+        conn.execute(
+            """INSERT INTO expo_push_tokens (athlete_id, parent_id, token, platform)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(token) DO UPDATE SET
+               athlete_id=excluded.athlete_id,
+               parent_id=excluded.parent_id,
+               platform=excluded.platform,
+               updated_at=datetime('now')""",
+            (data.athlete_id, data.parent_id, data.token, data.platform),
+        )
+        conn.commit()
+        return {"message": "Token registered."}
+    finally:
+        conn.close()
+
+
 class NotificationPrefs(BaseModel):
     remind_pregame_meal:  Optional[bool] = True
     remind_pregame_snack: Optional[bool] = True
