@@ -169,7 +169,7 @@ def tournament_readiness(athlete_id: int, tournament_date: str = None):
                 "day_minus_1": "MAXIMUM carb loading — 10-12g/kg — pasta dinner is THE most important meal",
                 "tournament_day": "High carb breakfast 2-3hrs before first game + electrolytes MANDATORY between every game",
             },
-            "disclaimer": "FuelUp provides educational food guidance — not medical nutrition therapy. Consult your child's physician for medical concerns.",
+            "disclaimer": "Fueling2Win provides educational food guidance — not medical nutrition therapy. Consult your child's physician for medical concerns.",
         }
     finally:
         conn.close()

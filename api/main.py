@@ -9,7 +9,7 @@ from api.routes import parents, athletes, events, nutrition, meals, recipes, ana
 from api.services import db_migrations
 
 app = FastAPI(
-    title="FuelUp Youth Soccer Nutrition API",
+    title="Fueling2Win Soccer Nutrition API",
     description="Science-backed pediatric sports nutrition platform for athletes ages 13-17. Educational food guidance — NOT medical nutrition therapy.",
     version="1.0.0",
 )
@@ -53,12 +53,12 @@ def on_startup():
 @app.get("/api/info")
 def root():
     return {
-        "app": "FuelUp Youth Soccer Nutrition Platform",
+        "app": "Fueling2Win Soccer Nutrition Platform",
         "version": "1.0.0",
         "launch_date": "June 16, 2026",
         "built_by": "Purvi Shah MS, RDN | Food Explorers LLC",
         "science": "Everett MD 2025 | Boston Children's Hospital RDN | AAP | ACSM 2016",
-        "disclaimer": "FuelUp provides educational food guidance — not medical nutrition therapy.",
+        "disclaimer": "Fueling2Win provides educational food guidance — not medical nutrition therapy.",
         "docs": "/docs",
     }
 

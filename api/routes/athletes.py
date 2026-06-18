@@ -11,7 +11,7 @@ router = APIRouter()
 @router.post("/", response_model=AthleteResponse, status_code=201)
 def create_athlete(data: AthleteCreate):
     if not (9 <= data.age <= 17):
-        raise HTTPException(400, "FuelUp MVP is designed for athletes ages 9-17.")
+        raise HTTPException(400, "Fueling2Win is designed for athletes ages 9-17.")
     conn = get_conn()
     try:
         parent = conn.execute(

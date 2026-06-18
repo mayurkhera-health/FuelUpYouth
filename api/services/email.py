@@ -7,7 +7,7 @@ def send_otp_email(to_email: str, code: str) -> None:
 
     if not api_key:
         print(f"\n{'='*40}")
-        print(f"  FuelUp OTP Code for {to_email}: {code}")
+        print(f"  Fueling2Win OTP Code for {to_email}: {code}")
         print(f"{'='*40}\n")
         return
 
@@ -15,12 +15,12 @@ def send_otp_email(to_email: str, code: str) -> None:
     resend.api_key = api_key
 
     resend.Emails.send({
-        "from": "FuelUp <onboarding@resend.dev>",
+        "from": "Fueling2Win <onboarding@resend.dev>",
         "to": [to_email],
-        "subject": f"Your FuelUp sign-in code: {code}",
+        "subject": f"Your Fueling2Win sign-in code: {code}",
         "html": f"""
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
-          <h2 style="color:#2d6a4f;margin:0 0 8px;">Your FuelUp sign-in code</h2>
+          <h2 style="color:#2d6a4f;margin:0 0 8px;">Your Fueling2Win sign-in code</h2>
           <p style="color:#4a6358;margin:0 0 24px;">
             Use this code to sign in. It expires in <strong>10 minutes</strong>.
           </p>
@@ -32,7 +32,7 @@ def send_otp_email(to_email: str, code: str) -> None:
           </div>
           <p style="color:#8aa898;font-size:12px;margin:0;">
             If you didn't request this, you can safely ignore this email.
-            FuelUp provides educational food guidance — not medical nutrition therapy.
+            Fueling2Win provides educational food guidance — not medical nutrition therapy.
           </p>
         </div>
         """,

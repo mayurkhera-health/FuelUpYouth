@@ -726,7 +726,7 @@ def record_window_capture(
     return cur.lastrowid
 
 
-def build_today_view(athlete_id: int, conn, today: str | None = None) -> dict | None:
+def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: bool = False) -> dict | None:
     from api.services.nutrition_analysis import get_week_start, get_week_dates
     from api.services.window_templates import generate_windows_for_day
 
@@ -744,10 +744,34 @@ def build_today_view(athlete_id: int, conn, today: str | None = None) -> dict | 
         "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time",
         (athlete_id, today_str),
     ).fetchall()]
-    today_event = events[0] if events else None
+    def _fmt_12h(t: str | None) -> str | None:
+        if not t:
+            return None
+        from datetime import datetime as _dt
+        return _dt.strptime(t, "%H:%M").strftime("%-I:%M %p")
+
+    def _build_today_event_info(ev: dict) -> dict:
+        from datetime import datetime as _dt, timedelta as _td
+        st  = ev.get("start_time")
+        dur = ev.get("duration_hours") or 1.5
+        end_str = None
+        if st:
+            end_dt  = _dt.strptime(st, "%H:%M") + _td(hours=dur)
+            end_str = end_dt.strftime("%H:%M")
+        return {
+            "event_type":     ev["event_type"],
+            "event_name":     ev.get("event_name"),
+            "start_time":     st,
+            "duration_hours": ev.get("duration_hours"),
+            "start_display":  _fmt_12h(st),
+            "end_display":    _fmt_12h(end_str),
+        }
+
+    today_events = [_build_today_event_info(ev) for ev in events]
+    today_event  = events[0] if events else None  # backward compat
 
     # Window engine — single source of truth
-    engine_result   = generate_windows_for_day(athlete_id, today_str, events)
+    engine_result   = generate_windows_for_day(athlete_id, today_str, events, force_v2=force_v2)
     event_type      = engine_result["day_type"]
     template_windows = engine_result["windows"]
 
@@ -839,6 +863,7 @@ def build_today_view(athlete_id: int, conn, today: str | None = None) -> dict | 
     return {
         "athlete":        {"first_name": athlete["first_name"], "sport": athlete.get("sport", "soccer")},
         "today_event":    today_event,
+        "today_events":   today_events,
         "day_type":       event_type,
         "readiness":      readiness,
         "windows":        windows,

@@ -37,7 +37,7 @@ def get_gap_analysis(athlete_id: int, date: str = None):
         result["athlete_id"] = athlete_id
         result["date"] = target_date
         result["meals_logged"] = len(meal_list)
-        result["disclaimer"] = "FuelUp provides educational food guidance — not medical nutrition therapy."
+        result["disclaimer"] = "Fueling2Win provides educational food guidance — not medical nutrition therapy."
         return result
     finally:
         conn.close()

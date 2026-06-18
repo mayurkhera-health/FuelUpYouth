@@ -131,6 +131,15 @@ def send_daily_reminders(athlete_id: int):
 
         sent = []
         for sub in [dict(s) for s in subs]:
+            # Rest day — one gentle morning note only, skip all fuel nudges
+            if event_type == "rest":
+                _send_push(sub,
+                    f"Rest day for {name}",
+                    "This is where the gains happen. Keep eating normally — regular meals, water, and protein through the day. No special fueling needed.",
+                )
+                sent.append("rest_day_note")
+                continue
+
             # Pre-game meal (3hrs before)
             if sub["remind_pregame_meal"] and start_time and event_type in ("game", "tournament", "practice"):
                 _send_push(sub,
@@ -159,7 +168,7 @@ def send_daily_reminders(athlete_id: int):
             if sub["remind_meal_log"]:
                 _send_push(sub,
                     f"📋 Log {name}'s meals today",
-                    "Don't forget to track today's meals in FuelUp to keep nutrition on target.",
+                    "Don't forget to track today's meals in Fueling2Win to keep nutrition on target.",
                 )
                 sent.append("meal_log")
 

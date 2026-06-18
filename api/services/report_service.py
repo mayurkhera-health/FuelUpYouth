@@ -291,7 +291,7 @@ def build_weekly_report(athlete_id: int, week_start: str, conn) -> dict:
             "gender":     athlete["gender"],
         },
         "streak":     streak,
-        "disclaimer": "FuelUp provides food education guidance — not medical nutrition therapy.",
+        "disclaimer": "Fueling2Win provides food education guidance — not medical nutrition therapy.",
         "load": {
             "game_days": game_days,
             "is_high":   game_days >= 2,

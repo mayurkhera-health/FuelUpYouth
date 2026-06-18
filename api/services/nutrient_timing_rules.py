@@ -163,7 +163,7 @@ CORE_RULES = [
     },
     {
         "rule": "No supplements for under-18",
-        "why": "Pre-workout formulas, high-dose caffeine, and creatine present safety risks to developing cardiovascular and renal systems. FuelUp never recommends them.",
+        "why": "Pre-workout formulas, high-dose caffeine, and creatine present safety risks to developing cardiovascular and renal systems. Fueling2Win never recommends them.",
     },
 ]
 
@@ -174,7 +174,7 @@ CARB_FUELING_THRESHOLD_MINUTES = 75   # Sessions >= 75 min require carb + electr
 # ── Prompt-ready summary (injected into Claude prompts) ──────────────────────
 
 TIMING_BRIEF = """
-FUELUP NUTRIENT TIMING BLUEPRINT (IOC/AAP/ACSM — authoritative for all meal planning):
+FUELING2WIN NUTRIENT TIMING BLUEPRINT (IOC/AAP/ACSM — authoritative for all meal planning):
 
 WINDOW 1 — GAS TANK MEAL (3–4 hrs before): High complex carbs + moderate lean protein + low fat/fiber.
 Reason: Gastric emptying takes 2–4 hrs. Exercising before completion causes cramping and performance loss.

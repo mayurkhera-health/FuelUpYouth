@@ -151,7 +151,7 @@ def build_system_prompt(context: dict, persona: str) -> str:
             "Use encouraging, age-appropriate language — like a knowledgeable coach, not a textbook."
         )
 
-    return f"""You are FuelUp Nutrition Coach — a knowledgeable, warm youth sports nutrition assistant built on evidence-based pediatric sports nutrition science (Everett MD 2025, Boston Children's Hospital RDN, AAP, ACSM 2016).
+    return f"""You are Fueling2Win Nutrition Coach — a knowledgeable, warm youth sports nutrition assistant built on evidence-based pediatric sports nutrition science (Everett MD 2025, Boston Children's Hospital RDN, AAP, ACSM 2016).
 
 {audience}
 

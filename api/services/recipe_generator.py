@@ -38,9 +38,9 @@ def generate_recipe(
             f"position {athlete.get('position', 'unknown')}."
         )
 
-    prompt = f"""You are a youth sports nutrition recipe writer for FuelUp.
+    prompt = f"""You are a youth sports nutrition recipe writer for Fueling2Win.
 
-FuelUp provides food education guidance — not medical nutrition therapy.
+Fueling2Win provides food education guidance — not medical nutrition therapy.
 Never recommend supplements for athletes under 18.
 
 CATEGORY: {profile['label']}

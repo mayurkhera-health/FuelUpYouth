@@ -40,7 +40,7 @@ def confirm_consent(parent_id: int):
             raise HTTPException(404, "Parent not found.")
         conn.execute("UPDATE parents SET consent_confirmed = TRUE WHERE id = ?", (parent_id,))
         conn.commit()
-        return {"message": "Consent confirmed. Welcome to FuelUp!", "parent_id": parent_id}
+        return {"message": "Consent confirmed. Welcome to Fueling2Win!", "parent_id": parent_id}
     finally:
         conn.close()
 

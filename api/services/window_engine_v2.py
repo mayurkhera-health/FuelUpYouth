@@ -30,16 +30,16 @@ def event_relative_windows_enabled() -> bool:
 
 DISPLAY_FLOOR = time(6, 30)        # Hard rule: no window open_time before this — ever
 GAP_LARGE_H   = 3.5                # > 3h30m → two separate full cycles
-GAP_MEDIUM_H  = 1.0                # ≥ 1h AND ≤ 3h30m → merged "Refuel & get ready"
+GAP_MEDIUM_H  = 1.0                # ≥ 1h AND ≤ 3h30m → merged "Recover & refuel"
                                     # < 1h → single "Quick refuel between sessions"
 
 FUEL_DURING_MIN_MIN = 90           # Session must be ≥ 90 min to show Fuel During nudge
 
 BETWEEN_WINDOW_MIN_GAP_MIN = 15    # Min gap (minutes) between two tappable windows
-MAX_TAPPABLE_WINDOWS       = 5
+MAX_TAPPABLE_WINDOWS       = 6
 
 EVERYDAY_DINNER_CUTOFF      = time(17, 30)  # Dinner only if ALL events end before this
-SECOND_RECOVERY_CUTOFF      = time(21, 30)  # Second Recovery skipped if it would open at/after 9:30 PM
+SECOND_RECOVERY_CUTOFF      = time(22, 30)  # Recovery Meal skipped if it would open at/after 10:30 PM
 
 # Verbatim teaching message — do NOT change wording without spec approval
 EARLY_MORNING_MESSAGE = (
@@ -253,15 +253,42 @@ def _event_cycle(
                 ),
                 event_index = idx,
             ))
+            # Top-Up Snack: S−60 → S−30 — every non-early-morning event.
+            # Generated here so gap-merge can suppress it via suppress_pre
+            # using the same flag that suppresses pre_event_meal.
+            topup_open  = start - timedelta(minutes=60)
+            topup_close = start - timedelta(minutes=30)
+            cards.append(WindowCard(
+                window_key     = f"top_up_snack{s}",
+                label          = "Top-Up Snack",
+                category       = "quick_snack",
+                category_key   = "carb",
+                category_label = "Fuel Before",
+                open_time      = _hhmm(topup_open),
+                close_time     = _hhmm(topup_close),
+                time_display   = _range(topup_open, topup_close),
+                sort_time      = _hhmm(topup_open),
+                macro_focus    = "Light Carbs",
+                window_type    = "pre_fuel",
+                priority       = False,
+                is_tappable    = True,
+                why = (
+                    "A small carb snack 30–60 min before keeps glycogen topped up "
+                    "without sitting heavy going into the session."
+                ),
+                event_index = idx,
+            ))
 
     # ── Fuel During — NUDGE ONLY, never a confirmation tap ────────────────────
-    if is_game and _long_session(start, end):
+    # Fires for any session ≥90 min — games AND long trainings. Label and copy
+    # are game-aware; the underlying hydration need is duration-based, not type-based.
+    if _long_session(start, end):
         mid = start + (end - start) / 2
         during_open  = mid - timedelta(minutes=5)
         during_close = mid + timedelta(minutes=5)
         cards.append(WindowCard(
             window_key     = f"fuel_during{s}",
-            label          = "Halftime Fuel",
+            label          = "Halftime Fuel" if is_game else "Hydration Break",
             category       = "fuel_during",
             category_key   = "hydrate",
             category_label = "Fuel During",
@@ -275,16 +302,19 @@ def _event_cycle(
             is_tappable    = False,    # NEVER a confirmation tap
             why = (
                 "Keeping fuel and fluid up at halftime sustains energy to the final whistle."
+                if is_game else
+                "Long training sessions deplete glycogen and fluid just like games do. "
+                "A quick carb + hydration break mid-session keeps intensity up through the end."
             ),
             event_index = idx,
         ))
 
     # ── Fuel After — recovery ─────────────────────────────────────────────────
     if include_recovery:
-        # Primary (always priority=True; first 30 min after event ends)
+        # Primary recovery snack — always shown, no cutoff (priority=True)
         cards.append(WindowCard(
             window_key     = f"fuel_after_primary{s}",
-            label          = "Recovery Meal",
+            label          = "Recovery Snack",
             category       = "fuel_after",
             category_key   = "recovery",
             category_label = "Fuel After",
@@ -292,31 +322,32 @@ def _event_cycle(
             close_time     = _hhmm(end + timedelta(minutes=30)),
             time_display   = _range(end, end + timedelta(minutes=30)),
             sort_time      = _hhmm(end),
-            macro_focus    = "Protein + Carbs",
+            macro_focus    = "Protein-Forward",
             window_type    = "recovery",
             priority       = True,
             is_tappable    = True,
             why = (
-                "The 30-minute window after activity is when muscles absorb protein and "
-                "carbs most efficiently."
+                "Muscles are most receptive to protein in the first 30 minutes after "
+                "activity — something like chocolate milk gets recovery started fast."
             ),
             event_index = idx,
         ))
         if is_game and _early_morning(start):
-            # Early game: the teaching message says "eat a proper breakfast right after."
-            # proper_breakfast_after IS the log slot for that breakfast — it replaces the
-            # second recovery touch (which would overlap with actual breakfast timing anyway).
+            # Early game: same structural role as Recovery Meal — the substantial post-event
+            # meal that stands in for lunch. Category is fuel_after so the cap treats it
+            # identically to fuel_after_second. Key stays proper_breakfast_after so
+            # has_recovery_meal stays False (preserves dinner on single early-game days).
             cards.append(WindowCard(
                 window_key     = f"proper_breakfast_after{s}",
-                label          = "Proper Breakfast",
-                category       = "everyday",
-                category_key   = "balanced",
-                category_label = "Everyday",
-                open_time      = _hhmm(end),
-                close_time     = _hhmm(end + timedelta(minutes=60)),
-                time_display   = _range(end, end + timedelta(minutes=60)),
-                sort_time      = _hhmm(end),
-                macro_focus    = "Balanced",
+                label          = "Recovery Breakfast",
+                category       = "fuel_after",
+                category_key   = "recovery",
+                category_label = "Fuel After",
+                open_time      = _hhmm(end + timedelta(minutes=30)),
+                close_time     = _hhmm(end + timedelta(minutes=90)),
+                time_display   = _range(end + timedelta(minutes=30), end + timedelta(minutes=90)),
+                sort_time      = _hhmm(end + timedelta(minutes=30)),
+                macro_focus    = "Protein + Carbs",
                 window_type    = None,
                 priority       = False,
                 is_tappable    = True,
@@ -327,13 +358,16 @@ def _event_cycle(
                 event_index = idx,
             ))
         else:
-            # Normal: second recovery touch (1–2h after event ends)
+            # Recovery Meal — substantial dinner-replacement, E+1h to E+2h.
+            # Suppressed if it would open at/after SECOND_RECOVERY_CUTOFF (22:30),
+            # which also prevents everyday dinner from being explicitly suppressed
+            # (has_recovery_meal stays False when this card isn't generated).
             second_open  = end + timedelta(hours=1)
             second_close = end + timedelta(hours=2)
             if second_open.time() < SECOND_RECOVERY_CUTOFF:
                 cards.append(WindowCard(
                     window_key     = f"fuel_after_second{s}",
-                    label          = "Second Recovery",
+                    label          = "Recovery Meal",
                     category       = "fuel_after",
                     category_key   = "recovery",
                     category_label = "Fuel After",
@@ -341,13 +375,13 @@ def _event_cycle(
                     close_time     = _hhmm(second_close),
                     time_display   = _range(second_open, second_close),
                     sort_time      = _hhmm(second_open),
-                    macro_focus    = "Balanced",
+                    macro_focus    = "Protein + Carbs",
                     window_type    = "recovery",
                     priority       = False,
                     is_tappable    = True,
                     why = (
-                        "A second recovery touch continues protein synthesis for the next "
-                        "few hours."
+                        "A full recovery meal 1–2 hours after activity replenishes glycogen "
+                        "and continues muscle repair — this replaces dinner on event days."
                     ),
                     event_index = idx,
                 ))
@@ -381,7 +415,7 @@ def _apply_gap_merge(
             pass  # Two full separate cycles; no suppression
 
         elif gap_h >= GAP_MEDIUM_H:
-            # 1h–3h30m: ONE merged "Refuel & get ready" card
+            # 1h–3h30m: ONE merged "Recover & refuel" card
             # Replaces A's full recovery cycle AND B's pre-event
             suppress_recovery[i] = True
             suppress_pre[i + 1]  = True
@@ -391,9 +425,9 @@ def _apply_gap_merge(
                 merged_close = merged_open + timedelta(minutes=20)
             merge_inserts.append((i, WindowCard(
                 window_key     = f"refuel_ready_{i+1}_{i+2}",
-                label          = "Refuel & get ready for your next session",
+                label          = "Recover & refuel for your next session",
                 category       = "refuel_ready",
-                category_key   = "carb",
+                category_key   = "recovery",
                 category_label = "Refuel",
                 open_time      = _hhmm(merged_open),
                 close_time     = _hhmm(merged_close),
@@ -453,7 +487,8 @@ def _apply_gap_merge(
                 continue
             if suppress_pre[i] and w.window_key.startswith(
                 (f"pre_event_meal{_suf(i+1, total)}",
-                 f"quick_morning_snack{_suf(i+1, total)}")
+                 f"quick_morning_snack{_suf(i+1, total)}",
+                 f"top_up_snack{_suf(i+1, total)}")
             ):
                 continue
             result.append(w)
@@ -493,10 +528,22 @@ def _everyday_windows(
         for start, end in event_times
     ]
 
+    # Recovery Meal (fuel_after_second) acts as the dinner replacement on event days.
+    # Suppress everyday_dinner whenever a Recovery Meal card was actually generated —
+    # i.e., it wasn't killed by SECOND_RECOVERY_CUTOFF. This is the primary dinner
+    # suppression mechanism; the cutoff check below handles very-late events only.
+    has_recovery_meal = any(
+        w.window_key.startswith("fuel_after_second") for w in event_cards
+    )
+
     result: list[WindowCard] = []
     for d in EVERYDAY_DEFS:
-        # Dinner suppression
+        # Dinner suppression — two independent checks, either fires independently:
+        # 1. Event ends too late for dinner to be sensible (existing cutoff).
+        # 2. A Recovery Meal was generated that stands in for dinner.
         if d["key"] == "everyday_dinner" and last_event_end.time() >= EVERYDAY_DINNER_CUTOFF:
+            continue
+        if d["key"] == "everyday_dinner" and has_recovery_meal:
             continue
         # Live-verified: old engine never generates everyday_snack on game days.
         # The second recovery touch already covers that nutritional window.
@@ -556,7 +603,7 @@ def _apply_guardrails(cards: list[WindowCard]) -> list[WindowCard]:
     1. Floor enforcement (display never before 06:30) — should already hold
     2. between_games/refuel_ready must be ≥ 20 min wide (else nudge-only)
     3. 15-min minimum gap between tappable windows (everyday dropped first)
-    4. Cap at 5 tappable windows/day
+    4. Cap at 6 tappable windows/day
     """
     sorted_cards = sorted(cards, key=lambda w: w.sort_time)
 
@@ -579,8 +626,9 @@ def _apply_guardrails(cards: list[WindowCard]) -> list[WindowCard]:
 
     deduped: list[WindowCard] = []
     for w in tappable:
-        # proper_breakfast_after intentionally opens at the same time as fuel_after_primary
-        # on early-game days — always admit it without gap checking.
+        # proper_breakfast_after opens at E+30min; Recovery Snack opens at E — 30-min gap
+        # clears the 15-min dedup threshold, so this bypass is now redundant. Kept as a
+        # guard against future timing changes inadvertently creating a conflict.
         if "proper_breakfast_after" in w.window_key:
             deduped.append(w)
             continue
@@ -606,37 +654,42 @@ def _apply_guardrails(cards: list[WindowCard]) -> list[WindowCard]:
 
     # 4. Cap at 5
     if len(deduped) > MAX_TAPPABLE_WINDOWS:
-        deduped = _cap_5(deduped)
+        deduped = _cap_6(deduped)
 
     return sorted(deduped + nudges, key=lambda w: w.sort_time)
 
-def _cap_5(windows: list[WindowCard]) -> list[WindowCard]:
+def _cap_6(windows: list[WindowCard]) -> list[WindowCard]:
     """
-    Drop windows to reach MAX_TAPPABLE_WINDOWS.
+    Drop windows to reach MAX_TAPPABLE_WINDOWS (currently 6).
 
     Keep order (0 = never drop first):
-      0  fuel_after_primary (priority=True) — primary recovery, always safe
-      1  fuel_before / quick_snack — pre-event meals
+      0  fuel_after_primary (priority=True) — Recovery Snack, never dropped
+      1  fuel_before / quick_snack — pre-event meals (not top-up)
       2  refuel_ready / between_games — merged gap cards
-      3  everyday_dinner
-      4  proper_breakfast_after — early-game meal substitute (a real meal, not optional)
+      3  fuel_after — Recovery Meal + Recovery Breakfast (same tier; substantial meals)
+      4  top_up_snack — S−60 snack; droppable on busy days when meals are all present
       5  everyday_breakfast
-      6  everyday_lunch — real meal; kept over optional second-touch snack
-      7  fuel_after_second — optional second touch; shed before real everyday meals
-      8  everyday_snack — shed first
+      6  everyday_lunch
+      7  (unused)
+      8  (unused)
+      9  everyday_snack — shed first
+    Note: everyday_dinner is explicitly suppressed before the cap runs when a
+    Recovery Meal exists, so it rarely reaches the cap. Rank 3 (above top-up and
+    everyday meals) handles any edge case where suppression didn't fire.
     """
     def keep_rank(w: WindowCard) -> int:
-        if w.priority:                                          return 0
-        if w.category in ("fuel_before", "quick_snack"):       return 1
-        if w.category in ("refuel_ready", "between_games"):    return 2
-        if w.category == "everyday" and "dinner" in w.window_key: return 3
-        if "proper_breakfast_after" in w.window_key:           return 4  # meal substitute, not optional snack
+        if w.priority:                                             return 0
+        if w.category in ("fuel_before", "quick_snack"):
+            if "top_up_snack" in w.window_key:                    return 4
+            return 1
+        if w.category in ("refuel_ready", "between_games"):       return 2
+        if w.category == "fuel_after":                            return 3  # Recovery Meal + Recovery Breakfast
         if w.category == "everyday":
-            if "snack" in w.window_key:                        return 8
-            if "lunch" in w.window_key:                        return 6
+            if "snack" in w.window_key:                           return 9
+            if "dinner" in w.window_key:                          return 8  # belt-and-suspenders: explicit suppression
+            if "lunch" in w.window_key:                           return 6  # is the real mechanism; this is fallback only
             return 5  # everyday_breakfast
-        if w.category == "fuel_after":                         return 7  # fuel_after_second — optional
-        return 8
+        return 9
 
     by_keep = sorted(windows, key=lambda w: (keep_rank(w), w.sort_time))
     kept = by_keep[:MAX_TAPPABLE_WINDOWS]

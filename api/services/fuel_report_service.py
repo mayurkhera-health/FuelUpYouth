@@ -275,7 +275,7 @@ def compute_streak(athlete_id: int, conn) -> int:
 # ── Narrative (Bedrock) ───────────────────────────────────────────────────────
 
 _COACH_SYSTEM = (
-    "You are the FuelUp youth sports nutrition coach. Write warm, forward-looking copy "
+    "You are the Fueling2Win youth sports nutrition coach. Write warm, forward-looking copy "
     "for a youth soccer athlete's weekly Fuel Report. "
     "Rules: no food names, no numbers, no calories, no grams. "
     "Never use: missed, behind, deficit, failed, warning, lacking, critical, bad, poor. "
@@ -382,7 +382,7 @@ def build_fuel_report(athlete_id: int, week_start: str | None = None) -> dict | 
             "narrative":   narrative,
             "next_action": next_action,
             "streak":      streak,
-            "disclaimer":  "FuelUp provides food education guidance — not medical nutrition therapy.",
+            "disclaimer":  "Fueling2Win provides food education guidance — not medical nutrition therapy.",
         }
     finally:
         conn.close()

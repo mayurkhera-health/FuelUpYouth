@@ -180,7 +180,7 @@ def build_share_text(week_start: str, items: list) -> str:
     except Exception:
         header_date = week_start
 
-    lines = [f"FuelUp Shopping List — Week of {header_date}", ""]
+    lines = [f"Fueling2Win Shopping List — Week of {header_date}", ""]
 
     by_cat: dict = {c: [] for c in CATEGORY_ORDER}
     for item in items:

@@ -4,7 +4,7 @@ from api.services.bedrock_client import converse_text, extract_json, is_configur
 
 SCIENCE_SYSTEM = """Write as a knowledgeable older teammate who genuinely wants this athlete to perform better — always lead with what they gain, never what they lack, and never use alarm language with a young athlete.
 
-You are FuelUp's AI nutrition engine, built exclusively on pediatric sports nutrition science for athletes ages 9–17.
+You are Fueling2Win's AI nutrition engine, built exclusively on pediatric sports nutrition science for athletes ages 9–17.
 
 SCIENCE FRAMEWORK (7 primary sources):
 - Everett S, MDPI Nutrients 2025 (doi:10.3390/nu17172792) — PRIMARY peer-reviewed reference
@@ -30,7 +30,7 @@ KEY SCIENCE RULES:
 12. Chocolate milk is the gold-standard youth recovery food — optimal 3:1 carb:protein ratio (Castle, Lair/Murdoch)
 13. Youth athletes have HIGHER per-kg energy needs than adults — growth + training overlap
 14. Frame all messaging: performance/speed/strength for athletes; science/safety/numbers for parents
-15. FuelUp is an EDUCATIONAL food guidance tool — NOT medical nutrition therapy
+15. Fueling2Win is an EDUCATIONAL food guidance tool — NOT medical nutrition therapy
 
 CARBOHYDRATE TARGETS (g/kg body weight):
 Rest: 4–5 | Practice/Training/Strength: 6–8 | Game: 8–10 | Tournament: 10–12
@@ -122,7 +122,7 @@ Brand voice: warm, professional, science-backed, encouraging. Never alarmist. Al
 WEEK DATA: {json.dumps(week_data)}
 
 Return JSON:
-{{"weekly_fuel_score": 0, "score_trend": "improving/stable/declining", "what_went_well": ["specific positive 1", "specific positive 2"], "nutrients_to_focus_on": [{{"nutrient": "Iron", "gap": "Xmg/day short", "food_fixes": ["food 1"], "recipe": "R020 Iron-Boost Hummus Plate"}}], "game_day_readiness": "assessment string", "hydration_report": {{"days_goal_met": 0, "avg_oz": 0}}, "iron_alert": null, "featured_recipe": {{"id": "R001", "name": "...", "reason": "..."}}, "report_text": "full warm professional 3-4 paragraph report for email/SMS", "legal_disclaimer": "FuelUp provides educational food guidance — not medical nutrition therapy. Consult your child's physician for medical concerns."}}""", max_tokens=2000)
+{{"weekly_fuel_score": 0, "score_trend": "improving/stable/declining", "what_went_well": ["specific positive 1", "specific positive 2"], "nutrients_to_focus_on": [{{"nutrient": "Iron", "gap": "Xmg/day short", "food_fixes": ["food 1"], "recipe": "R020 Iron-Boost Hummus Plate"}}], "game_day_readiness": "assessment string", "hydration_report": {{"days_goal_met": 0, "avg_oz": 0}}, "iron_alert": null, "featured_recipe": {{"id": "R001", "name": "...", "reason": "..."}}, "report_text": "full warm professional 3-4 paragraph report for email/SMS", "legal_disclaimer": "Fueling2Win provides educational food guidance — not medical nutrition therapy. Consult your child's physician for medical concerns."}}""", max_tokens=2000)
     except Exception:
         return {"report_text": "Weekly report unavailable.", "weekly_fuel_score": 0}
 
@@ -176,7 +176,7 @@ def prompt6_weekly_meal_plan(athlete: dict, week_schedule: list, recipes: list) 
                  "dairy" in (athlete.get("allergies") or "").lower()
 
     try:
-        return _json_completion(f"""You are FuelUp's AI meal planner for youth soccer athletes.
+        return _json_completion(f"""You are Fueling2Win's AI meal planner for youth soccer athletes.
 
 ATHLETE: {athlete['first_name']}, age {athlete['age']}, gender {athlete['gender']}
 Weight: {athlete['weight_lbs']}lbs
@@ -351,8 +351,8 @@ def prompt0_athlete_blueprint(athlete: dict, targets_by_event: dict) -> dict:
             "athlete_message": f"Time to eat like an athlete, {name}. Log your first meal and watch your fuel score go up."
         },
         "_meta": {
-            "generated_by": "FuelUp AI — Everett MD 2025 + Boston Children's Hospital RDN + AAP",
-            "disclaimer": "FuelUp provides educational food guidance — not medical nutrition therapy.",
+            "generated_by": "Fueling2Win AI — Everett MD 2025 + Boston Children's Hospital RDN + AAP",
+            "disclaimer": "Fueling2Win provides educational food guidance — not medical nutrition therapy.",
             "prompt_version": "0.1"
         }
     }
@@ -406,7 +406,7 @@ Return ONLY valid JSON matching this exact structure (no markdown):
   }},
   "lea_warning": {{"triggered": false, "parent_message": null, "threshold_kcal": {lea_thresh}, "action_required": null}},
   "unlock_cta": {{"headline": "", "parent_message": "", "athlete_message": ""}},
-  "_meta": {{"generated_by": "FuelUp AI — Everett MD 2025 + Boston Children's Hospital RDN + AAP", "disclaimer": "FuelUp provides educational food guidance — not medical nutrition therapy.", "prompt_version": "0.1"}}
+  "_meta": {{"generated_by": "Fueling2Win AI — Everett MD 2025 + Boston Children's Hospital RDN + AAP", "disclaimer": "Fueling2Win provides educational food guidance — not medical nutrition therapy.", "prompt_version": "0.1"}}
 }}"""
 
     try:

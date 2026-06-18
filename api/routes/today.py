@@ -100,10 +100,10 @@ def get_day_timeline(athlete_id: int, date: str = None, v2: bool = False):
 
 
 @router.get("/{athlete_id}/today")
-def get_today_view(athlete_id: int, date: str = Query(None)):
+def get_today_view(athlete_id: int, date: str = Query(None), v2: bool = False):
     conn = get_conn()
     try:
-        data = build_today_view(athlete_id, conn, today=date)
+        data = build_today_view(athlete_id, conn, today=date, force_v2=v2)
         if data is None:
             raise HTTPException(404, "Athlete not found.")
         return data
