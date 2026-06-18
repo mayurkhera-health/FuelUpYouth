@@ -1,5 +1,20 @@
-from pydantic import BaseModel
+import re
+from datetime import datetime as _dt
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
+
+
+def _normalize_start_time(v: Optional[str]) -> Optional[str]:
+    """Coerce any time string to 24h HH:MM. Rejects unparseable input."""
+    if not v:
+        return v
+    s = v.strip().upper().replace(" ", "")
+    for fmt in ("%H:%M", "%I:%M%p"):
+        try:
+            return _dt.strptime(s, fmt).strftime("%H:%M")
+        except ValueError:
+            continue
+    raise ValueError(f"start_time must be HH:MM or H:MMam/pm, got {v!r}")
 
 
 class ParentCreate(BaseModel):
@@ -56,18 +71,28 @@ class EventCreate(BaseModel):
     event_name: str
     event_type: str
     event_date: str  # YYYY-MM-DD
-    start_time: Optional[str] = None  # HH:MM
+    start_time: Optional[str] = None  # HH:MM (24h)
     duration_hours: Optional[float] = None
     city: Optional[str] = None
+
+    @field_validator("start_time", mode="before")
+    @classmethod
+    def normalize_start_time(cls, v):
+        return _normalize_start_time(v)
 
 
 class EventUpdate(BaseModel):
     event_name: Optional[str] = None
     event_type: Optional[str] = None
     event_date: Optional[str] = None  # YYYY-MM-DD
-    start_time: Optional[str] = None  # HH:MM
+    start_time: Optional[str] = None  # HH:MM (24h)
     duration_hours: Optional[float] = None
     city: Optional[str] = None
+
+    @field_validator("start_time", mode="before")
+    @classmethod
+    def normalize_start_time(cls, v):
+        return _normalize_start_time(v)
 
 
 class EventResponse(BaseModel):

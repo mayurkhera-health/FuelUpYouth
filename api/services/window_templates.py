@@ -149,8 +149,15 @@ _CAT_DISPLAY = {
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 
 def _parse_hhmm(hhmm: str) -> time:
-    h, m = map(int, hhmm.split(":"))
-    return time(h, m)
+    # Normalise: strip whitespace, upper-case, collapse spaces so
+    # "3:30pm", "3:30 pm", "3:30 PM" all become "3:30PM".
+    s = hhmm.strip().upper().replace(" ", "")
+    for fmt in ("%H:%M", "%I:%M%p"):
+        try:
+            return datetime.strptime(s, fmt).time()
+        except ValueError:
+            continue
+    raise ValueError(f"Cannot parse time string: {hhmm!r}")
 
 
 def _fmt12(dt: datetime) -> str:
