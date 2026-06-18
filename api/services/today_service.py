@@ -788,22 +788,47 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
     ).fetchall()
     wl_map = {r["window_id"]: dict(r) for r in wl_rows}
 
-    windows = []
+    tappable: list[dict] = []
+    nudges:   list[dict] = []
     for tw in template_windows:
+        sn     = tw["key"]
+        sort_t = tw.get("sort_time", "")
         if tw.get("is_nudge_only"):
+            # Short between_games windows (< 25-min gap, demoted to non-tappable by
+            # guardrail 2) surface as informational nudges so the athlete sees a
+            # "grab something quick" signal between back-to-back games. All other
+            # nudge categories (fuel_during) remain invisible on Today.
+            if tw.get("category") == "between_games":
+                od = tw.get("open_dt")
+                cd = tw.get("close_dt")
+                nudges.append({
+                    "id":            None,
+                    "slot_name":     sn,
+                    "display_label": tw["label"],
+                    "eat_by_time":   tw.get("time_display", ""),
+                    "open_time":     od.strftime("%H:%M") if od else "",
+                    "close_time":    cd.strftime("%H:%M") if cd else "",
+                    "macro_focus":   tw.get("macro_focus", "Fast Carbs + Fluid"),
+                    "logged":        False,
+                    "window_type":   "nudge",
+                    "sort_time":     sort_t,
+                    "status":        "nudge",
+                    "log":           {"logged": False, "method": None,
+                                      "photo_thumb_url": None, "nutrient_status": "none"},
+                })
             continue
-        sn        = tw["key"]
         plan_info = logged_map.get(sn, {})
         wl        = wl_map.get(sn)
         # logged = True if captured via window_logs OR if Meal Plan tab marked it done
         logged    = bool(wl is not None) or bool(plan_info.get("logged", False))
-        windows.append({
+        tappable.append({
             "id":            plan_info.get("id"),
             "slot_name":     sn,
             "display_label": tw["label"],
             "eat_by_time":   tw["time_display"],
             "macro_focus":   get_macro_focus(sn),
             "logged":        logged,
+            "sort_time":     sort_t,
             "log": {
                 "logged":          logged,
                 "method":          wl["method"] if wl else None,
@@ -811,10 +836,15 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
                 "nutrient_status": wl["nutrient_status"] if wl else "none",
             },
         })
-    windows = assign_window_status(windows)
 
-    logged_count = sum(1 for w in windows if w.get("logged"))
-    readiness = compute_readiness(logged_count, len(windows), event_type)
+    tappable = assign_window_status(tappable)
+
+    # Readiness is scored only on confirmable (tappable) windows — nudges don't count.
+    logged_count = sum(1 for w in tappable if w.get("logged"))
+    readiness = compute_readiness(logged_count, len(tappable), event_type)
+
+    # Merge and sort chronologically; nudge windows bypass status assignment.
+    windows = sorted(tappable + nudges, key=lambda w: w.get("sort_time", ""))
 
     next_game_row = conn.execute(
         "SELECT * FROM events WHERE athlete_id = ? AND event_date > ? "
