@@ -38,7 +38,8 @@ FUEL_DURING_MIN_MIN = 90           # Session must be ≥ 90 min to show Fuel Dur
 BETWEEN_WINDOW_MIN_GAP_MIN = 15    # Min gap (minutes) between two tappable windows
 MAX_TAPPABLE_WINDOWS       = 5
 
-EVERYDAY_DINNER_CUTOFF = time(17, 30)   # Dinner only if ALL events end before this
+EVERYDAY_DINNER_CUTOFF      = time(17, 30)  # Dinner only if ALL events end before this
+SECOND_RECOVERY_CUTOFF      = time(21, 30)  # Second Recovery skipped if it would open at/after 9:30 PM
 
 # Verbatim teaching message — do NOT change wording without spec approval
 EARLY_MORNING_MESSAGE = (
@@ -329,26 +330,27 @@ def _event_cycle(
             # Normal: second recovery touch (1–2h after event ends)
             second_open  = end + timedelta(hours=1)
             second_close = end + timedelta(hours=2)
-            cards.append(WindowCard(
-                window_key     = f"fuel_after_second{s}",
-                label          = "Second Recovery",
-                category       = "fuel_after",
-                category_key   = "recovery",
-                category_label = "Fuel After",
-                open_time      = _hhmm(second_open),
-                close_time     = _hhmm(second_close),
-                time_display   = _range(second_open, second_close),
-                sort_time      = _hhmm(second_open),
-                macro_focus    = "Balanced",
-                window_type    = "recovery",
-                priority       = False,
-                is_tappable    = True,
-                why = (
-                    "A second recovery touch continues protein synthesis for the next "
-                    "few hours."
-                ),
-                event_index = idx,
-            ))
+            if second_open.time() < SECOND_RECOVERY_CUTOFF:
+                cards.append(WindowCard(
+                    window_key     = f"fuel_after_second{s}",
+                    label          = "Second Recovery",
+                    category       = "fuel_after",
+                    category_key   = "recovery",
+                    category_label = "Fuel After",
+                    open_time      = _hhmm(second_open),
+                    close_time     = _hhmm(second_close),
+                    time_display   = _range(second_open, second_close),
+                    sort_time      = _hhmm(second_open),
+                    macro_focus    = "Balanced",
+                    window_type    = "recovery",
+                    priority       = False,
+                    is_tappable    = True,
+                    why = (
+                        "A second recovery touch continues protein synthesis for the next "
+                        "few hours."
+                    ),
+                    event_index = idx,
+                ))
 
     return cards, early_msg
 
@@ -607,23 +609,23 @@ def _cap_5(windows: list[WindowCard]) -> list[WindowCard]:
       1  fuel_before / quick_snack — pre-event meals
       2  refuel_ready / between_games — merged gap cards
       3  everyday_dinner
-      4  fuel_after_second / proper_breakfast_after — second touch (or its
-         early-game substitute); shed on busy two-game days same as second touch
-      5  everyday_breakfast — D6: morning slot on game days is a real breakfast
-      6  everyday_lunch
-      7  everyday_snack — shed first; live-verified never on game days anyway
+      4  proper_breakfast_after — early-game meal substitute (a real meal, not optional)
+      5  everyday_breakfast
+      6  everyday_lunch — real meal; kept over optional second-touch snack
+      7  fuel_after_second — optional second touch; shed before real everyday meals
+      8  everyday_snack — shed first
     """
     def keep_rank(w: WindowCard) -> int:
         if w.priority:                                          return 0
         if w.category in ("fuel_before", "quick_snack"):       return 1
         if w.category in ("refuel_ready", "between_games"):    return 2
         if w.category == "everyday" and "dinner" in w.window_key: return 3
-        if w.category == "fuel_after":                         return 4  # second recovery
-        if "proper_breakfast_after" in w.window_key:           return 4  # same tier as second touch
+        if "proper_breakfast_after" in w.window_key:           return 4  # meal substitute, not optional snack
         if w.category == "everyday":
-            if "snack" in w.window_key:                        return 7
+            if "snack" in w.window_key:                        return 8
             if "lunch" in w.window_key:                        return 6
-            return 5  # everyday_breakfast (D6: kept over lunch/snack on game days)
+            return 5  # everyday_breakfast
+        if w.category == "fuel_after":                         return 7  # fuel_after_second — optional
         return 8
 
     by_keep = sorted(windows, key=lambda w: (keep_rank(w), w.sort_time))
