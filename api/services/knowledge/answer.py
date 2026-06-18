@@ -9,6 +9,7 @@ from typing import Optional
 
 from api.services.bedrock_client import converse_text, is_configured
 from api.services.knowledge.retrieval import retrieve, KnowledgeChunk
+from api.services.safety_filters import check_input_safe, check_output_safe
 from api.services.knowledge.calculations import (
     iron_rda, calcium_rda, protein_range, hydration_needs,
     pre_training_meal_window, post_training_recovery_window, calorie_estimate,
@@ -22,13 +23,6 @@ _FALLBACK = (
     "base yet, a qualified professional will be your best next step. You deserve real answers, not guesses!"
 )
 
-_SAFETY_TERMS = [
-    "faint", "fainting", "unconscious", "chest pain", "can't breathe",
-    "eating disorder", "purge", "starving", "stop eating", "lose weight fast",
-    "anorexia", "bulimia", "binge", "severe dehydration", "seizure",
-    "vomiting blood", "not eating",
-]
-
 _CALC_KEYWORDS = {
     "iron": lambda q, a: iron_rda(a.get("age", 14), a.get("gender", "female")),
     "calcium": lambda q, a: calcium_rda(a.get("age", 14)),
@@ -38,11 +32,6 @@ _CALC_KEYWORDS = {
     "calorie": lambda q, a: calorie_estimate(a.get("weight_lbs", 120), a.get("age", 14), a.get("gender", "female"), a.get("event_type", "rest")),
     "calories": lambda q, a: calorie_estimate(a.get("weight_lbs", 120), a.get("age", 14), a.get("gender", "female"), a.get("event_type", "rest")),
 }
-
-
-def _detect_safety_flag(question: str) -> bool:
-    q = question.lower()
-    return any(term in q for term in _SAFETY_TERMS)
 
 
 def _maybe_calculate(question: str, athlete: dict) -> Optional[dict]:
@@ -221,13 +210,10 @@ def answer_with_knowledge(question: str, athlete: dict, is_first_message: bool =
     Returns {"answer": str, "citations": list, "calculation": dict|None}.
     is_first_message=True adds a one-time personalised opener drawn from the athlete's blueprint.
     """
-    if _detect_safety_flag(question):
-        return {
-            "answer": "This sounds like something important to discuss with a doctor or qualified sports dietitian. Please reach out to a professional right away.",
-            "citations": [],
-            "calculation": None,
-            "safety_flag": True,
-        }
+    # Layer 1 — input filter (model never called if this fires)
+    blocked = check_input_safe(question)
+    if blocked:
+        return {"answer": blocked, "citations": [], "calculation": None, "safety_flag": True}
 
     calc_result = _maybe_calculate(question, athlete)
     chunks = retrieve(question, top_n=5)
@@ -248,6 +234,11 @@ def answer_with_knowledge(question: str, athlete: dict, is_first_message: bool =
 
     system_prompt = _build_system_prompt(chunks, calc_result, athlete, is_first_message)
     answer_text = _call_bedrock(system_prompt, question)
+
+    # Layer 2 — output filter (model response discarded if this fires)
+    blocked = check_output_safe(answer_text)
+    if blocked:
+        return {"answer": blocked, "citations": [], "calculation": calc_result, "safety_flag": True}
 
     citations = [
         {

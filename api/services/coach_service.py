@@ -4,146 +4,7 @@ import json
 from api.database import get_conn
 from api.services.weather import get_weather
 from api.services.nutrition_calc import calc_daily_targets
-
-
-# ── Safety filters ─────────────────────────────────────────────────────────────
-# Two-layer architecture: input filter (before Bedrock) + output filter (after).
-# Filters are the hard floor. Model prompt rules are a secondary reinforcement.
-# Next step: evaluate a stronger model to raise the quality ceiling — but these
-# filters stay regardless of which model is configured.
-
-_WEIGHT_INPUT_TRIGGERS = [
-    "lose weight", "losing weight", "lost weight",
-    "need to lose", "want to lose", "trying to lose",
-    "drop some weight", "drop a few pounds", "drop some pounds",
-    "shed some pounds", "shed a few pounds",
-    "lose a few pounds", "lose some pounds",
-    "cut calories", "cutting calories", "calorie deficit", "calorie cut",
-    "fewer calories", "less calories", "count calories",
-    "eat less", "eating less", "eat lighter", "eat a little less",
-    "too fat", "too heavy", "overweight",
-    "slim down", "slimming down", "thinner", "skinnier",
-    "body fat percent", "bmi",
-    "go on a diet", "on a diet to lose", "diet to lose",
-]
-
-_MEDICAL_INPUT_TRIGGERS = [
-    "strain", "sprain", "fracture", "stress fracture",
-    "torn", "tear", "concussion",
-    "shin splints", "tendinitis", "plantar fasciitis", "bursitis",
-    "pulled muscle", "pulled my hamstring", "pulled my quad",
-    "pulled my calf", "pulled my groin",
-    "ligament", "tendon", "cartilage", "acl", "mcl", "pcl",
-    "knee pain", "knee hurts", "knee aching", "knee clicking",
-    "knee popping", "knee swollen",
-    "hip pain", "hip hurts",
-    "ankle pain", "ankle hurts", "ankle swollen",
-    "shoulder pain", "shoulder hurts",
-    "hamstring pain", "hamstring hurts", "hamstring sore for",
-    "shin pain", "shin hurts",
-    "back pain", "back hurts",
-    "wrist pain", "wrist hurts",
-    "elbow pain", "elbow hurts",
-    "has been sore for", "been hurting for",
-    "is it a strain", "is it a tear", "is it a sprain",
-    "do i have a",
-    "what's wrong with my", "what did i do to my",
-    "swelling", "swollen",
-    "diagnosis", "diagnose",
-]
-
-# Output triggers are wider and paraphrase-aware — over-firing is the safe
-# direction when the output filter is the last line before a minor sees content.
-_WEIGHT_OUTPUT_TRIGGERS = [
-    "lose weight", "losing weight", "weight loss",
-    "cut calories", "calorie deficit", "fewer calories", "less calories",
-    "slim down", "slimming",
-    "sustainable weight", "healthy weight loss",
-    "help you lose", "talk about losing", "discuss losing",
-]
-
-_MEDICAL_OUTPUT_TRIGGERS = [
-    # Diagnoses — naming, implying, or ruling out
-    "sounds like a", "seems like a", "appears to be a",
-    "probably a ", "likely a ", "might be a ", "could be a ",
-    "it's more like", "it's probably a", "it's likely a",
-    "that's a strain", "that's a sprain", "that's a tear", "that's a fracture",
-    "you've strained", "you've torn", "you've sprained",
-    "not a full tear", "not a tear", "not a fracture", "not a serious injury",
-    "just a minor", "just a strain", "just a sprain",
-    "overuse strain", "overuse injury", "muscle strain", "muscle tear",
-    "microtear", "micro-tear",
-    # Ice / cold protocols
-    "ice it", "ice the", "apply ice", "put ice", "use ice", "try ice",
-    "ice pack", "cold pack", "cold compress", "icing your",
-    # Heat protocols
-    "use heat", "try heat", "heat pack", "warm compress", "heating pad",
-    # Rest / avoidance protocols
-    "rest for", "rest your",
-    "take a few days off", "take a day or two off",
-    "avoid running", "avoid practice", "skip practice",
-    "take it easy on your",
-    # Compression / elevation / bracing
-    "compression sleeve", "wrap it", "brace it", "athletic tape", "kinesio",
-    "keep it elevated", "elevate your",
-    # Medication
-    "ibuprofen", "advil", "tylenol", "acetaminophen",
-    "anti-inflammatory medication", "nsaid", "pain reliever", "pain medication",
-    # Manual therapy protocols
-    "gentle stretching", "light stretching", "stretch it out",
-    "foam roll", "foam roller",
-    # RICE protocol (not the food)
-    "r.i.c.e", "rest, ice, compression",
-    # Prognosis
-    "should heal", "heal on its own", "you'll be fine in",
-    "should be better in", "back to normal in",
-    # Physical therapy (shouldn't be prescribing this)
-    "physical therapy", "physiotherapist",
-]
-
-# Fixed responses — not model-generated, guaranteed safe.
-_WEIGHT_INPUT_RESPONSE = (
-    "Fueling well is what makes you fast — your body needs energy to perform "
-    "at its best, not less food. If you have questions about your body, your "
-    "team's dietitian or a trusted adult is the right person to talk to. "
-    "I'm here for fueling questions whenever you're ready."
-)
-_MEDICAL_INPUT_RESPONSE = (
-    "That's outside what I can help with — please talk to your coach or a "
-    "sports-medicine doctor, they're the right people for that. I'm here for "
-    "nutrition and fueling questions whenever you're ready."
-)
-# Output weight response is warmer — the model volunteering body-image content
-# unprompted is a vulnerable moment, not a direct ask.
-_WEIGHT_OUTPUT_RESPONSE = (
-    "I hear you, and those feelings are real. This is worth talking through "
-    "with someone who really knows you — a parent, trusted adult, or your "
-    "team's dietitian. I'm here for fueling and game-day questions whenever "
-    "you need me."
-)
-_MEDICAL_OUTPUT_RESPONSE = (
-    "That's outside what I can help with — please talk to your coach or a "
-    "sports-medicine doctor, they're the right people for that. I'm here for "
-    "nutrition and fueling questions whenever you're ready."
-)
-
-
-def _check_input_safe(message: str) -> str | None:
-    msg = message.lower()
-    if any(p in msg for p in _WEIGHT_INPUT_TRIGGERS):
-        return _WEIGHT_INPUT_RESPONSE
-    if any(p in msg for p in _MEDICAL_INPUT_TRIGGERS):
-        return _MEDICAL_INPUT_RESPONSE
-    return None
-
-
-def _check_output_safe(response: str) -> str | None:
-    resp = response.lower()
-    if any(p in resp for p in _WEIGHT_OUTPUT_TRIGGERS):
-        return _WEIGHT_OUTPUT_RESPONSE
-    if any(p in resp for p in _MEDICAL_OUTPUT_TRIGGERS):
-        return _MEDICAL_OUTPUT_RESPONSE
-    return None
+from api.services.safety_filters import check_input_safe, check_output_safe
 
 
 def _heat_flag(temp_f: float, humidity: int) -> tuple[bool, str]:
@@ -329,7 +190,7 @@ def call_coach_api(context: dict, messages: list[dict], persona: str) -> str:
     last_user_msg = next(
         (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
     )
-    blocked = _check_input_safe(last_user_msg)
+    blocked = check_input_safe(last_user_msg)
     if blocked:
         return blocked
 
@@ -351,7 +212,7 @@ def call_coach_api(context: dict, messages: list[dict], persona: str) -> str:
         return "Sorry, I'm having trouble right now. Try asking again in a moment."
 
     # Layer 2 — output filter (model response discarded if this fires)
-    blocked = _check_output_safe(response)
+    blocked = check_output_safe(response)
     if blocked:
         return blocked
 
