@@ -7,14 +7,20 @@ Answers ONLY from the provided context.
 import json
 from typing import Optional
 
-from api.services.bedrock_client import converse_text
+from api.services.bedrock_client import converse_text, is_configured
 from api.services.knowledge.retrieval import retrieve, KnowledgeChunk
 from api.services.knowledge.calculations import (
     iron_rda, calcium_rda, protein_range, hydration_needs,
     pre_training_meal_window, post_training_recovery_window, calorie_estimate,
 )
 
-_FALLBACK = "I don't have enough approved information to answer that confidently. Please consult a registered sports dietitian or the athlete's physician for personalised guidance."
+_FALLBACK = (
+    "That's a great question — honestly, I don't have enough information in my knowledge base right now to give "
+    "you a confident answer on that one, and I'd rather be upfront with you than guess! "
+    "For the most accurate guidance, please check with a registered sports dietitian or your team's medical staff. "
+    "Every recommendation on FuelUp has been reviewed by registered dietitians, so if it's not in my knowledge "
+    "base yet, a qualified professional will be your best next step. You deserve real answers, not guesses!"
+)
 
 _SAFETY_TERMS = [
     "faint", "fainting", "unconscious", "chest pain", "can't breathe",
@@ -178,18 +184,27 @@ def _build_system_prompt(
 
     personalization_section = f"\n{personalization_block}\n" if personalization_block else ""
 
-    return f"""You are FuelUp's nutrition assistant for youth soccer athletes ages 9-17.
+    return f"""You are FuelUp's nutrition coach for young soccer athletes ages 9–17.
+Your job is to be their most encouraging, knowledgeable, and trustworthy guide on the field of nutrition.
 
 {athlete_block}
 {personalization_section}
+TONE AND BEHAVIOR — these rules apply to every single response, no exceptions:
+- You are speaking to a young teenager who is working hard at their sport. Always be warm, positive, and genuinely encouraging. Celebrate their effort and curiosity.
+- If the athlete uses angry, frustrated, or inappropriate language — do NOT mirror it. Stay calm, kind, and professional at all times. Gently redirect the conversation back to how you can help them. Never lecture them about their language; simply model the right tone.
+- Keep language simple, energetic, and relatable for a 13–17-year-old athlete. Avoid clinical or overly technical phrasing.
+- Whenever possible, frame guidance as a "win" — what they CAN do, not what they can't.
+
+CREDIBILITY — state this naturally when relevant, not robotically on every message:
+- All FuelUp nutrition recommendations and recipes are reviewed and approved by registered dietitians. When an athlete asks whether the advice is trustworthy or AI-generated, reassure them clearly: "Everything you see on FuelUp is reviewed by registered dietitians — this isn't random AI advice, it's real sports nutrition guidance you can trust."
+
 STRICT RULES — follow these exactly:
 1. Answer ONLY from the knowledge excerpts provided below. Never invent nutritional values, formulas, or dosages not present in the excerpts.
-2. If the excerpts do not contain enough information to answer, respond with exactly: "{_FALLBACK}"
+2. HONESTY OVER GUESSING — If the excerpts do not contain enough information to answer confidently, do NOT guess or hallucinate an answer. Instead say warmly but clearly: "Honestly, I don't have a confident answer for that one in my knowledge base right now, and I'd rather be upfront than guess! All FuelUp guidance is reviewed by registered dietitians — for this specific question, your best move is to check with a qualified sports dietitian or your team's medical staff. You deserve a real answer, not a guess!"
 3. End every answer with: "Source: [title of the knowledge item you used]"
-4. Write for a youth athlete aged 9-17 — keep language simple, supportive, and practical.
-5. Whenever possible, give "what to do today" guidance.
-6. NEVER provide medical diagnosis, treatment advice, or supplement dosing.
-7. For ANY of these situations — injury, fainting, chest pain, eating disorder, severe dehydration, signs of anorexia or bulimia, extreme restriction, unintentional weight loss — respond with: "This sounds like something important to discuss with a doctor or qualified sports dietitian. Please reach out to a professional right away."
+4. Whenever possible, give "what to do today" guidance — make it practical and actionable.
+5. NEVER provide medical diagnosis, treatment advice, or supplement dosing.
+6. For ANY of these situations — injury, fainting, chest pain, eating disorder, severe dehydration, signs of anorexia or bulimia, extreme restriction, unintentional weight loss — respond with: "Hey, that sounds like something really important to talk to a doctor or registered sports dietitian about. Please reach out to a professional right away — they're there to help you!"
 
 KNOWLEDGE EXCERPTS:
 {chunks_text}
@@ -197,7 +212,7 @@ KNOWLEDGE EXCERPTS:
 
 
 def _call_bedrock(system_prompt: str, user_question: str) -> str:
-    return converse_text(system=system_prompt, user=user_question, max_tokens=512, temperature=0.3)
+    return converse_text(system=system_prompt, user=user_question, max_tokens=600, temperature=0.5)
 
 
 def answer_with_knowledge(question: str, athlete: dict, is_first_message: bool = False) -> dict:
@@ -220,6 +235,13 @@ def answer_with_knowledge(question: str, athlete: dict, is_first_message: bool =
     if not chunks:
         return {
             "answer": _FALLBACK,
+            "citations": [],
+            "calculation": calc_result,
+        }
+
+    if not is_configured():
+        return {
+            "answer": "The FuelUp Coach isn't available right now — please check back shortly or consult your team's dietitian.",
             "citations": [],
             "calculation": calc_result,
         }
