@@ -6,6 +6,146 @@ from api.services.weather import get_weather
 from api.services.nutrition_calc import calc_daily_targets
 
 
+# ── Safety filters ─────────────────────────────────────────────────────────────
+# Two-layer architecture: input filter (before Bedrock) + output filter (after).
+# Filters are the hard floor. Model prompt rules are a secondary reinforcement.
+# Next step: evaluate a stronger model to raise the quality ceiling — but these
+# filters stay regardless of which model is configured.
+
+_WEIGHT_INPUT_TRIGGERS = [
+    "lose weight", "losing weight", "lost weight",
+    "need to lose", "want to lose", "trying to lose",
+    "drop some weight", "drop a few pounds", "drop some pounds",
+    "shed some pounds", "shed a few pounds",
+    "lose a few pounds", "lose some pounds",
+    "cut calories", "cutting calories", "calorie deficit", "calorie cut",
+    "fewer calories", "less calories", "count calories",
+    "eat less", "eating less", "eat lighter", "eat a little less",
+    "too fat", "too heavy", "overweight",
+    "slim down", "slimming down", "thinner", "skinnier",
+    "body fat percent", "bmi",
+    "go on a diet", "on a diet to lose", "diet to lose",
+]
+
+_MEDICAL_INPUT_TRIGGERS = [
+    "strain", "sprain", "fracture", "stress fracture",
+    "torn", "tear", "concussion",
+    "shin splints", "tendinitis", "plantar fasciitis", "bursitis",
+    "pulled muscle", "pulled my hamstring", "pulled my quad",
+    "pulled my calf", "pulled my groin",
+    "ligament", "tendon", "cartilage", "acl", "mcl", "pcl",
+    "knee pain", "knee hurts", "knee aching", "knee clicking",
+    "knee popping", "knee swollen",
+    "hip pain", "hip hurts",
+    "ankle pain", "ankle hurts", "ankle swollen",
+    "shoulder pain", "shoulder hurts",
+    "hamstring pain", "hamstring hurts", "hamstring sore for",
+    "shin pain", "shin hurts",
+    "back pain", "back hurts",
+    "wrist pain", "wrist hurts",
+    "elbow pain", "elbow hurts",
+    "has been sore for", "been hurting for",
+    "is it a strain", "is it a tear", "is it a sprain",
+    "do i have a",
+    "what's wrong with my", "what did i do to my",
+    "swelling", "swollen",
+    "diagnosis", "diagnose",
+]
+
+# Output triggers are wider and paraphrase-aware — over-firing is the safe
+# direction when the output filter is the last line before a minor sees content.
+_WEIGHT_OUTPUT_TRIGGERS = [
+    "lose weight", "losing weight", "weight loss",
+    "cut calories", "calorie deficit", "fewer calories", "less calories",
+    "slim down", "slimming",
+    "sustainable weight", "healthy weight loss",
+    "help you lose", "talk about losing", "discuss losing",
+]
+
+_MEDICAL_OUTPUT_TRIGGERS = [
+    # Diagnoses — naming, implying, or ruling out
+    "sounds like a", "seems like a", "appears to be a",
+    "probably a ", "likely a ", "might be a ", "could be a ",
+    "it's more like", "it's probably a", "it's likely a",
+    "that's a strain", "that's a sprain", "that's a tear", "that's a fracture",
+    "you've strained", "you've torn", "you've sprained",
+    "not a full tear", "not a tear", "not a fracture", "not a serious injury",
+    "just a minor", "just a strain", "just a sprain",
+    "overuse strain", "overuse injury", "muscle strain", "muscle tear",
+    "microtear", "micro-tear",
+    # Ice / cold protocols
+    "ice it", "ice the", "apply ice", "put ice", "use ice", "try ice",
+    "ice pack", "cold pack", "cold compress", "icing your",
+    # Heat protocols
+    "use heat", "try heat", "heat pack", "warm compress", "heating pad",
+    # Rest / avoidance protocols
+    "rest for", "rest your",
+    "take a few days off", "take a day or two off",
+    "avoid running", "avoid practice", "skip practice",
+    "take it easy on your",
+    # Compression / elevation / bracing
+    "compression sleeve", "wrap it", "brace it", "athletic tape", "kinesio",
+    "keep it elevated", "elevate your",
+    # Medication
+    "ibuprofen", "advil", "tylenol", "acetaminophen",
+    "anti-inflammatory medication", "nsaid", "pain reliever", "pain medication",
+    # Manual therapy protocols
+    "gentle stretching", "light stretching", "stretch it out",
+    "foam roll", "foam roller",
+    # RICE protocol (not the food)
+    "r.i.c.e", "rest, ice, compression",
+    # Prognosis
+    "should heal", "heal on its own", "you'll be fine in",
+    "should be better in", "back to normal in",
+    # Physical therapy (shouldn't be prescribing this)
+    "physical therapy", "physiotherapist",
+]
+
+# Fixed responses — not model-generated, guaranteed safe.
+_WEIGHT_INPUT_RESPONSE = (
+    "Fueling well is what makes you fast — your body needs energy to perform "
+    "at its best, not less food. If you have questions about your body, your "
+    "team's dietitian or a trusted adult is the right person to talk to. "
+    "I'm here for fueling questions whenever you're ready."
+)
+_MEDICAL_INPUT_RESPONSE = (
+    "That's outside what I can help with — please talk to your coach or a "
+    "sports-medicine doctor, they're the right people for that. I'm here for "
+    "nutrition and fueling questions whenever you're ready."
+)
+# Output weight response is warmer — the model volunteering body-image content
+# unprompted is a vulnerable moment, not a direct ask.
+_WEIGHT_OUTPUT_RESPONSE = (
+    "I hear you, and those feelings are real. This is worth talking through "
+    "with someone who really knows you — a parent, trusted adult, or your "
+    "team's dietitian. I'm here for fueling and game-day questions whenever "
+    "you need me."
+)
+_MEDICAL_OUTPUT_RESPONSE = (
+    "That's outside what I can help with — please talk to your coach or a "
+    "sports-medicine doctor, they're the right people for that. I'm here for "
+    "nutrition and fueling questions whenever you're ready."
+)
+
+
+def _check_input_safe(message: str) -> str | None:
+    msg = message.lower()
+    if any(p in msg for p in _WEIGHT_INPUT_TRIGGERS):
+        return _WEIGHT_INPUT_RESPONSE
+    if any(p in msg for p in _MEDICAL_INPUT_TRIGGERS):
+        return _MEDICAL_INPUT_RESPONSE
+    return None
+
+
+def _check_output_safe(response: str) -> str | None:
+    resp = response.lower()
+    if any(p in resp for p in _WEIGHT_OUTPUT_TRIGGERS):
+        return _WEIGHT_OUTPUT_RESPONSE
+    if any(p in resp for p in _MEDICAL_OUTPUT_TRIGGERS):
+        return _MEDICAL_OUTPUT_RESPONSE
+    return None
+
+
 def _heat_flag(temp_f: float, humidity: int) -> tuple[bool, str]:
     effective = temp_f + (5 if humidity > 70 else 0)
     if effective >= 95:
@@ -172,14 +312,27 @@ MANDATORY RULES:
 2. NEVER recommend supplements beyond food-first sources unless the blueprint explicitly notes current supplement use.
 3. Always recommend real food first. Processed or packaged options are a fallback, not a first choice.
 4. Keep responses practical and warm — 2–4 sentences unless a bulleted list genuinely helps clarity.
-5. If they ask about a medical condition, injury, or disordered eating pattern: acknowledge briefly and refer them to a registered sports dietitian or their physician.
-6. You are educational food guidance — NOT medical nutrition therapy. Never diagnose or prescribe.
-7. Stay focused on {sch['window_label']}. Briefly answer questions about other windows, then redirect.
+5. MEDICAL / INJURY / SYMPTOMS — ABSOLUTE STOP. Never name or imply a diagnosis. Never suggest a treatment protocol of any kind (ice, rest, stretching, elevation, medication, or anything else). One sentence: acknowledge + refer to their coach or a sports-medicine doctor, then redirect to nutrition. No exceptions, even if the answer seems obvious.
+   Example — input: "My hamstring has been sore for 3 days, is it a strain or a tear?"
+   Required response pattern: "That's worth getting checked out — please talk to your coach or a sports-medicine doctor, they're the right people for that. Now let's make sure your {window_label} sets you up well today."
+6. WEIGHT / BODY-IMAGE / RESTRICTION — ABSOLUTE STOP. If the athlete uses any weight-loss, cutting, restriction, or body-size framing ("lose weight," "eat less," "too fat," "cut calories," "slim down," "eat lighter"): do not engage the premise at all. Do not offer to discuss it "sustainably," "healthily," or "later." One supportive sentence redirecting to fueling for energy and performance, then direct them to a trusted adult or their team's dietitian. Stop. They are a minor.
+   Example — input: "I think I need to lose weight to run faster, can you help me cut calories?"
+   Required response pattern: "Fueling well is what makes you fast — your body needs energy to perform at its best. If you have questions about your body, your team's dietitian or a trusted adult is the right person to talk to. Let's focus on what powers your game today."
+7. You are educational food guidance — NOT medical nutrition therapy. Never diagnose, never prescribe, and never offer to continue a conversation that falls under rules 5 or 6.
+8. Stay focused on {sch['window_label']}. Briefly answer questions about other windows, then redirect.
 
 TONE: A knowledgeable coach who celebrates small wins, not a nutrition textbook."""
 
 
 def call_coach_api(context: dict, messages: list[dict], persona: str) -> str:
+    # Layer 1 — input filter (Bedrock never called if this fires)
+    last_user_msg = next(
+        (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
+    )
+    blocked = _check_input_safe(last_user_msg)
+    if blocked:
+        return blocked
+
     from api.services.bedrock_client import converse_multi_turn, is_configured
     if not is_configured():
         return (
@@ -188,7 +341,7 @@ def call_coach_api(context: dict, messages: list[dict], persona: str) -> str:
         )
     system = build_system_prompt(context, persona)
     try:
-        return converse_multi_turn(
+        response = converse_multi_turn(
             messages=messages,
             system=system,
             max_tokens=600,
@@ -196,3 +349,10 @@ def call_coach_api(context: dict, messages: list[dict], persona: str) -> str:
         )
     except Exception:
         return "Sorry, I'm having trouble right now. Try asking again in a moment."
+
+    # Layer 2 — output filter (model response discarded if this fires)
+    blocked = _check_output_safe(response)
+    if blocked:
+        return blocked
+
+    return response
