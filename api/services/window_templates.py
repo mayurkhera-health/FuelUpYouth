@@ -47,6 +47,12 @@ CATEGORIES = {
         "description":    "Merged recovery/pre-load when gap < 3h",
         "color_key":      "recovery",
     },
+    "between_sessions": {
+        "label":          "Recovery + Pre-Session Fuel",
+        "nutrient_focus": "Carbs + protein + fluid",
+        "description":    "Merged recovery/pre-load when gap < 3h30m (training)",
+        "color_key":      "recovery",
+    },
 }
 
 # ── SECTION 3: EARLY-MORNING RULE ─────────────────────────────────────────────
@@ -60,8 +66,8 @@ EARLY_MORNING_MESSAGE = (
 
 # ── SECTION 4: TOURNAMENT / DOUBLE-SESSION THRESHOLDS ─────────────────────────
 
-MERGED_GAP_THRESHOLD = timedelta(hours=3)   # tournament: gap < 3h → merge
-DOUBLE_GAP_THRESHOLD = timedelta(hours=2)   # double-session: gap < 2h → merge
+MERGED_GAP_THRESHOLD = timedelta(hours=3)          # tournament: gap < 3h → merge
+DOUBLE_GAP_THRESHOLD = timedelta(hours=3, minutes=30)  # double-session: 1h–3h30m tier → one merged refuel card
 MAX_TAPS_PER_DAY = 5
 
 # ── SECTION 9: TAP QUESTIONS ──────────────────────────────────────────────────
@@ -75,6 +81,7 @@ TAP_QUESTIONS = {
     "practice_recovery":   "Did you have something after practice?",
     "tournament_recovery": "Recovered after game {n}?",
     "between_games":       "Did you eat and drink between games?",
+    "between_sessions":    "Did you eat and drink between sessions?",
     "breakfast":           "Did you have breakfast?",
     "lunch":               "Did you eat lunch?",
     "snack":               "Had a snack this afternoon?",
@@ -126,7 +133,7 @@ DAY_TYPE_DISPLAY = {
     "double_training": {
         "windows":     "computed",
         "fuel_during": False,
-        "note":        "Merged or separate depending on gap threshold (2h)",
+        "note":        "Merged or separate depending on gap threshold (3h30m spec tier)",
     },
     "tournament": {
         "windows":     "computed",
@@ -143,7 +150,8 @@ _CAT_DISPLAY = {
     "fuel_after":   {"key": "recovery", "label": "Recovery fuel",   "why": "Within 30 min of finishing, protein + carbs kick-start muscle repair."},
     "everyday":     {"key": "balanced", "label": "Fuel + rebuild",  "why": "A balanced mix of carbs, protein, and healthy fats sets a solid base."},
     "quick_snack":  {"key": "carb",     "label": "Build on carbs",  "why": "A light carb snack keeps your energy up before an early session."},
-    "between_games":{"key": "recovery", "label": "Recovery fuel",   "why": "Between games: recover from the last and fuel up for the next."},
+    "between_games":   {"key": "recovery", "label": "Recovery fuel", "why": "Between games: recover from the last and fuel up for the next."},
+    "between_sessions":{"key": "recovery", "label": "Recovery fuel", "why": "Recover from your first session and load up carbs + protein before the next one."},
 }
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -509,14 +517,14 @@ def build_double_session_windows(sessions: list, base_date: date) -> tuple:
                 key      = f"between_sessions_{i+1}_{i+2}"
                 if between_games_viable(bg_open, bg_close):
                     windows.append(_make_window(
-                        key, f"Between Sessions {i+1} & {i+2}", "between_games",
+                        key, f"Between Sessions {i+1} & {i+2}", "between_sessions",
                         bg_open, bg_close,
-                        tap_label=TAP_QUESTIONS["between_games"],
+                        tap_label=TAP_QUESTIONS["between_sessions"],
                         priority=True,
                     ))
                 else:
                     windows.append(_make_window(
-                        key, f"Between Sessions {i+1} & {i+2}", "between_games",
+                        key, f"Between Sessions {i+1} & {i+2}", "between_sessions",
                         E_end, next_E_start, tap=False, is_nudge_only=True,
                         note="Sessions are back-to-back — grab what you can",
                     ))
