@@ -15,9 +15,10 @@ CATEGORY_LABELS: dict[str, str] = {
     "recovery":      "Recovery",
     "hydration":     "Hydration",
     "dinner_staple": "Dinner Staples",
+    "other":         "Other",
 }
 
-CATEGORY_ORDER = ["breakfast", "pre_fuel", "recovery", "hydration", "dinner_staple"]
+CATEGORY_ORDER = ["breakfast", "pre_fuel", "recovery", "hydration", "dinner_staple", "other"]
 
 _GAME_DAY_TYPES = frozenset({
     "morning_game", "afternoon_game", "evening_event", "early_game", "tournament"
@@ -98,6 +99,26 @@ def fetch_week_events(athlete_id: int, week_start: str, conn) -> dict:
 
 # ── Essentials generation ─────────────────────────────────────────────────────
 
+_DAY_ABBRS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def _week_tier(game_count: int, practice_count: int) -> tuple[str, str]:
+    total = game_count + practice_count
+    if game_count >= 2 or total >= 4:
+        return "heavy", "Heavy week — stock up on pre-game and recovery fuel."
+    if total >= 2:
+        return "moderate", "Active week — keep pre-game snacks and recovery food handy."
+    return "light", "Light week — focus on everyday fuel and good sleep."
+
+
+def _focus(classification: dict) -> tuple[str | None, str | None]:
+    if classification["has_game"]:
+        return "pre_fuel", "Pre-game meals matter most this week."
+    if classification["practice_count"] > 0:
+        return "recovery", "Fast recovery fuel after every session."
+    return None, None
+
+
 def build_essentials(athlete_id: int, week_start: str, conn) -> dict:
     """
     Main entry point for GET /api/shopping/essentials.
@@ -106,6 +127,36 @@ def build_essentials(athlete_id: int, week_start: str, conn) -> dict:
     events_by_day = fetch_week_events(athlete_id, week_start, conn)
     classification = classify_week(events_by_day)
     active_cats = _active_categories(classification)
+
+    # Athlete + parent names
+    athlete_row = conn.execute(
+        "SELECT first_name, parent_id FROM athletes WHERE id = ?", (athlete_id,)
+    ).fetchone()
+    athlete_name = dict(athlete_row)["first_name"] if athlete_row else "Athlete"
+    parent_id    = dict(athlete_row)["parent_id"]   if athlete_row else None
+    parent_row   = conn.execute(
+        "SELECT full_name FROM parents WHERE id = ?", (parent_id,)
+    ).fetchone() if parent_id else None
+    parent_name  = dict(parent_row)["full_name"].split()[0] if parent_row else "Parent"
+
+    # Week tier
+    week_tier, tier_line = _week_tier(
+        classification["game_count"], classification["practice_count"]
+    )
+
+    # Day strip (Mon–Sun with day type)
+    monday = date.fromisoformat(week_start)
+    day_types = classification["day_types"]
+    day_strip = [
+        {
+            "date":  (monday + timedelta(days=i)).isoformat(),
+            "label": _DAY_ABBRS[i],
+            "type":  day_types[i] if i < len(day_types) else "rest",
+        }
+        for i in range(7)
+    ]
+
+    focus_category, focus_line = _focus(classification)
 
     # Load athlete preferences
     pref_rows = conn.execute(
@@ -147,7 +198,6 @@ def build_essentials(athlete_id: int, week_start: str, conn) -> dict:
                 "source":        "catalog",
             })
 
-        # Append personal liked foods in this category
         for lf in liked:
             if lf["category"] == cat and lf["name"] not in excluded:
                 foods.append(lf)
@@ -165,6 +215,13 @@ def build_essentials(athlete_id: int, week_start: str, conn) -> dict:
             "practice_count": classification["practice_count"],
             "game_count":     classification["game_count"],
             "has_game":       classification["has_game"],
+            "athlete_name":   athlete_name,
+            "parent_name":    parent_name,
+            "week_tier":      week_tier,
+            "tier_line":      tier_line,
+            "day_strip":      day_strip,
+            "focus_category": focus_category,
+            "focus_line":     focus_line,
         },
         "groups": groups,
     }
