@@ -64,7 +64,7 @@ async def _store_meal_audio(audio: UploadFile, athlete_id: int, slot_name: str) 
 
 
 @router.get("/{athlete_id}/meal-plan")
-def get_day_timeline(athlete_id: int, date: str = None):
+def get_day_timeline(athlete_id: int, date: str = None, v2: bool = False):
     """Day Timeline for the Meal Plan tab. Single engine: wraps compute_meal_slots."""
     plan_date = date or str(dt_date.today())
     conn = get_conn()
@@ -72,7 +72,7 @@ def get_day_timeline(athlete_id: int, date: str = None):
         if not conn.execute("SELECT id FROM athletes WHERE id = ?", (athlete_id,)).fetchone():
             raise HTTPException(404, "Athlete not found")
 
-        skeleton = generate_day_windows(athlete_id, plan_date, conn)
+        skeleton = generate_day_windows(athlete_id, plan_date, conn, force_v2=v2)
 
         rows = conn.execute(
             "SELECT id, window_key, item_text, added_by FROM meal_plan_selections "

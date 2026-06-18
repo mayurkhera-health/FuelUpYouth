@@ -682,18 +682,18 @@ def _apply_guardrails(windows: list) -> list:
 
 # ── MAIN ENGINE ───────────────────────────────────────────────────────────────
 
-def generate_windows_for_day(athlete_id: int, date_str: str, events: list) -> dict:
+def generate_windows_for_day(athlete_id: int, date_str: str, events: list, force_v2: bool = False) -> dict:
     """
     Single engine entry point.
     Returns {day_type, early_morning_message, windows[]}.
     windows[] excludes fuel_during nudges — callers filter is_nudge_only for UI.
     """
-    # ── Event-relative engine (feature flag) ─────────────────────────────────
+    # ── Event-relative engine (feature flag or per-request override) ──────────
     try:
         from api.services.window_engine_v2 import (
             generate_windows_v2, event_relative_windows_enabled, Event as V2Event,
         )
-        if event_relative_windows_enabled():
+        if force_v2 or event_relative_windows_enabled():
             base_date = date.fromisoformat(date_str)
             v2_events = [
                 V2Event(

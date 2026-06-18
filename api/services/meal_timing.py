@@ -391,7 +391,7 @@ def compute_meal_slots(
     return slots
 
 
-def generate_day_windows(athlete_id: int, plan_date: str, conn) -> dict:
+def generate_day_windows(athlete_id: int, plan_date: str, conn, force_v2: bool = False) -> dict:
     """
     Single window engine for the Day Timeline (Meal Plan tab).
     Delegates to window_templates.generate_windows_for_day() — single source of truth.
@@ -408,7 +408,7 @@ def generate_day_windows(athlete_id: int, plan_date: str, conn) -> dict:
     events = [dict(r) for r in event_rows]
     first_event = events[0] if events else None
 
-    result              = generate_windows_for_day(athlete_id, plan_date, events)
+    result              = generate_windows_for_day(athlete_id, plan_date, events, force_v2=force_v2)
     day_type            = result["day_type"]
     tw_list             = result["windows"]
     early_morning_msg   = result.get("early_morning_message")
