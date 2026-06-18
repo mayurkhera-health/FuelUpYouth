@@ -673,6 +673,61 @@ def generate_windows_for_day(athlete_id: int, date_str: str, events: list) -> di
     Returns {day_type, early_morning_message, windows[]}.
     windows[] excludes fuel_during nudges — callers filter is_nudge_only for UI.
     """
+    # ── Event-relative engine (feature flag) ─────────────────────────────────
+    try:
+        from api.services.window_engine_v2 import (
+            generate_windows_v2, event_relative_windows_enabled, Event as V2Event,
+        )
+        if event_relative_windows_enabled():
+            base_date = date.fromisoformat(date_str)
+            v2_events = [
+                V2Event(
+                    id             = int(e.get("id") or 0),
+                    athlete_id     = athlete_id,
+                    event_type     = e.get("event_type") or "rest",
+                    event_date     = date_str,
+                    start_time     = e.get("start_time") or "00:00",
+                    duration_hours = e.get("duration_hours"),
+                )
+                for e in events
+            ]
+            result = generate_windows_v2(v2_events, date_str)
+            windows = []
+            for w in result.windows:
+                oh, om  = int(w.open_time[:2]),  int(w.open_time[3:])
+                ch, cm  = int(w.close_time[:2]), int(w.close_time[3:])
+                open_dt  = datetime.combine(base_date, time(oh, om))
+                close_dt = datetime.combine(base_date, time(ch, cm))
+                windows.append({
+                    "key":           w.window_key,
+                    "slot_name":     w.window_key,
+                    "label":         w.label,
+                    "display_label": w.label,
+                    "category":      w.category,
+                    "category_key":  w.category_key,
+                    "category_label": w.category_label,
+                    "why":           w.why,
+                    "open_dt":       open_dt,
+                    "close_dt":      close_dt,
+                    "eat_by_time":   w.time_display,
+                    "time_display":  w.time_display,
+                    "sort_time":     w.sort_time,
+                    "macro_focus":   w.macro_focus,
+                    "tap":           w.is_tappable,
+                    "priority":      w.priority,
+                    "is_nudge_only": not w.is_tappable,
+                    "is_hydration":  not w.is_tappable,
+                    "note":          "",
+                })
+            return {
+                "day_type":              result.day_type,
+                "early_morning_message": result.early_morning_message,
+                "windows":               windows,
+            }
+    except ImportError:
+        pass  # window_engine_v2 not deployed yet — fall through to old engine
+
+    # ── Old clock-based engine ────────────────────────────────────────────────
     base_date = date.fromisoformat(date_str)
     day_type  = determine_day_type(events, date_str)
 
