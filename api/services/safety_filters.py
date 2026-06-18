@@ -56,7 +56,7 @@ MEDICAL_INPUT_TRIGGERS: list[str] = [
     "diagnosis", "diagnose",
     # Acute medical emergencies
     "chest pain", "can't breathe", "cannot breathe",
-    "fainting", "fainted", "passing out", "passed out",
+    "faint", "fainting", "fainted", "passing out", "passed out",
     "vomiting blood", "seizure", "unconscious",
     # Eating disorders
     "eating disorder", "anorexia", "bulimia",
