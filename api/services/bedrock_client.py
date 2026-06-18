@@ -72,6 +72,29 @@ def converse_text(
     return _extract_text(_client().converse(**kwargs))
 
 
+def converse_multi_turn(
+    *,
+    messages: list[dict],
+    system: str | None = None,
+    max_tokens: int = 1024,
+    temperature: float = 0.7,
+    model: str | None = None,
+) -> str:
+    """Send a multi-turn conversation. Each message: {"role": "user"|"assistant", "content": "..."}."""
+    bedrock_messages = [
+        {"role": m["role"], "content": [{"text": m["content"]}]}
+        for m in messages
+    ]
+    kwargs: dict = {
+        "modelId": model or model_id(),
+        "messages": bedrock_messages,
+        "inferenceConfig": {"maxTokens": max_tokens, "temperature": temperature},
+    }
+    if system:
+        kwargs["system"] = [{"text": system}]
+    return _extract_text(_client().converse(**kwargs))
+
+
 def converse_vision(
     *,
     prompt: str,
