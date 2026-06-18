@@ -481,8 +481,8 @@ def _everyday_windows(
     ref = event_times[0][0].replace(hour=0, minute=0, second=0, microsecond=0)
     last_event_end = max(end for _, end in event_times)
 
-    tappable_opens = [
-        w.open_time for w in event_cards if w.is_tappable
+    tappable_ranges = [
+        (w.open_time, w.close_time) for w in event_cards if w.is_tappable
     ]
 
     result: list[WindowCard] = []
@@ -499,10 +499,17 @@ def _everyday_windows(
         if d["key"] == "everyday_breakfast" and has_early_game:
             continue
 
-        # 15-min gap check against all existing tappable windows
+        # Suppress everyday window if it overlaps any tappable event window, or
+        # starts within 15 min of one.  The old open-time-only gap check missed
+        # cases where a wide everyday window (e.g. Lunch 12:00–13:30) physically
+        # overlapped a narrower event window starting later (e.g. Second Recovery
+        # 12:30–13:30) because their open-time gap (30 min) exceeded the threshold.
+        d_open  = d["open"].strftime("%H:%M")
+        d_close = d["close"].strftime("%H:%M")
         conflict = any(
-            abs(_minutes_between(d["open"].strftime("%H:%M"), t)) < BETWEEN_WINDOW_MIN_GAP_MIN
-            for t in tappable_opens
+            (d_open < ex_close and d_close > ex_open)  # actual overlap
+            or abs(_minutes_between(d_open, ex_open)) < BETWEEN_WINDOW_MIN_GAP_MIN
+            for ex_open, ex_close in tappable_ranges
         )
         if not conflict:
             result.append(_make_everyday(d, ref))
