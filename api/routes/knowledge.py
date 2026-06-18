@@ -24,6 +24,8 @@ class AskRequest(BaseModel):
     athlete_id: int
     is_first_message: bool = False
     history: list[dict] = []
+    recipe_category: Optional[str] = None
+    prefer_recipe: bool = False
 
 
 class StatusUpdate(BaseModel):
@@ -116,6 +118,8 @@ def ask_knowledge(body: AskRequest):
         athlete_dict,
         history=body.history,
         is_first_message=body.is_first_message,
+        recipe_category=body.recipe_category,
+        prefer_recipe=body.prefer_recipe,
     )
 
 

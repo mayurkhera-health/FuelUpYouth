@@ -403,11 +403,22 @@ def _citations_from_chunks(chunks: list[KnowledgeChunk]) -> list[dict]:
     return citations
 
 
+def _looks_like_meal_request(question: str) -> bool:
+    q = question.lower()
+    keywords = (
+        "suggest", "recommend", "give me", "recipe", "pick", "find",
+        "ideas for", "meal for", "snack for", "breakfast", "lunch", "dinner",
+    )
+    return any(kw in q for kw in keywords)
+
+
 def answer_with_knowledge(
     question: str,
     athlete: dict,
     history: list[dict] | None = None,
     is_first_message: bool = False,
+    recipe_category: str | None = None,
+    prefer_recipe: bool = False,
 ) -> dict:
     """
     Main RAG entry point for the Nutrition Coach.
@@ -430,8 +441,17 @@ def answer_with_knowledge(
     route = _classify_coach_path(contextual_question, athlete)
     if route["path"] == "out_of_scope":
         return _answer_out_of_scope(contextual_question, athlete)
-    if route["path"] == "recipe" and route["recipe_category"]:
-        return _answer_with_recipe(contextual_question, athlete, route["recipe_category"])
+
+    category_for_recipe = None
+    if prefer_recipe and recipe_category:
+        category_for_recipe = recipe_category
+    elif route["path"] == "recipe" and route.get("recipe_category"):
+        category_for_recipe = route["recipe_category"]
+    elif recipe_category and _looks_like_meal_request(contextual_question):
+        category_for_recipe = recipe_category
+
+    if category_for_recipe:
+        return _answer_with_recipe(contextual_question, athlete, category_for_recipe)
 
     calc_result = _maybe_calculate(contextual_question, athlete)
 
