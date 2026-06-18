@@ -486,6 +486,12 @@ def _everyday_windows(
     tappable_ranges = [
         (w.open_time, w.close_time) for w in event_cards if w.is_tappable
     ]
+    # Actual event blocks (start → end) in HH:MM strings — everyday meals must
+    # not overlap the event itself, not just the fueling cards around it.
+    event_blocks = [
+        (start.strftime("%H:%M"), end.strftime("%H:%M"))
+        for start, end in event_times
+    ]
 
     result: list[WindowCard] = []
     for d in EVERYDAY_DEFS:
@@ -501,19 +507,23 @@ def _everyday_windows(
         if d["key"] == "everyday_breakfast" and has_early_game:
             continue
 
-        # Suppress everyday window if it overlaps any tappable event window, or
-        # starts within 15 min of one.  The old open-time-only gap check missed
-        # cases where a wide everyday window (e.g. Lunch 12:00–13:30) physically
-        # overlapped a narrower event window starting later (e.g. Second Recovery
-        # 12:30–13:30) because their open-time gap (30 min) exceeded the threshold.
         d_open  = d["open"].strftime("%H:%M")
         d_close = d["close"].strftime("%H:%M")
-        conflict = any(
-            (d_open < ex_close and d_close > ex_open)  # actual overlap
+
+        # Suppress if the everyday window overlaps a tappable fueling card
+        # (range intersection + 15-min proximity gap).
+        fueling_conflict = any(
+            (d_open < ex_close and d_close > ex_open)
             or abs(_minutes_between(d_open, ex_open)) < BETWEEN_WINDOW_MIN_GAP_MIN
             for ex_open, ex_close in tappable_ranges
         )
-        if not conflict:
+        # Suppress if the everyday window physically overlaps the event itself
+        # (pure range intersection — a meal card must not sit inside an event block).
+        event_conflict = any(
+            d_open < ev_close and d_close > ev_open
+            for ev_open, ev_close in event_blocks
+        )
+        if not fueling_conflict and not event_conflict:
             result.append(_make_everyday(d, ref))
 
     return result
