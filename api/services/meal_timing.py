@@ -413,18 +413,20 @@ def generate_day_windows(athlete_id: int, plan_date: str, conn) -> dict:
     tw_list             = result["windows"]
     early_morning_msg   = result.get("early_morning_message")
 
-    event_info = None
-    if first_event:
-        start_time     = first_event.get("start_time")
-        duration_hours = first_event.get("duration_hours") or 1.5
-        if start_time:
-            event_end = _add(start_time, duration_hours)
-            event_info = {
-                "label":         first_event.get("event_name") or first_event["event_type"].capitalize(),
-                "start_display": _fmt(start_time),
-                "end_display":   _fmt(event_end),
-                "sort_time":     start_time,
-            }
+    def _build_event_info(ev: dict) -> dict | None:
+        st = ev.get("start_time")
+        if not st:
+            return None
+        dur = ev.get("duration_hours") or 1.5
+        return {
+            "label":         ev.get("event_name") or ev["event_type"].capitalize(),
+            "start_display": _fmt(st),
+            "end_display":   _fmt(_add(st, dur)),
+            "sort_time":     st,
+        }
+
+    events_info = [info for ev in events if (info := _build_event_info(ev))]
+    event_info  = events_info[0] if events_info else None
 
     windows = []
     for tw in tw_list:
@@ -447,5 +449,6 @@ def generate_day_windows(athlete_id: int, plan_date: str, conn) -> dict:
         "day_type":              day_type,
         "early_morning_message": early_morning_msg,
         "event":                 event_info,
+        "events":                events_info,
         "windows":               windows,
     }
