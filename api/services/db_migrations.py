@@ -13,6 +13,9 @@ def run_all():
         _create_report_config(conn)
         _create_shopping_tables(conn)
         _create_expo_push_tokens(conn)
+        _create_window_logs(conn)
+        _create_notification_log(conn)
+        _add_timezone_to_tokens(conn)
         conn.commit()
     finally:
         conn.close()
@@ -135,3 +138,50 @@ def _create_shopping_tables(conn):
             created_at         TEXT NOT NULL DEFAULT (datetime('now'))
         )
     """)
+
+
+def _create_window_logs(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS window_logs (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id      INTEGER NOT NULL,
+            window_id       TEXT NOT NULL,
+            log_date        TEXT NOT NULL,
+            method          TEXT NOT NULL DEFAULT 'photo',
+            text            TEXT,
+            photo_url       TEXT,
+            thumb_url       TEXT,
+            audio_url       TEXT,
+            nutrient_status TEXT NOT NULL DEFAULT 'none',
+            logged_by       TEXT,
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(athlete_id, window_id, log_date)
+        )
+    """)
+    # Additive column migrations for rows created before these columns existed
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(window_logs)").fetchall()]
+    if "logged_by" not in cols:
+        conn.execute("ALTER TABLE window_logs ADD COLUMN logged_by TEXT")
+    if "audio_url" not in cols:
+        conn.execute("ALTER TABLE window_logs ADD COLUMN audio_url TEXT")
+
+
+def _create_notification_log(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS notification_log (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id INTEGER NOT NULL,
+            window_key TEXT    NOT NULL,
+            send_date  TEXT    NOT NULL,
+            recipient  TEXT    NOT NULL,
+            token      TEXT    NOT NULL,
+            sent_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, window_key, send_date, recipient)
+        )
+    """)
+
+
+def _add_timezone_to_tokens(conn):
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(expo_push_tokens)").fetchall()]
+    if "timezone" not in cols:
+        conn.execute("ALTER TABLE expo_push_tokens ADD COLUMN timezone TEXT")

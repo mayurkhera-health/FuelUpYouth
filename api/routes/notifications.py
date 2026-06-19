@@ -1,6 +1,5 @@
-import os, json
-from datetime import date as dt_date, datetime, timedelta
-from fastapi import APIRouter, HTTPException
+import os
+from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
 from api.database import get_conn
@@ -22,6 +21,7 @@ class PushSubscription(BaseModel):
 class ExpoTokenPayload(BaseModel):
     token: str
     platform: Optional[str] = None
+    timezone: Optional[str] = None   # IANA tz, e.g. "America/Los_Angeles"
     athlete_id: Optional[int] = None
     parent_id: Optional[int] = None
 
@@ -33,14 +33,15 @@ def register_expo_token(data: ExpoTokenPayload):
     conn = get_conn()
     try:
         conn.execute(
-            """INSERT INTO expo_push_tokens (athlete_id, parent_id, token, platform)
-               VALUES (?, ?, ?, ?)
+            """INSERT INTO expo_push_tokens (athlete_id, parent_id, token, platform, timezone)
+               VALUES (?, ?, ?, ?, ?)
                ON CONFLICT(token) DO UPDATE SET
                athlete_id=excluded.athlete_id,
                parent_id=excluded.parent_id,
                platform=excluded.platform,
+               timezone=excluded.timezone,
                updated_at=datetime('now')""",
-            (data.athlete_id, data.parent_id, data.token, data.platform),
+            (data.athlete_id, data.parent_id, data.token, data.platform, data.timezone),
         )
         conn.commit()
         return {"message": "Token registered."}
@@ -53,24 +54,6 @@ class NotificationPrefs(BaseModel):
     remind_pregame_snack: Optional[bool] = True
     remind_meal_log:      Optional[bool] = True
     remind_hydration:     Optional[bool] = True
-
-
-def _send_push(sub: dict, title: str, body: str, url: str = "/"):
-    try:
-        from pywebpush import webpush, WebPushException
-        webpush(
-            subscription_info={
-                "endpoint": sub["endpoint"],
-                "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]},
-            },
-            data=json.dumps({"title": title, "body": body, "url": url}),
-            vapid_private_key=VAPID_PRIVATE_KEY,
-            vapid_claims={"sub": VAPID_CONTACT},
-        )
-        return True
-    except Exception as e:
-        print(f"Push failed: {e}")
-        return False
 
 
 @router.get("/vapid-public-key")
@@ -129,79 +112,6 @@ def update_prefs(athlete_id: int, prefs: NotificationPrefs):
         )
         conn.commit()
         return {"message": "Preferences updated."}
-    finally:
-        conn.close()
-
-
-@router.post("/{athlete_id}/send-daily")
-def send_daily_reminders(athlete_id: int):
-    """Call this once per day (e.g. via cron) to queue today's reminders."""
-    conn = get_conn()
-    try:
-        athlete = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
-        if not athlete:
-            raise HTTPException(404, "Athlete not found.")
-        name = dict(athlete)["first_name"]
-
-        subs = conn.execute(
-            "SELECT * FROM push_subscriptions WHERE athlete_id = ?", (athlete_id,)
-        ).fetchall()
-        if not subs:
-            return {"message": "No subscriptions for this athlete."}
-
-        today = str(dt_date.today())
-        events = conn.execute(
-            "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time",
-            (athlete_id, today),
-        ).fetchall()
-        event = dict(events[0]) if events else None
-        event_type = event["event_type"] if event else "rest"
-        start_time = event.get("start_time") if event else None
-
-        sent = []
-        for sub in [dict(s) for s in subs]:
-            # Rest day — one gentle morning note only, skip all fuel nudges
-            if event_type == "rest":
-                _send_push(sub,
-                    f"Rest day for {name}",
-                    "This is where the gains happen. Keep eating normally — regular meals, water, and protein through the day. No special fueling needed.",
-                )
-                sent.append("rest_day_note")
-                continue
-
-            # Pre-game meal (3hrs before)
-            if sub["remind_pregame_meal"] and start_time and event_type in ("game", "tournament", "practice"):
-                _send_push(sub,
-                    f"🍝 Time for {name}'s pre-event meal!",
-                    f"Eat a balanced meal now — {event['event_name']} starts at {start_time}. Carbs + protein + low fat.",
-                )
-                sent.append("pregame_meal")
-
-            # Pre-game snack (1hr before)
-            if sub["remind_pregame_snack"] and start_time and event_type in ("game", "tournament"):
-                _send_push(sub,
-                    f"🍌 Pre-game snack time for {name}!",
-                    f"1 hour until {event['event_name']}. Quick carbs: banana + peanut butter or toast + honey.",
-                )
-                sent.append("pregame_snack")
-
-            # Hydration
-            if sub["remind_hydration"] and event_type in ("game", "tournament", "practice"):
-                _send_push(sub,
-                    f"💧 Hydration check for {name}",
-                    f"Training day! Make sure {name} drinks water before, during, and after {event_type}.",
-                )
-                sent.append("hydration")
-
-            # Meal log reminder (always send if opted in)
-            if sub["remind_meal_log"]:
-                _send_push(sub,
-                    f"📋 Log {name}'s meals today",
-                    "Don't forget to track today's meals in Fueling2Win to keep nutrition on target.",
-                )
-                sent.append("meal_log")
-
-        return {"message": f"Sent {len(sent)} reminders.", "sent": sent}
     finally:
         conn.close()
 

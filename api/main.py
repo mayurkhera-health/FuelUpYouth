@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping
 from api.services import db_migrations
+from apscheduler.schedulers.background import BackgroundScheduler
 
 app = FastAPI(
     title="Fueling2Win Soccer Nutrition API",
@@ -45,9 +46,20 @@ app.include_router(coach.router,         prefix="/api/coach",         tags=["20.
 app.include_router(shopping.router,      prefix="/api/shopping",      tags=["21. Shopping"])
 
 
+_scheduler = BackgroundScheduler()
+
+
 @app.on_event("startup")
 def on_startup():
     db_migrations.run_all()
+    from api.services.notification_service import run_notification_tick
+    _scheduler.add_job(run_notification_tick, "interval", minutes=15, id="notifications")
+    _scheduler.start()
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    _scheduler.shutdown(wait=False)
 
 
 @app.get("/api/info")
