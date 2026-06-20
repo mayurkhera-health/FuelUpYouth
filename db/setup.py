@@ -289,6 +289,17 @@ def init_db():
             status             TEXT NOT NULL DEFAULT 'pending',
             created_at         TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS notification_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id  INTEGER NOT NULL,
+            window_key  TEXT NOT NULL,
+            send_date   TEXT NOT NULL,
+            recipient   TEXT NOT NULL DEFAULT 'athlete',
+            token       TEXT NOT NULL,
+            sent_at     TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, window_key, send_date, recipient)
+        );
     """)
 
     conn.commit()

@@ -1,5 +1,6 @@
 import json
-from fastapi import APIRouter, HTTPException
+from datetime import datetime, timezone
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from api.models import AthleteCreate, AthleteResponse
 from api.database import get_conn
 from api.services.nutrition_calc import calc_daily_targets
@@ -7,9 +8,76 @@ from api.services import claude_ai
 
 router = APIRouter()
 
+_EVENT_TYPES = ["rest", "practice", "game", "tournament", "strength"]
+# A generating task that hasn't written a result after this many seconds is
+# considered dead (killed by a deploy or crashed without writing the error sentinel).
+_STALE_GENERATING_SECONDS = 120
+
+
+def _computed_calculated(athlete: dict) -> dict:
+    """Derive the _calculated block from athlete physical stats. No LLM needed."""
+    gender = athlete.get("gender", "").lower()
+    is_girl = gender in ("girl", "female", "f")
+    calculated = {
+        "rmr": round(
+            11.1 * athlete["weight_lbs"] * 0.453592
+            + 8.4 * (athlete["height_ft"] * 12 + athlete["height_in"]) * 2.54
+            - (537 if is_girl else 340)
+        ),
+        "iron_mg": 15 if is_girl else 11,
+        "calcium_mg": 1300,
+        "magnesium_mg": (360 if is_girl else 410) if athlete["age"] >= 14 else 240,
+        "vitamin_d_iu": 1000,
+        "ffm_kg": round(athlete["weight_lbs"] * 0.453592 * 0.85, 1),
+        "targets": {et: calc_daily_targets(athlete, et) for et in _EVENT_TYPES},
+    }
+    calculated["lea_threshold_kcal"] = round(30 * calculated["ffm_kg"])
+    return calculated
+
+
+def generate_blueprint_bg(athlete_id: int) -> None:
+    """
+    Background task: calls Bedrock, writes blueprint or an error sentinel.
+    Runs after the HTTP response is already sent — never blocks a request.
+    """
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
+        if not row:
+            return
+        athlete = dict(row)
+
+        # Write the in-progress sentinel before the blocking Bedrock call so
+        # GET /blueprint can distinguish "task started" from "task not yet begun".
+        started_at = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            "UPDATE athletes SET blueprint_json=? WHERE id=?",
+            (json.dumps({"__status": "generating", "started_at": started_at}), athlete_id),
+        )
+        conn.commit()
+
+        targets_by_event = {et: calc_daily_targets(athlete, et) for et in _EVENT_TYPES}
+        blueprint = claude_ai.prompt0_athlete_blueprint(athlete, targets_by_event)
+        conn.execute(
+            "UPDATE athletes SET blueprint_json=? WHERE id=?",
+            (json.dumps(blueprint), athlete_id),
+        )
+        conn.commit()
+    except Exception as exc:
+        try:
+            conn.execute(
+                "UPDATE athletes SET blueprint_json=? WHERE id=?",
+                (json.dumps({"__status": "error", "message": str(exc)}), athlete_id),
+            )
+            conn.commit()
+        except Exception:
+            pass
+    finally:
+        conn.close()
+
 
 @router.post("/", response_model=AthleteResponse, status_code=201)
-def create_athlete(data: AthleteCreate):
+def create_athlete(data: AthleteCreate, background_tasks: BackgroundTasks):
     if not (9 <= data.age <= 17):
         raise HTTPException(400, "Fueling2Win is designed for athletes ages 9-17.")
     conn = get_conn()
@@ -31,24 +99,8 @@ def create_athlete(data: AthleteCreate):
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE rowid = last_insert_rowid()").fetchone()
         athlete = dict(row)
-
-        # Generate Blueprint (Prompt 0) — runs async-style but blocking is fine on creation
-        try:
-            event_types = ["rest", "practice", "game", "tournament", "strength"]
-            targets_by_event = {et: calc_daily_targets(athlete, et) for et in event_types}
-            blueprint = claude_ai.prompt0_athlete_blueprint(athlete, targets_by_event)
-            blueprint_str = json.dumps(blueprint)
-            conn2 = get_conn()
-            conn2.execute(
-                "UPDATE athletes SET blueprint_json=? WHERE id=?",
-                (blueprint_str, athlete["id"])
-            )
-            conn2.commit()
-            conn2.close()
-            athlete["blueprint_json"] = blueprint_str
-        except Exception:
-            pass  # Blueprint failure must never block athlete creation
-
+        # Blueprint runs after response is sent — never blocks athlete creation.
+        background_tasks.add_task(generate_blueprint_bg, athlete["id"])
         return athlete
     finally:
         conn.close()
@@ -100,40 +152,82 @@ def get_blueprint(athlete_id: int):
         athlete = dict(row)
         blueprint_str = athlete.get("blueprint_json")
 
-        # If no blueprint stored yet, generate now (covers athletes created before this feature)
+        # No blueprint_json at all — background task hasn't started yet.
         if not blueprint_str:
-            event_types = ["rest", "practice", "game", "tournament", "strength"]
-            targets_by_event = {et: calc_daily_targets(athlete, et) for et in event_types}
-            blueprint = claude_ai.prompt0_athlete_blueprint(athlete, targets_by_event)
-            blueprint_str = json.dumps(blueprint)
-            conn.execute(
-                "UPDATE athletes SET blueprint_json=? WHERE id=?",
-                (blueprint_str, athlete_id)
+            raise HTTPException(
+                404,
+                detail={"status": "pending", "message": "Blueprint is being generated."},
             )
-            conn.commit()
 
-        # Also attach _calculated for React to use numbers from
-        event_types = ["rest", "practice", "game", "tournament", "strength"]
-        gender = athlete.get("gender", "").lower()
-        is_girl = gender in ("girl", "female", "f")
-        calculated = {
-            "rmr": round(
-                11.1 * athlete["weight_lbs"] * 0.453592 + 8.4 * (athlete["height_ft"] * 12 + athlete["height_in"]) * 2.54
-                - (537 if is_girl else 340)
-            ),
-            "iron_mg": 15 if is_girl else 11,
-            "calcium_mg": 1300,
-            "magnesium_mg": (360 if is_girl else 410) if athlete["age"] >= 14 else 240,
-            "vitamin_d_iu": 1000,
-            "ffm_kg": round(athlete["weight_lbs"] * 0.453592 * 0.85, 1),
-            "targets": {et: calc_daily_targets(athlete, et) for et in event_types},
-        }
-        calculated["lea_threshold_kcal"] = round(30 * calculated["ffm_kg"])
+        try:
+            blueprint_data = json.loads(blueprint_str)
+        except (json.JSONDecodeError, TypeError):
+            return {
+                "athlete_id": athlete_id,
+                "status": "error",
+                "message": "Blueprint data is invalid.",
+                "_calculated": _computed_calculated(athlete),
+            }
 
+        # Sentinel written by generate_blueprint_bg — check status.
+        if isinstance(blueprint_data, dict) and "__status" in blueprint_data:
+            sentinel_status = blueprint_data["__status"]
+
+            if sentinel_status == "generating":
+                # Detect stale tasks (killed by a deploy without writing a result).
+                started_at_str = blueprint_data.get("started_at")
+                is_stale = True  # assume stale if no timestamp
+                if started_at_str:
+                    try:
+                        started = datetime.fromisoformat(started_at_str)
+                        age_secs = (datetime.now(timezone.utc) - started).total_seconds()
+                        is_stale = age_secs > _STALE_GENERATING_SECONDS
+                    except Exception:
+                        is_stale = True
+
+                if is_stale:
+                    return {
+                        "athlete_id": athlete_id,
+                        "status": "error",
+                        "message": "Blueprint generation timed out. Tap Retry to try again.",
+                        "_calculated": _computed_calculated(athlete),
+                    }
+                raise HTTPException(
+                    404,
+                    detail={"status": "pending", "message": "Blueprint is being generated."},
+                )
+
+            if sentinel_status == "error":
+                return {
+                    "athlete_id": athlete_id,
+                    "status": "error",
+                    "message": blueprint_data.get("message", "Blueprint generation failed."),
+                    "_calculated": _computed_calculated(athlete),
+                }
+
+        # Valid blueprint object.
         return {
             "athlete_id": athlete_id,
-            "blueprint": json.loads(blueprint_str),
-            "_calculated": calculated,
+            "status": "ready",
+            "blueprint": blueprint_data,
+            "_calculated": _computed_calculated(athlete),
         }
+    finally:
+        conn.close()
+
+
+@router.post("/{athlete_id}/regenerate-blueprint", status_code=202)
+def regenerate_blueprint(athlete_id: int, background_tasks: BackgroundTasks):
+    """
+    Re-trigger blueprint generation for an athlete whose prior attempt failed.
+    Returns 202 immediately; Bedrock runs in the background.
+    """
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT id FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Athlete not found.")
+        background_tasks.add_task(generate_blueprint_bg, athlete_id)
+        return {"status": "pending", "message": "Blueprint generation started."}
     finally:
         conn.close()

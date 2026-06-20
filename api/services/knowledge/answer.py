@@ -5,23 +5,36 @@ Answers ONLY from the provided context.
 """
 
 import json
+from pathlib import Path
 from typing import Optional
 
 from api.services.bedrock_client import converse_text, is_configured
 from api.services.knowledge.retrieval import retrieve, KnowledgeChunk
-from api.services.safety_filters import check_input_safe, check_output_safe
 from api.services.knowledge.calculations import (
     iron_rda, calcium_rda, protein_range, hydration_needs,
     pre_training_meal_window, post_training_recovery_window, calorie_estimate,
 )
 
-_FALLBACK = (
-    "That's a great question — honestly, I don't have enough information in my knowledge base right now to give "
-    "you a confident answer on that one, and I'd rather be upfront with you than guess! "
-    "For the most accurate guidance, please check with a registered sports dietitian or your team's medical staff. "
-    "Every recommendation on Fueling2Win has been reviewed by registered dietitians, so if it's not in my knowledge "
-    "base yet, a qualified professional will be your best next step. You deserve real answers, not guesses!"
-)
+_PROMPT_FILE = Path(__file__).parent.parent.parent.parent / "prompts" / "fuelUp_system_prompt.md"
+
+
+def _load_base_prompt() -> str:
+    try:
+        return _PROMPT_FILE.read_text(encoding="utf-8")
+    except OSError:
+        return "You are FuelUp's nutrition coach for youth soccer athletes ages 9–17."
+
+
+_BASE_SYSTEM_PROMPT = _load_base_prompt()
+
+_FALLBACK = "I don't have enough approved information to answer that confidently. Please consult a registered sports dietitian or the athlete's physician for personalised guidance."
+
+_SAFETY_TERMS = [
+    "faint", "fainting", "unconscious", "chest pain", "can't breathe",
+    "eating disorder", "purge", "starving", "stop eating", "lose weight fast",
+    "anorexia", "bulimia", "binge", "severe dehydration", "seizure",
+    "vomiting blood", "not eating",
+]
 
 _CALC_KEYWORDS = {
     "iron": lambda q, a: iron_rda(a.get("age", 14), a.get("gender", "female")),
@@ -32,6 +45,11 @@ _CALC_KEYWORDS = {
     "calorie": lambda q, a: calorie_estimate(a.get("weight_lbs", 120), a.get("age", 14), a.get("gender", "female"), a.get("event_type", "rest")),
     "calories": lambda q, a: calorie_estimate(a.get("weight_lbs", 120), a.get("age", 14), a.get("gender", "female"), a.get("event_type", "rest")),
 }
+
+
+def _detect_safety_flag(question: str) -> bool:
+    q = question.lower()
+    return any(term in q for term in _SAFETY_TERMS)
 
 
 def _maybe_calculate(question: str, athlete: dict) -> Optional[dict]:
@@ -173,35 +191,17 @@ def _build_system_prompt(
 
     personalization_section = f"\n{personalization_block}\n" if personalization_block else ""
 
-    return f"""You are Fueling2Win's nutrition coach for young soccer athletes ages 9–17.
-Your job is to be their most encouraging, knowledgeable, and trustworthy guide on the field of nutrition.
+    return f"""{_BASE_SYSTEM_PROMPT}
 
 {athlete_block}
 {personalization_section}
-TONE AND BEHAVIOR — these rules apply to every single response, no exceptions:
-- You are speaking to a young teenager who is working hard at their sport. Always be warm, positive, and genuinely encouraging. Celebrate their effort and curiosity.
-- If the athlete uses angry, frustrated, or inappropriate language — do NOT mirror it. Stay calm, kind, and professional at all times. Gently redirect the conversation back to how you can help them. Never lecture them about their language; simply model the right tone.
-- Keep language simple, energetic, and relatable for a 13–17-year-old athlete. Avoid clinical or overly technical phrasing.
-- Whenever possible, frame guidance as a "win" — what they CAN do, not what they can't.
-
-CREDIBILITY — state this naturally when relevant, not robotically on every message:
-- All Fueling2Win nutrition recommendations and recipes are reviewed and approved by registered dietitians. When an athlete asks whether the advice is trustworthy or AI-generated, reassure them clearly: "Everything you see on Fueling2Win is reviewed by registered dietitians — this isn't random AI advice, it's real sports nutrition guidance you can trust."
-
-STRICT RULES — follow these exactly:
-1. Answer ONLY from the knowledge excerpts provided below. Never invent nutritional values, formulas, or dosages not present in the excerpts.
-2. HONESTY OVER GUESSING — If the excerpts do not contain enough information to answer confidently, do NOT guess or hallucinate an answer. Instead say warmly but clearly: "Honestly, I don't have a confident answer for that one in my knowledge base right now, and I'd rather be upfront than guess! All Fueling2Win guidance is reviewed by registered dietitians — for this specific question, your best move is to check with a qualified sports dietitian or your team's medical staff. You deserve a real answer, not a guess!"
-3. End every answer with: "Source: [title of the knowledge item you used]"
-4. Whenever possible, give "what to do today" guidance — make it practical and actionable.
-5. NEVER provide medical diagnosis, treatment advice, or supplement dosing.
-6. For ANY of these situations — injury, fainting, chest pain, eating disorder, severe dehydration, signs of anorexia or bulimia, extreme restriction, unintentional weight loss — respond with: "Hey, that sounds like something really important to talk to a doctor or registered sports dietitian about. Please reach out to a professional right away — they're there to help you!"
-
 KNOWLEDGE EXCERPTS:
 {chunks_text}
 {calc_text}"""
 
 
 def _call_bedrock(system_prompt: str, user_question: str) -> str:
-    return converse_text(system=system_prompt, user=user_question, max_tokens=600, temperature=0.5)
+    return converse_text(system=system_prompt, user=user_question, max_tokens=512, temperature=0.3)
 
 
 def answer_with_knowledge(question: str, athlete: dict, is_first_message: bool = False) -> dict:
@@ -210,10 +210,13 @@ def answer_with_knowledge(question: str, athlete: dict, is_first_message: bool =
     Returns {"answer": str, "citations": list, "calculation": dict|None}.
     is_first_message=True adds a one-time personalised opener drawn from the athlete's blueprint.
     """
-    # Layer 1 — input filter (model never called if this fires)
-    blocked = check_input_safe(question)
-    if blocked:
-        return {"answer": blocked, "citations": [], "calculation": None, "safety_flag": True}
+    if _detect_safety_flag(question):
+        return {
+            "answer": "This sounds like something important to discuss with a doctor or qualified sports dietitian. Please reach out to a professional right away.",
+            "citations": [],
+            "calculation": None,
+            "safety_flag": True,
+        }
 
     calc_result = _maybe_calculate(question, athlete)
     chunks = retrieve(question, top_n=5)
@@ -227,18 +230,13 @@ def answer_with_knowledge(question: str, athlete: dict, is_first_message: bool =
 
     if not is_configured():
         return {
-            "answer": "The Fueling2Win Coach isn't available right now — please check back shortly or consult your team's dietitian.",
+            "answer": "The FuelUp Coach isn't available right now — please check back shortly or consult your team's dietitian.",
             "citations": [],
             "calculation": calc_result,
         }
 
     system_prompt = _build_system_prompt(chunks, calc_result, athlete, is_first_message)
     answer_text = _call_bedrock(system_prompt, question)
-
-    # Layer 2 — output filter (model response discarded if this fires)
-    blocked = check_output_safe(answer_text)
-    if blocked:
-        return {"answer": blocked, "citations": [], "calculation": calc_result, "safety_flag": True}
 
     citations = [
         {

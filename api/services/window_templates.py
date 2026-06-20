@@ -278,7 +278,7 @@ def _everyday_dinner(base_date: date) -> dict:
 
 def _pre_event_meal(E_start: datetime, event_norm: str = "game", suffix: str = "") -> dict:
     open_dt  = clamp_window_open(E_start - timedelta(hours=3))
-    close_dt = E_start - timedelta(hours=2, minutes=30)
+    close_dt = E_start - timedelta(hours=2, minutes=45)
     if close_dt <= open_dt:
         close_dt = open_dt + timedelta(minutes=30)
     key = f"pre_event_meal{suffix}"

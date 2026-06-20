@@ -4,6 +4,7 @@ import os
 import re
 
 import boto3
+from botocore.config import Config
 
 DEFAULT_BEDROCK_MODEL = "mistral.ministral-3-8b-instruct"
 
@@ -17,7 +18,15 @@ def model_id() -> str:
 
 
 def _client():
-    return boto3.client("bedrock-runtime", region_name=_region())
+    return boto3.client(
+        "bedrock-runtime",
+        region_name=_region(),
+        config=Config(
+            read_timeout=30,
+            connect_timeout=10,
+            retries={"max_attempts": 0},
+        ),
+    )
 
 
 def is_configured() -> bool:

@@ -199,7 +199,7 @@ def _event_cycle(
     # ── Pre-event ──────────────────────────────────────────────────────────────
     if include_pre:
         pre_open_raw  = start - timedelta(hours=3)
-        pre_close_raw = start - timedelta(hours=2, minutes=30)
+        pre_close_raw = start - timedelta(hours=2, minutes=45)
 
         if _early_morning(start):
             # Per-event early-morning rule — evaluated independently for each event
@@ -248,7 +248,7 @@ def _event_cycle(
                 priority       = False,
                 is_tappable    = True,
                 why = (
-                    "A full meal 2.5–3 hours before gives your body time to digest "
+                    "A full meal 3 hours before gives your body time to digest "
                     "and top up your fuel stores."
                 ),
                 event_index = idx,
