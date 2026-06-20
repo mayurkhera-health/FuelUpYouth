@@ -173,6 +173,7 @@ def init_db():
             source TEXT,
             source_urls TEXT,
             last_reviewed_date TEXT,
+            organization TEXT,
             applicable_age_range TEXT,
             tags TEXT,
             review_status TEXT DEFAULT 'draft',
@@ -187,6 +188,8 @@ def init_db():
             chunk_index INTEGER NOT NULL,
             heading TEXT,
             content TEXT NOT NULL,
+            embedding TEXT,
+            embedding_model TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -202,6 +205,7 @@ def init_db():
             plan_date   TEXT NOT NULL,
             window_key  TEXT NOT NULL,
             item_text   TEXT NOT NULL,
+            recipe_json TEXT,
             added_by    TEXT NOT NULL DEFAULT 'parent',
             created_at  TEXT DEFAULT CURRENT_TIMESTAMP
         );
@@ -301,6 +305,11 @@ def init_db():
             UNIQUE (athlete_id, window_key, send_date, recipient)
         );
     """)
+
+    # Lightweight migrations for existing databases
+    cols = {row[1] for row in cursor.execute("PRAGMA table_info(knowledge_items)")}
+    if "organization" not in cols:
+        cursor.execute("ALTER TABLE knowledge_items ADD COLUMN organization TEXT")
 
     conn.commit()
 

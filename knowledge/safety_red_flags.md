@@ -1,7 +1,8 @@
 ---
 title: "Medical Red Flags — When to Seek Professional Help"
 category: "safety"
-source: "American Academy of Pediatrics / ACSM / Academy of Nutrition and Dietetics"
+organization: aap
+source: "American Academy of Pediatrics"
 source_urls:
   - "https://www.aap.org/en/patient-care/sports/"
 last_reviewed_date: "2026-06-10"

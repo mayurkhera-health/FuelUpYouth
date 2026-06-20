@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from api.database import get_conn
+from api.services.knowledge.embedding_utils import EMBEDDING_MODEL, embed_text, pack_embedding
 
 
 def _parse_frontmatter(text: str) -> tuple[dict, str]:
@@ -84,14 +85,15 @@ def ingest_file(file_path: str) -> dict:
     try:
         conn.execute(
             """INSERT INTO knowledge_items
-               (slug, title, category, source, source_urls, last_reviewed_date,
+               (slug, title, category, source, source_urls, organization, last_reviewed_date,
                 applicable_age_range, tags, review_status, version, file_path, ingested_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(slug) DO UPDATE SET
                  title = excluded.title,
                  category = excluded.category,
                  source = excluded.source,
                  source_urls = excluded.source_urls,
+                 organization = excluded.organization,
                  last_reviewed_date = excluded.last_reviewed_date,
                  applicable_age_range = excluded.applicable_age_range,
                  tags = excluded.tags,
@@ -105,6 +107,7 @@ def ingest_file(file_path: str) -> dict:
                 meta.get("category", "general"),
                 meta.get("source", ""),
                 json.dumps(meta.get("source_urls", [])),
+                meta.get("organization"),
                 meta.get("last_reviewed_date", ""),
                 meta.get("applicable_age_range", "9-17"),
                 json.dumps(meta.get("tags", [])),
@@ -123,9 +126,23 @@ def ingest_file(file_path: str) -> dict:
 
         conn.execute("DELETE FROM knowledge_chunks WHERE item_id = ?", (item_id,))
         for i, chunk in enumerate(chunks):
+            embedding_json = None
+            try:
+                embedding_json = pack_embedding(embed_text(chunk["content"]))
+            except Exception:
+                pass
             conn.execute(
-                "INSERT INTO knowledge_chunks (item_id, chunk_index, heading, content) VALUES (?, ?, ?, ?)",
-                (item_id, i, chunk["heading"], chunk["content"]),
+                """INSERT INTO knowledge_chunks
+                   (item_id, chunk_index, heading, content, embedding, embedding_model)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    item_id,
+                    i,
+                    chunk["heading"],
+                    chunk["content"],
+                    embedding_json,
+                    EMBEDDING_MODEL if embedding_json else None,
+                ),
             )
         conn.commit()
 

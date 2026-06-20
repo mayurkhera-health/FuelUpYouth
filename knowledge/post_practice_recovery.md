@@ -1,7 +1,8 @@
 ---
 title: "Post-Practice and Post-Game Recovery Nutrition"
 category: "recovery"
-source: "ACSM / Everett MD 2025 / Academy of Nutrition and Dietetics"
+organization: acsm
+source: "American College of Sports Medicine"
 source_urls:
   - "https://www.acsm.org/education-resources/trending-topics-resources/physical-activity-guidelines"
 last_reviewed_date: "2026-06-10"

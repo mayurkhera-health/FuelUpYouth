@@ -162,6 +162,12 @@ class PhotoMealAnalyzeRequest(BaseModel):
     allergies: Optional[List[str]] = None
 
 
+class VoiceMealAnalyzeRequest(BaseModel):
+    athlete_id: int
+    transcription: str
+    allergies: Optional[List[str]] = None
+
+
 class MealPlanSlotUpdate(BaseModel):
     plan_date: str
     slot_name: str

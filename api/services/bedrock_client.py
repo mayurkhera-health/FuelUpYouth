@@ -1,5 +1,6 @@
 """AWS Bedrock Converse API client for FuelUp AI calls."""
 import base64
+import json
 import os
 import re
 
@@ -7,6 +8,7 @@ import boto3
 from botocore.config import Config
 
 DEFAULT_BEDROCK_MODEL = "mistral.ministral-3-8b-instruct"
+DEFAULT_EMBED_MODEL = "amazon.titan-embed-text-v2:0"
 
 
 def _region() -> str:
@@ -15,6 +17,10 @@ def _region() -> str:
 
 def model_id() -> str:
     return os.getenv("BEDROCK_MODEL_ID", DEFAULT_BEDROCK_MODEL)
+
+
+def embed_model_id() -> str:
+    return os.getenv("BEDROCK_EMBED_MODEL_ID", DEFAULT_EMBED_MODEL)
 
 
 def _client():
@@ -53,6 +59,51 @@ def extract_json(text: str) -> str:
     if match:
         return match.group(1).strip()
     return raw
+
+
+def _sanitize_json_string_literals(json_str: str) -> str:
+    """Escape raw newlines/tabs/control chars inside JSON string literals."""
+    result: list[str] = []
+    in_string = False
+    escaped = False
+
+    for ch in json_str:
+        if escaped:
+            result.append(ch)
+            escaped = False
+            continue
+        if ch == "\\":
+            result.append(ch)
+            escaped = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            result.append(ch)
+            continue
+        if in_string:
+            if ch == "\n":
+                result.append("\\n")
+                continue
+            if ch == "\r":
+                result.append("\\r")
+                continue
+            if ch == "\t":
+                result.append("\\t")
+                continue
+            if ord(ch) < 32:
+                continue
+        result.append(ch)
+
+    return "".join(result)
+
+
+def parse_json_from_llm(text: str):
+    """Parse JSON from an LLM response, repairing common formatting mistakes."""
+    raw = extract_json(text)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return json.loads(_sanitize_json_string_literals(raw))
 
 
 def _extract_text(response: dict) -> str:
@@ -133,3 +184,22 @@ def converse_vision(
         inferenceConfig={"maxTokens": max_tokens, "temperature": temperature},
     )
     return _extract_text(response)
+
+
+def embed_text(text: str, *, model: str | None = None) -> list[float]:
+    """Return a dense embedding vector for semantic retrieval."""
+    trimmed = (text or "").strip()
+    if not trimmed:
+        raise ValueError("Cannot embed empty text")
+
+    response = _client().invoke_model(
+        modelId=model or embed_model_id(),
+        body=json.dumps({"inputText": trimmed[:8000]}),
+        contentType="application/json",
+        accept="application/json",
+    )
+    payload = json.loads(response["body"].read())
+    vector = payload.get("embedding")
+    if not vector:
+        raise RuntimeError("Bedrock embedding response missing 'embedding'")
+    return vector

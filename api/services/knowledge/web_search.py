@@ -1,0 +1,144 @@
+"""Live web search restricted to approved sports-nutrition domains."""
+
+from __future__ import annotations
+
+import logging
+import os
+import re
+from dataclasses import dataclass
+from html import unescape
+from urllib.parse import urlparse
+
+import requests
+
+from api.services.knowledge.approved_sources import approved_domains, match_approved_source
+from api.services.knowledge.embedding_utils import cosine_similarity, embed_text
+
+logger = logging.getLogger(__name__)
+
+_FETCH_TIMEOUT = 10
+_MAX_PAGE_CHARS = 1800
+_MAX_FETCH_PAGES = 4
+_USER_AGENT = "FuelUpYouth-NutritionCoach/1.0 (+https://fuelup-youth.fly.dev)"
+
+
+@dataclass
+class WebSearchResult:
+    url: str
+    title: str
+    snippet: str
+    content: str
+    organization_id: str
+    organization_name: str
+    organization_url: str
+    score: float = 0.0
+
+
+def _web_search_enabled() -> bool:
+    return os.getenv("COACH_WEB_SEARCH_ENABLED", "true").lower() not in ("0", "false", "no")
+
+
+def _site_filter_query(query: str) -> str:
+    domains = approved_domains()
+    site_clause = " OR ".join(f"site:{domain}" for domain in domains)
+    return f"({site_clause}) {query}"
+
+
+def _ddg_search(query: str, max_results: int) -> list[dict]:
+    try:
+        from duckduckgo_search import DDGS
+    except ImportError as exc:
+        raise RuntimeError("duckduckgo-search is required for coach web search") from exc
+
+    with DDGS() as ddgs:
+        return list(ddgs.text(query, max_results=max_results))
+
+
+def _strip_html(html: str) -> str:
+    cleaned = re.sub(r"(?is)<(script|style|noscript)[^>]*>.*?</\1>", " ", html)
+    cleaned = re.sub(r"(?is)<!--.*?-->", " ", cleaned)
+    cleaned = re.sub(r"(?s)<[^>]+>", " ", cleaned)
+    cleaned = unescape(cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
+
+
+def _fetch_page_text(url: str) -> str:
+    response = requests.get(
+        url,
+        timeout=_FETCH_TIMEOUT,
+        headers={"User-Agent": _USER_AGENT, "Accept": "text/html,application/xhtml+xml"},
+    )
+    response.raise_for_status()
+    content_type = response.headers.get("content-type", "").lower()
+    if "text/html" not in content_type and "application/xhtml" not in content_type:
+        return ""
+    return _strip_html(response.text)[:_MAX_PAGE_CHARS]
+
+
+def search_approved_sites(query: str, *, max_results: int = 5) -> list[WebSearchResult]:
+    """
+    Search the public web, limited to approved organization domains.
+    Returns page excerpts ranked by embedding similarity to the query.
+    """
+    if not _web_search_enabled():
+        return []
+
+    trimmed = (query or "").strip()
+    if not trimmed:
+        return []
+
+    try:
+        hits = _ddg_search(_site_filter_query(trimmed), max_results=max_results * 2)
+    except Exception:
+        logger.exception("Approved-domain web search failed")
+        return []
+
+    query_vec = embed_text(trimmed)
+    results: list[WebSearchResult] = []
+    seen_urls: set[str] = set()
+
+    for hit in hits:
+        url = (hit.get("href") or hit.get("url") or "").strip()
+        if not url or url in seen_urls:
+            continue
+
+        org = match_approved_source(url)
+        if not org:
+            continue
+
+        seen_urls.add(url)
+        title = (hit.get("title") or urlparse(url).path or url).strip()
+        snippet = (hit.get("body") or hit.get("snippet") or "").strip()
+
+        content = snippet
+        if len(results) < _MAX_FETCH_PAGES:
+            try:
+                page_text = _fetch_page_text(url)
+                if page_text:
+                    content = page_text
+            except Exception:
+                logger.debug("Could not fetch approved page %s", url, exc_info=True)
+
+        if not content:
+            continue
+
+        score = cosine_similarity(query_vec, embed_text(f"{title}\n{content[:1200]}"))
+        results.append(
+            WebSearchResult(
+                url=url,
+                title=title,
+                snippet=snippet,
+                content=content,
+                organization_id=org.id,
+                organization_name=org.name,
+                organization_url=org.url,
+                score=score,
+            )
+        )
+
+        if len(results) >= max_results:
+            break
+
+    results.sort(key=lambda r: r.score, reverse=True)
+    return results[:max_results]

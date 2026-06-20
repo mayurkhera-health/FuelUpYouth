@@ -1,0 +1,3491 @@
+[
+  {
+    "id": "R001",
+    "name": "Power Pasta Bowl",
+    "category": "pre-game",
+    "timing": "3hrs before game",
+    "ingredients": "Pasta, tomato sauce, grilled chicken, parmesan, spinach, milk",
+    "macros": {
+      "calories": 650,
+      "carbs_g": 85,
+      "protein_g": 45,
+      "fat_g": 12
+    },
+    "dietary": [
+      "halal-adaptable"
+    ],
+    "allergens": [
+      "gluten",
+      "dairy"
+    ]
+  },
+  {
+    "id": "R002",
+    "name": "Brown Rice Salmon Bowl",
+    "category": "pre-game",
+    "timing": "3hrs before game",
+    "ingredients": "Brown rice, grilled salmon, edamame, avocado, cucumber, soy sauce",
+    "macros": {
+      "calories": 580,
+      "carbs_g": 72,
+      "protein_g": 38,
+      "fat_g": 18
+    },
+    "dietary": [
+      "gluten-free-adaptable"
+    ],
+    "allergens": [
+      "fish",
+      "soy"
+    ]
+  },
+  {
+    "id": "R003",
+    "name": "Turkey Wrap",
+    "category": "pre-game",
+    "timing": "3hrs before game",
+    "ingredients": "Whole wheat tortilla, turkey breast, hummus, lettuce, tomato, low-fat cheese",
+    "macros": {
+      "calories": 520,
+      "carbs_g": 65,
+      "protein_g": 38,
+      "fat_g": 14
+    },
+    "dietary": [],
+    "allergens": [
+      "gluten",
+      "dairy"
+    ]
+  },
+  {
+    "id": "R004",
+    "name": "Vegan Power Pasta",
+    "category": "pre-game",
+    "timing": "3hrs before game",
+    "ingredients": "Pasta, marinara, white beans, nutritional yeast, spinach, olive oil",
+    "macros": {
+      "calories": 600,
+      "carbs_g": 90,
+      "protein_g": 28,
+      "fat_g": 10
+    },
+    "dietary": [
+      "vegan",
+      "vegetarian"
+    ],
+    "allergens": [
+      "gluten"
+    ]
+  },
+  {
+    "id": "R005",
+    "name": "Egg + Sweet Potato Bowl",
+    "category": "pre-game",
+    "timing": "3hrs before game",
+    "ingredients": "Sweet potato, scrambled eggs, spinach, whole grain toast, OJ",
+    "macros": {
+      "calories": 540,
+      "carbs_g": 70,
+      "protein_g": 28,
+      "fat_g": 16
+    },
+    "dietary": [
+      "vegetarian",
+      "gluten-free-adaptable"
+    ],
+    "allergens": [
+      "eggs",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R006",
+    "name": "Banana + PB",
+    "category": "pre-game-snack",
+    "timing": "30-60min before",
+    "ingredients": "1 large banana, 2 tbsp peanut butter",
+    "macros": {
+      "calories": 280,
+      "carbs_g": 36,
+      "protein_g": 8,
+      "fat_g": 12
+    },
+    "dietary": [
+      "vegan",
+      "gluten-free"
+    ],
+    "allergens": [
+      "peanuts"
+    ]
+  },
+  {
+    "id": "R007",
+    "name": "Toast + Honey + Milk",
+    "category": "pre-game-snack",
+    "timing": "30-60min before",
+    "ingredients": "2 slices whole grain toast, 2 tbsp honey, 8oz low-fat milk",
+    "macros": {
+      "calories": 310,
+      "carbs_g": 55,
+      "protein_g": 12,
+      "fat_g": 4
+    },
+    "dietary": [
+      "vegetarian"
+    ],
+    "allergens": [
+      "gluten",
+      "dairy"
+    ]
+  },
+  {
+    "id": "R008",
+    "name": "Greek Yogurt Parfait",
+    "category": "pre-game-snack",
+    "timing": "60min before",
+    "ingredients": "Greek yogurt, granola, banana, honey",
+    "macros": {
+      "calories": 320,
+      "carbs_g": 52,
+      "protein_g": 16,
+      "fat_g": 6
+    },
+    "dietary": [
+      "vegetarian",
+      "gluten-free-adaptable"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R009",
+    "name": "Rice Cakes + Almond Butter",
+    "category": "pre-game-snack",
+    "timing": "30-60min before",
+    "ingredients": "3 rice cakes, 2 tbsp almond butter, drizzle honey",
+    "macros": {
+      "calories": 270,
+      "carbs_g": 38,
+      "protein_g": 6,
+      "fat_g": 11
+    },
+    "dietary": [
+      "vegan",
+      "gluten-free"
+    ],
+    "allergens": [
+      "tree nuts"
+    ]
+  },
+  {
+    "id": "R010",
+    "name": "Orange Slices + Water",
+    "category": "halftime",
+    "timing": "Halftime",
+    "ingredients": "2 oranges (sliced), 16oz cold water",
+    "macros": {
+      "calories": 85,
+      "carbs_g": 22,
+      "protein_g": 1,
+      "fat_g": 0
+    },
+    "dietary": [
+      "vegan",
+      "gluten-free"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R011",
+    "name": "Banana + Natural Sports Drink",
+    "category": "halftime",
+    "timing": "Halftime",
+    "ingredients": "1 banana, 16oz natural sports drink (no artificial dyes)",
+    "macros": {
+      "calories": 180,
+      "carbs_g": 44,
+      "protein_g": 1,
+      "fat_g": 0
+    },
+    "dietary": [
+      "vegan",
+      "gluten-free"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R012",
+    "name": "Medjool Dates + Water",
+    "category": "halftime",
+    "timing": "Halftime",
+    "ingredients": "4 Medjool dates, 16oz water",
+    "macros": {
+      "calories": 240,
+      "carbs_g": 64,
+      "protein_g": 2,
+      "fat_g": 0
+    },
+    "dietary": [
+      "vegan",
+      "gluten-free",
+      "halal"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R013",
+    "name": "Chocolate Milk Recovery",
+    "category": "post-game-recovery",
+    "timing": "Within 30min",
+    "ingredients": "16oz low-fat chocolate milk, 1 banana",
+    "macros": {
+      "calories": 340,
+      "carbs_g": 58,
+      "protein_g": 16,
+      "fat_g": 5
+    },
+    "dietary": [
+      "vegetarian",
+      "gluten-free"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R014",
+    "name": "PB&J + Milk",
+    "category": "post-game-recovery",
+    "timing": "Within 30min",
+    "ingredients": "PB&J sandwich on whole grain, 8oz milk",
+    "macros": {
+      "calories": 420,
+      "carbs_g": 52,
+      "protein_g": 16,
+      "fat_g": 16
+    },
+    "dietary": [
+      "vegetarian"
+    ],
+    "allergens": [
+      "gluten",
+      "dairy",
+      "peanuts"
+    ]
+  },
+  {
+    "id": "R015",
+    "name": "Tuna + Crackers",
+    "category": "post-game-recovery",
+    "timing": "Within 30min",
+    "ingredients": "1 can tuna, whole grain crackers, 8oz milk",
+    "macros": {
+      "calories": 350,
+      "carbs_g": 38,
+      "protein_g": 32,
+      "fat_g": 6
+    },
+    "dietary": [
+      "gluten-free-adaptable"
+    ],
+    "allergens": [
+      "fish",
+      "gluten",
+      "dairy"
+    ]
+  },
+  {
+    "id": "R016",
+    "name": "Vegan Recovery Smoothie",
+    "category": "post-game-recovery",
+    "timing": "Within 30min",
+    "ingredients": "Plant protein powder, banana, oat milk, frozen berries, flaxseed",
+    "macros": {
+      "calories": 380,
+      "carbs_g": 52,
+      "protein_g": 24,
+      "fat_g": 8
+    },
+    "dietary": [
+      "vegan",
+      "gluten-free"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R017",
+    "name": "Cottage Cheese + Pineapple",
+    "category": "post-game-recovery",
+    "timing": "Bedtime casein snack",
+    "ingredients": "1 cup cottage cheese, 1/2 cup pineapple, drizzle honey",
+    "macros": {
+      "calories": 250,
+      "carbs_g": 28,
+      "protein_g": 28,
+      "fat_g": 4
+    },
+    "dietary": [
+      "vegetarian",
+      "gluten-free"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R018",
+    "name": "Pre-Practice Oatmeal Bowl",
+    "category": "practice",
+    "timing": "2-3hrs before practice",
+    "ingredients": "Rolled oats, banana, peanut butter, honey, milk, chia seeds",
+    "macros": {
+      "calories": 480,
+      "carbs_g": 68,
+      "protein_g": 18,
+      "fat_g": 14
+    },
+    "dietary": [
+      "vegetarian",
+      "gluten-free-adaptable"
+    ],
+    "allergens": [
+      "dairy",
+      "peanuts",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R019",
+    "name": "Post-Practice Rebuild Plate",
+    "category": "practice",
+    "timing": "Within 30min after practice",
+    "ingredients": "Chicken breast, brown rice, roasted broccoli, low-fat milk, olive oil",
+    "macros": {
+      "calories": 580,
+      "carbs_g": 62,
+      "protein_g": 46,
+      "fat_g": 14
+    },
+    "dietary": [
+      "gluten-free",
+      "halal"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R020",
+    "name": "Iron-Boost Hummus Plate",
+    "category": "practice",
+    "timing": "Lunch or snack",
+    "ingredients": "Hummus, spinach, lentils, pita, bell peppers, lemon juice",
+    "macros": {
+      "calories": 420,
+      "carbs_g": 52,
+      "protein_g": 18,
+      "fat_g": 14,
+      "iron_mg": 8
+    },
+    "dietary": [
+      "vegan",
+      "vegetarian",
+      "halal"
+    ],
+    "allergens": [
+      "gluten",
+      "sesame"
+    ]
+  },
+  {
+    "id": "R021",
+    "name": "Salmon Fried Rice",
+    "category": "practice",
+    "timing": "Dinner",
+    "ingredients": "Brown rice, salmon, eggs, edamame, carrots, soy sauce, sesame oil",
+    "macros": {
+      "calories": 620,
+      "carbs_g": 58,
+      "protein_g": 42,
+      "fat_g": 18
+    },
+    "dietary": [
+      "gluten-free-adaptable"
+    ],
+    "allergens": [
+      "fish",
+      "eggs",
+      "soy"
+    ]
+  },
+  {
+    "id": "R022",
+    "name": "Strength Day Protein Plate",
+    "category": "strength",
+    "timing": "Post-strength training",
+    "ingredients": "Grilled chicken, quinoa, roasted sweet potato, Greek yogurt dip, spinach",
+    "macros": {
+      "calories": 640,
+      "carbs_g": 60,
+      "protein_g": 52,
+      "fat_g": 12
+    },
+    "dietary": [
+      "gluten-free"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R023",
+    "name": "Tournament Morning Plate",
+    "category": "tournament",
+    "timing": "2-3hrs before first game",
+    "ingredients": "Oatmeal pancakes, scrambled eggs, OJ, banana, honey",
+    "macros": {
+      "calories": 680,
+      "carbs_g": 95,
+      "protein_g": 28,
+      "fat_g": 14
+    },
+    "dietary": [
+      "vegetarian"
+    ],
+    "allergens": [
+      "gluten",
+      "eggs",
+      "dairy"
+    ]
+  },
+  {
+    "id": "R024",
+    "name": "Between-Games Refuel",
+    "category": "tournament",
+    "timing": "Between tournament games",
+    "ingredients": "Banana, natural sports drink, whole grain crackers, peanut butter",
+    "macros": {
+      "calories": 380,
+      "carbs_g": 62,
+      "protein_g": 10,
+      "fat_g": 10
+    },
+    "dietary": [
+      "vegan"
+    ],
+    "allergens": [
+      "gluten",
+      "peanuts"
+    ]
+  },
+  {
+    "id": "R025",
+    "name": "Tournament Recovery Dinner",
+    "category": "tournament",
+    "timing": "Tournament evening",
+    "ingredients": "Pasta, ground turkey, marinara, parmesan, side salad, milk",
+    "macros": {
+      "calories": 720,
+      "carbs_g": 82,
+      "protein_g": 48,
+      "fat_g": 16
+    },
+    "dietary": [
+      "halal-adaptable"
+    ],
+    "allergens": [
+      "gluten",
+      "dairy"
+    ]
+  },
+  {
+    "id": "R026",
+    "name": "Bedtime Casein Snack",
+    "category": "tournament",
+    "timing": "Bedtime",
+    "ingredients": "Greek yogurt, granola, honey, walnuts",
+    "macros": {
+      "calories": 320,
+      "carbs_g": 38,
+      "protein_g": 20,
+      "fat_g": 10
+    },
+    "dietary": [
+      "vegetarian"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten",
+      "tree nuts"
+    ]
+  },
+  {
+    "id": "R027",
+    "name": "Batch Chicken + Rice + Veggies",
+    "category": "meal-prep",
+    "timing": "Meal prep \u2014 6 servings",
+    "ingredients": "Chicken breast, brown rice, broccoli, bell peppers, olive oil, garlic, lemon",
+    "macros": {
+      "calories": 480,
+      "carbs_g": 48,
+      "protein_g": 42,
+      "fat_g": 10
+    },
+    "dietary": [
+      "gluten-free",
+      "halal"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R028",
+    "name": "Tournament Week Prep Bowl",
+    "category": "meal-prep",
+    "timing": "Meal prep \u2014 tournament week",
+    "ingredients": "Quinoa, black beans, corn, chicken, avocado, lime, cilantro",
+    "macros": {
+      "calories": 520,
+      "carbs_g": 58,
+      "protein_g": 36,
+      "fat_g": 16
+    },
+    "dietary": [
+      "gluten-free",
+      "halal"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R029",
+    "name": "Chicken Rice Power Bowl",
+    "category": "practice",
+    "timing": "2-3hrs before practice",
+    "ingredients": "Grilled chicken breast, jasmine rice, roasted sweet potato, olive oil, avocado, spinach",
+    "macros": {
+      "calories": 560,
+      "carbs_g": 62,
+      "protein_g": 44,
+      "fat_g": 14
+    },
+    "dietary": [
+      "gluten-free",
+      "dairy-free",
+      "halal"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R030",
+    "name": "Turkey + Rice + Roasted Veg",
+    "category": "practice",
+    "timing": "Dinner / recovery meal",
+    "ingredients": "Ground turkey, brown rice, roasted zucchini, bell peppers, olive oil, garlic, lemon",
+    "macros": {
+      "calories": 540,
+      "carbs_g": 58,
+      "protein_g": 40,
+      "fat_g": 12
+    },
+    "dietary": [
+      "gluten-free",
+      "dairy-free",
+      "halal"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R031",
+    "name": "Salmon + Sweet Potato",
+    "category": "practice",
+    "timing": "Dinner",
+    "ingredients": "Baked salmon, roasted sweet potato, steamed broccoli, olive oil, lemon",
+    "macros": {
+      "calories": 580,
+      "carbs_g": 52,
+      "protein_g": 46,
+      "fat_g": 18
+    },
+    "dietary": [
+      "gluten-free",
+      "dairy-free"
+    ],
+    "allergens": [
+      "fish"
+    ]
+  },
+  {
+    "id": "R032",
+    "name": "Rice + Lentil Bowl",
+    "category": "practice",
+    "timing": "Lunch or dinner",
+    "ingredients": "Brown rice, red lentils, roasted carrots, spinach, olive oil, cumin, turmeric",
+    "macros": {
+      "calories": 460,
+      "carbs_g": 70,
+      "protein_g": 22,
+      "fat_g": 8,
+      "iron_mg": 6
+    },
+    "dietary": [
+      "vegan",
+      "gluten-free",
+      "dairy-free",
+      "halal"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R033",
+    "name": "GF Banana Oat Pancakes",
+    "category": "practice",
+    "timing": "Breakfast before practice",
+    "ingredients": "Gluten-free oats, banana, flaxseed, almond milk, maple syrup, berries",
+    "macros": {
+      "calories": 440,
+      "carbs_g": 72,
+      "protein_g": 10,
+      "fat_g": 12
+    },
+    "dietary": [
+      "vegan",
+      "gluten-free",
+      "dairy-free"
+    ],
+    "allergens": [
+      "tree nuts"
+    ]
+  },
+  {
+    "id": "R034",
+    "name": "Chicken + Quinoa Recovery Bowl",
+    "category": "post-game-recovery",
+    "timing": "Within 30min",
+    "ingredients": "Grilled chicken, quinoa, edamame, cucumber, olive oil, lemon",
+    "macros": {
+      "calories": 480,
+      "carbs_g": 44,
+      "protein_g": 42,
+      "fat_g": 12
+    },
+    "dietary": [
+      "gluten-free",
+      "dairy-free",
+      "halal"
+    ],
+    "allergens": [
+      "soy"
+    ]
+  },
+  {
+    "id": "R001",
+    "name": "Scrambled Egg & Turkey Bacon Wrap",
+    "category": "American    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 10 min   |    Serves: 1",
+    "ingredients": "3 large eggs,  2 strips turkey bacon,  1 whole wheat flour tortilla (10-inch),   cup shredded cheddar cheese,  Handful baby spinach,  Salt and black pepper to taste",
+    "macros": {
+      "calories": 420,
+      "carbs_g": 28,
+      "protein_g": 28,
+      "fat_g": 18
+    },
+    "dietary": [
+      "HighPro"
+    ],
+    "allergens": [
+      "dairy",
+      "egg",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R002",
+    "name": "Greek Yogurt Parfait with Granola & Berries",
+    "category": "American    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 1",
+    "ingredients": "1 cup plain full-fat Greek yogurt,   cup granola (use nut-free/GF granola if needed),   cup mixed berries (blueberries, strawberries, raspberries),  1 tbsp raw honey,  1 tbsp chia seeds",
+    "macros": {
+      "calories": 360,
+      "carbs_g": 50,
+      "protein_g": 22,
+      "fat_g": 7
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R003",
+    "name": "Overnight Oats with Almond Butter & Banana",
+    "category": "American    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 1",
+    "ingredients": "cup rolled oats (use certified GF oats if needed),   cup whole milk or oat milk,  2 tbsp natural almond butter,  1 ripe banana, sliced,  1 tbsp maple syrup or honey,   tsp cinnamon, pinch of salt",
+    "macros": {
+      "calories": 480,
+      "carbs_g": 65,
+      "protein_g": 16,
+      "fat_g": 16
+    },
+    "dietary": [
+      "Vegetarian",
+      "HighCarb"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten",
+      "tree nut"
+    ]
+  },
+  {
+    "id": "R004",
+    "name": "Mini Egg Muffins with Spinach & Cheese",
+    "category": "American    Breakfast",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 2",
+    "ingredients": "6 large eggs,  1 cup baby spinach, chopped,   cup shredded mozzarella or cheddar,   cup diced bell pepper (any colour),  2 tbsp milk,  Salt, black pepper, garlic powder to taste,  Cooking spray",
+    "macros": {
+      "calories": 320,
+      "carbs_g": 4,
+      "protein_g": 24,
+      "fat_g": 20
+    },
+    "dietary": [
+      "Vegetarian",
+      "HighPro",
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "dairy",
+      "egg"
+    ]
+  },
+  {
+    "id": "R005",
+    "name": "Avocado Toast with Poached Eggs",
+    "category": "American    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 8 min   |    Serves: 1",
+    "ingredients": "2 slices whole wheat or sourdough bread,  1 ripe avocado,  2 large eggs,  1 tbsp fresh lemon juice,   tsp red chili flakes (optional),  Salt, black pepper, everything bagel seasoning (optional)",
+    "macros": {
+      "calories": 450,
+      "carbs_g": 38,
+      "protein_g": 19,
+      "fat_g": 24
+    },
+    "dietary": [
+      "Vegetarian",
+      "HighPro"
+    ],
+    "allergens": [
+      "egg",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R006",
+    "name": "Cottage Cheese Bowl with Pineapple & Walnuts",
+    "category": "American    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 1",
+    "ingredients": "1 cup low-fat cottage cheese,   cup fresh pineapple chunks,  2 tbsp chopped walnuts,  1 tbsp raw honey,  Pinch of cinnamon",
+    "macros": {
+      "calories": 340,
+      "carbs_g": 34,
+      "protein_g": 28,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R007",
+    "name": "Smoked Salmon Bagel with Cream Cheese & Cucumber",
+    "category": "American    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 1",
+    "ingredients": "1 whole wheat or gluten-free bagel,  2 oz (55 g) cream cheese,  2 oz (55 g) smoked salmon,  4 thin cucumber slices,  1 tsp capers (optional),  Fresh dill or chives,  Lemon wedge for serving",
+    "macros": {
+      "calories": 430,
+      "carbs_g": 46,
+      "protein_g": 24,
+      "fat_g": 14
+    },
+    "dietary": [
+      "HighPro",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "dairy",
+      "fish",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R008",
+    "name": "Sweet Potato & Egg Hash",
+    "category": "American    Breakfast",
+    "timing": "Prep: 10 min   |    Cook: 22 min   |    Serves: 2",
+    "ingredients": "2 medium sweet potatoes, diced small (skin on or off),  4 large eggs,  1 red or green bell pepper, diced,   yellow onion, diced,  2 tbsp olive oil,   tsp smoked paprika,   tsp cumin,  Salt and black pepper to taste,  Fresh cilantro or parsley to garnish",
+    "macros": {
+      "calories": 390,
+      "carbs_g": 45,
+      "protein_g": 20,
+      "fat_g": 15
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "egg"
+    ]
+  },
+  {
+    "id": "R009",
+    "name": "Whole Wheat Banana Oat Pancakes",
+    "category": "American    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 15 min   |    Serves: 2",
+    "ingredients": "1 cup whole wheat flour,   cup rolled oats,  2 large eggs,  1 very ripe banana, mashed,  1 cup whole milk or almond milk,  1 tsp baking powder,   tsp vanilla extract,  Pinch of salt,  2 tbsp natural peanut or sunflower seed butter (for serving),  Sliced banana and drizzle of honey (for serving)",
+    "macros": {
+      "calories": 460,
+      "carbs_g": 68,
+      "protein_g": 18,
+      "fat_g": 12
+    },
+    "dietary": [
+      "Vegetarian",
+      "HighCarb"
+    ],
+    "allergens": [
+      "dairy",
+      "egg",
+      "gluten",
+      "peanut",
+      "tree nut"
+    ]
+  },
+  {
+    "id": "R010",
+    "name": "Chicken Congee with Soft-Boiled Egg",
+    "category": "Chinese    Breakfast",
+    "timing": "Prep: 10 min   |    Cook: 40 min   |    Serves: 2",
+    "ingredients": "cup jasmine or short-grain rice,  4 cups low-sodium chicken broth,  1 cup cooked chicken breast, shredded,  2 large eggs,  1-inch piece fresh ginger, grated,  2 scallions (spring onions), thinly sliced,  1 tsp soy sauce or tamari (GF),   tsp sesame oil,  White pepper to taste",
+    "macros": {
+      "calories": 350,
+      "carbs_g": 40,
+      "protein_g": 26,
+      "fat_g": 9
+    },
+    "dietary": [
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "egg",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R011",
+    "name": "Tamagoyaki with Brown Rice & Miso Soup",
+    "category": "Japanese    Breakfast",
+    "timing": "Prep: 10 min   |    Cook: 15 min   |    Serves: 1",
+    "ingredients": "3 large eggs,  1 tsp low-sodium soy sauce or tamari,  1 tsp mirin (or  tsp honey),  1 cup cooked short-grain brown rice,  1 cup hot water + 1 tbsp white miso paste,  1 scallion, finely sliced,  1 tsp neutral oil (avocado or light sesame)",
+    "macros": {
+      "calories": 370,
+      "carbs_g": 44,
+      "protein_g": 22,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "egg",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R012",
+    "name": "Tuna & Brown Rice Onigiri (Rice Balls)",
+    "category": "Japanese    Breakfast",
+    "timing": "Prep: 15 min   |    Cook: 25 min   |    Serves: 2",
+    "ingredients": "2 cups cooked short-grain brown rice (warm),  1 can (5 oz / 142 g) water-packed tuna, drained,  1 tbsp plain Greek yogurt or light mayo,  1 tsp low-sodium soy sauce or tamari,  2 sheets nori (dried seaweed), cut in half,   tsp sesame seeds (optional  omit for SesF),  Pinch of sea salt",
+    "macros": {
+      "calories": 410,
+      "carbs_g": 58,
+      "protein_g": 26,
+      "fat_g": 5
+    },
+    "dietary": [
+      "Low-Sodium",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "egg",
+      "fish",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R013",
+    "name": "Korean Veggie & Egg Fried Rice (Bokkeumbap)",
+    "category": "Korean    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 12 min   |    Serves: 2",
+    "ingredients": "2 cups day-old cooked brown rice,  3 large eggs,   cup frozen peas and diced carrots, thawed,   cup shredded purple cabbage,  2 cloves garlic, minced,  1 tbsp low-sodium soy sauce or tamari,  1 tsp sesame oil (omit for SesF),  1 tbsp avocado or vegetable oil,  2 scallions, sliced",
+    "macros": {
+      "calories": 380,
+      "carbs_g": 52,
+      "protein_g": 18,
+      "fat_g": 11
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "egg",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R014",
+    "name": "Moong Dal Chilla with Mint-Coriander Chutney",
+    "category": "Indian    Breakfast",
+    "timing": "Prep: 10 min   |    Cook: 15 min   |    Serves: 2",
+    "ingredients": "1 cup split yellow moong dal (soaked 4+ hours or overnight, then drained),  1 tsp fresh ginger, grated,  1 green chilli, deseeded (optional),   cup fresh spinach, finely chopped,   tsp turmeric,   tsp cumin seeds,  Salt to taste,  1 tsp oil per chilla for cooking,   cup plain low-fat yogurt + mint chutney to serve",
+    "macros": {
+      "calories": 310,
+      "carbs_g": 46,
+      "protein_g": 20,
+      "fat_g": 5
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R015",
+    "name": "Besan Omelette (Chickpea Flour Pancake)  Egg-Free",
+    "category": "Indian    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 10 min   |    Serves: 1",
+    "ingredients": "cup besan (chickpea flour),   cup water (adjust for batter consistency),   small onion, finely diced,   small tomato, finely diced,  2 tbsp fresh spinach, chopped,   tsp turmeric,   tsp cumin powder,  Pinch of red chili flakes (optional),  Salt to taste,  1 tsp olive or avocado oil,  Fresh coriander to garnish",
+    "macros": {
+      "calories": 270,
+      "carbs_g": 36,
+      "protein_g": 15,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "gluten"
+    ]
+  },
+  {
+    "id": "R016",
+    "name": "Paneer & Spinach Paratha with Plain Yogurt",
+    "category": "Indian    Breakfast",
+    "timing": "Prep: 15 min   |    Cook: 15 min   |    Serves: 2",
+    "ingredients": "1 cups whole wheat flour (atta), plus extra for rolling,  Water to knead (approx.  cup),  1 cup crumbled low-fat paneer (Indian cottage cheese),   cup baby spinach, finely chopped,   tsp cumin powder,   tsp garam masala,   tsp turmeric,  Salt to taste,  1 tsp ghee or olive oil per paratha,  1 cup plain low-fat yogurt to serve",
+    "macros": {
+      "calories": 440,
+      "carbs_g": 52,
+      "protein_g": 22,
+      "fat_g": 14
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R017",
+    "name": "Poha with Peanuts, Edamame & Lemon",
+    "category": "Indian    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 12 min   |    Serves: 2",
+    "ingredients": "2 cups thick flattened rice (poha),   cup roasted peanuts (omit for PF  use pepitas instead),   cup frozen edamame, thawed,   small onion, finely diced,  1 small potato, diced small (optional for extra carbs),   tsp turmeric,   tsp mustard seeds,  810 curry leaves,  2 tbsp avocado or coconut oil,  Juice of 1 lemon,  Salt to taste, fresh coriander to garnish",
+    "macros": {
+      "calories": 380,
+      "carbs_g": 58,
+      "protein_g": 14,
+      "fat_g": 12
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "peanut",
+      "soy"
+    ]
+  },
+  {
+    "id": "R018",
+    "name": "Huevos Rancheros with Black Beans",
+    "category": "Mexican    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 15 min   |    Serves: 2",
+    "ingredients": "4 large eggs,  4 corn tortillas (6-inch),  1 cup canned black beans, rinsed and warmed,   cup fresh or jarred low-sodium salsa,   cup crumbled cotija or shredded pepper jack cheese,  1 ripe avocado, sliced,  2 tbsp plain Greek yogurt or sour cream,  Fresh cilantro and lime wedge to serve",
+    "macros": {
+      "calories": 480,
+      "carbs_g": 46,
+      "protein_g": 26,
+      "fat_g": 22
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "egg"
+    ]
+  },
+  {
+    "id": "R019",
+    "name": "Egg & Black Bean Breakfast Quesadilla",
+    "category": "Mexican    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 10 min   |    Serves: 1",
+    "ingredients": "2 whole wheat flour tortillas (8-inch),  3 large eggs, beaten,   cup canned black beans, rinsed,   cup shredded pepper jack or cheddar cheese,   cup diced red bell pepper,  2 tbsp low-sodium salsa,  1 tsp olive oil,  Salt and pepper to taste",
+    "macros": {
+      "calories": 490,
+      "carbs_g": 46,
+      "protein_g": 30,
+      "fat_g": 18
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "egg",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R020",
+    "name": "Chilaquiles with Salsa Verde & Fried Egg",
+    "category": "Mexican    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 15 min   |    Serves: 2",
+    "ingredients": "2 cups baked corn tortilla chips (low-sodium),  1 cup store-bought or homemade salsa verde,  4 large eggs,   cup crumbled queso fresco or feta,   cup canned black beans, rinsed and warmed,   ripe avocado, sliced,  2 tbsp plain Greek yogurt,  Fresh cilantro, lime wedge,  1 tsp olive oil",
+    "macros": {
+      "calories": 470,
+      "carbs_g": 44,
+      "protein_g": 24,
+      "fat_g": 22
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "egg",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R021",
+    "name": "Natto & Brown Rice Power Bowl",
+    "category": "Japanese    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 25 min   |    Serves: 1",
+    "ingredients": "1 pack natto (fermented soybeans, ~45 g  available at Asian grocery stores),  1 cup cooked short-grain brown rice,  1 tsp low-sodium soy sauce or tamari,  1 tsp Japanese mustard (optional),  1 scallion, finely sliced,  1 sheet nori, cut into thin strips,  1 tsp rice vinegar",
+    "macros": {
+      "calories": 335,
+      "carbs_g": 55,
+      "protein_g": 18,
+      "fat_g": 6
+    },
+    "dietary": [
+      "Vegan",
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "soy"
+    ]
+  },
+  {
+    "id": "R022",
+    "name": "Chinese Steamed Egg Custard (Zheng Shui Dan)",
+    "category": "Chinese    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 12 min   |    Serves: 1",
+    "ingredients": "3 large eggs,   cup low-sodium chicken or vegetable broth (warm, not boiling),  1 tsp low-sodium soy sauce or tamari,   tsp sesame oil (omit for SesF),  1 scallion, sliced thin,  Pinch of white pepper",
+    "macros": {
+      "calories": 210,
+      "carbs_g": 3,
+      "protein_g": 19,
+      "fat_g": 13
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "egg",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R023",
+    "name": "Idli with Sambar & Coconut Chutney",
+    "category": "Indian    Breakfast",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 2",
+    "ingredients": "8 store-bought or homemade idli (fermented rice & lentil cakes),  1 cups ready-made low-sodium sambar (lentil vegetable stew),   cup fresh coconut chutney (blend:  cup grated coconut, 1 green chilli, 1 tsp ginger, salt, water),   tsp mustard seeds + curry leaves for chutney tempering,  1 tsp oil for tempering",
+    "macros": {
+      "calories": 320,
+      "carbs_g": 58,
+      "protein_g": 14,
+      "fat_g": 6
+    },
+    "dietary": [
+      "Vegan",
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R024",
+    "name": "Machaca con Huevo (Shredded Beef Scramble)",
+    "category": "Mexican    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 12 min   |    Serves: 2",
+    "ingredients": "6 oz (170 g) machaca (dried shredded beef) or lean cooked shredded beef,  4 large eggs, beaten,   small white onion, diced,  1 small tomato, diced,  1 serrano or jalapeo chilli, finely diced (optional),  1 tbsp avocado oil,  Salt and black pepper to taste,  4 warm corn tortillas and fresh salsa to serve",
+    "macros": {
+      "calories": 430,
+      "carbs_g": 28,
+      "protein_g": 34,
+      "fat_g": 18
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "egg"
+    ]
+  },
+  {
+    "id": "R025",
+    "name": "Greek Yogurt Smoothie Bowl with Seeds & Fruit",
+    "category": "American    Breakfast",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 1",
+    "ingredients": "cup plain full-fat Greek yogurt,   frozen banana,   cup frozen mango chunks,  Splash of whole milk or oat milk to blend,  1 tbsp chia seeds,  1 tbsp hemp hearts (hulled hemp seeds),   cup fresh berries (blueberries, raspberries),  1 tbsp raw honey,  2 tbsp granola (nut-free if needed)",
+    "macros": {
+      "calories": 415,
+      "carbs_g": 58,
+      "protein_g": 24,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R026",
+    "name": "Turkey, Avocado & Veggie Whole Wheat Wrap",
+    "category": "American    Lunch",
+    "timing": "Prep: 8 min   |    Cook: 0 min   |    Serves: 1",
+    "ingredients": "1 large whole wheat tortilla (10-inch),  3 oz (85 g) sliced oven-roasted turkey breast (low-sodium),   ripe avocado, sliced,  1 large romaine leaf,  4 slices cucumber,  4 cherry tomatoes, halved,  1 tbsp hummus or plain Greek yogurt spread,  1 tsp Dijon mustard,  Salt and black pepper to taste",
+    "macros": {
+      "calories": 430,
+      "carbs_g": 38,
+      "protein_g": 28,
+      "fat_g": 16
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R027",
+    "name": "Chicken Teriyaki Bowl with Brown Rice & Edamame",
+    "category": "Japanese    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 2",
+    "ingredients": "2 boneless chicken thighs (about 10 oz / 280 g total),  3 tbsp low-sodium soy sauce or tamari,  1 tbsp honey,  1 tsp rice vinegar,  1 tsp fresh ginger, grated,  1 tsp arrowroot or cornstarch (to thicken sauce),  1 cups cooked brown rice,   cup frozen edamame, thawed,   cup shredded purple cabbage,  2 scallions, sliced,  1 tsp sesame seeds (optional  omit for SesF)",
+    "macros": {
+      "calories": 490,
+      "carbs_g": 50,
+      "protein_g": 35,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R028",
+    "name": "Bibimbap (Korean Mixed Rice Bowl with Beef & Egg)",
+    "category": "Korean    Lunch",
+    "timing": "Prep: 15 min   |    Cook: 20 min   |    Serves: 2",
+    "ingredients": "1 cups cooked short-grain brown rice,  6 oz (170 g) lean ground beef or thinly sliced sirloin,  2 large eggs (fried or soft-boiled),  1 cup baby spinach, blanched and squeezed dry,  1 medium carrot, julienned and sauted,   cup bean sprouts, blanched,  2 tbsp low-sodium soy sauce or tamari,  1 tsp sesame oil (omit for SesF),  1 tsp honey,  2 cloves garlic, minced,  1 tbsp gochujang (Korean chili paste, optional  omit for strict LS),  1 tsp avocado oil",
+    "macros": {
+      "calories": 520,
+      "carbs_g": 54,
+      "protein_g": 32,
+      "fat_g": 15
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "egg",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R029",
+    "name": "Dal Tadka with Whole Wheat Roti",
+    "category": "Indian    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 25 min   |    Serves: 2",
+    "ingredients": "cup split red lentils (masoor dal), rinsed,  2 cups water,  1 medium tomato, diced,   small onion, diced,  2 cloves garlic, minced,  1 tsp fresh ginger, grated,   tsp turmeric,   tsp cumin seeds,   tsp coriander powder,  1 tbsp ghee or avocado oil for tadka,  Salt to taste,  4 small whole wheat rotis (store-bought or homemade),  Fresh coriander and lime wedge to serve",
+    "macros": {
+      "calories": 420,
+      "carbs_g": 66,
+      "protein_g": 20,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "gluten"
+    ]
+  },
+  {
+    "id": "R030",
+    "name": "Chicken & Black Bean Tortilla Soup",
+    "category": "Mexican    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 25 min   |    Serves: 3",
+    "ingredients": "2 boneless chicken breasts (about 12 oz / 340 g),  1 can (15 oz / 425 g) black beans, rinsed,  1 can (14 oz / 400 g) fire-roasted diced tomatoes,  3 cups low-sodium chicken broth,  1 cup frozen corn kernels,  1 small onion, diced,  2 cloves garlic, minced,  1 tsp cumin,   tsp smoked paprika,   tsp chili powder,  1 tbsp avocado oil,  Baked corn tortilla strips, avocado, plain Greek yogurt, and lime to serve",
+    "macros": {
+      "calories": 460,
+      "carbs_g": 46,
+      "protein_g": 36,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R031",
+    "name": "Tuna Salad Lettuce Cups",
+    "category": "American    Lunch",
+    "timing": "Prep: 8 min   |    Cook: 0 min   |    Serves: 1",
+    "ingredients": "1 can (5 oz / 142 g) water-packed tuna, drained,  2 tbsp plain Greek yogurt (or light mayo),  1 stalk celery, finely diced,  2 tbsp diced red onion,  1 tsp Dijon mustard,  1 tsp lemon juice,  Salt and black pepper to taste,  6 large romaine or butter lettuce leaves,   avocado, sliced (for serving)",
+    "macros": {
+      "calories": 280,
+      "carbs_g": 8,
+      "protein_g": 30,
+      "fat_g": 11
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "dairy",
+      "egg",
+      "fish"
+    ]
+  },
+  {
+    "id": "R032",
+    "name": "Ground Turkey & Veggie Brown Rice Bowl",
+    "category": "American    Lunch",
+    "timing": "Prep: 5 min   |    Cook: 20 min   |    Serves: 2",
+    "ingredients": "8 oz (225 g) lean ground turkey,  1 cups cooked brown rice,  1 cup broccoli florets, steamed,  1 medium carrot, diced and steamed,  2 cloves garlic, minced,  1 tbsp low-sodium soy sauce or tamari,  1 tsp olive oil,   tsp smoked paprika,  Salt and pepper to taste,  Lime wedge and fresh herbs to serve",
+    "macros": {
+      "calories": 460,
+      "carbs_g": 48,
+      "protein_g": 34,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "soy"
+    ]
+  },
+  {
+    "id": "R033",
+    "name": "Egg Salad on Whole Wheat with Greens",
+    "category": "American    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 10 min   |    Serves: 1",
+    "ingredients": "3 large eggs, hard-boiled and peeled,  1 tbsp plain Greek yogurt,  1 tsp Dijon mustard,  1 stalk celery, finely diced,  Salt, black pepper, smoked paprika to taste,  2 slices whole wheat bread, toasted,  Handful baby spinach or arugula,  2 slices tomato",
+    "macros": {
+      "calories": 370,
+      "carbs_g": 32,
+      "protein_g": 24,
+      "fat_g": 14
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "egg",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R034",
+    "name": "Miso Ramen with Soft-Boiled Egg & Chicken",
+    "category": "Japanese    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 2",
+    "ingredients": "2 portions buckwheat soba noodles (or ramen noodles),  2 boneless chicken thighs, poached and shredded,  2 large eggs, soft-boiled (67 min),  3 cups low-sodium chicken broth,  2 tbsp white miso paste,  1 tsp low-sodium soy sauce or tamari,  1 tsp sesame oil (omit for SesF),  1 cup baby bok choy, halved and blanched,  2 scallions, sliced,  4 slices bamboo shoots (optional)",
+    "macros": {
+      "calories": 490,
+      "carbs_g": 50,
+      "protein_g": 34,
+      "fat_g": 12
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "egg",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R035",
+    "name": "Korean Japchae (Glass Noodles with Beef & Vegetables)",
+    "category": "Korean    Lunch",
+    "timing": "Prep: 15 min   |    Cook: 20 min   |    Serves: 2",
+    "ingredients": "4 oz (115 g) dried sweet potato glass noodles (dangmyeon),  5 oz (140 g) lean beef sirloin, thinly sliced,  1 cup baby spinach,  1 medium carrot, julienned,   red bell pepper, thinly sliced,  3 dried shiitake mushrooms, soaked and sliced,  2 cloves garlic, minced,  2 tbsp low-sodium soy sauce or tamari,  1 tsp sesame oil (omit for SesF),  1 tsp honey,  1 tsp avocado oil,  1 scallion, sliced",
+    "macros": {
+      "calories": 470,
+      "carbs_g": 60,
+      "protein_g": 26,
+      "fat_g": 11
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R036",
+    "name": "Chole (Chickpea Curry) with Basmati Rice",
+    "category": "Indian    Lunch",
+    "timing": "Prep: 5 min   |    Cook: 25 min   |    Serves: 2",
+    "ingredients": "1 can (15 oz / 425 g) chickpeas, rinsed,  1 cup cooked basmati rice,  1 can (14 oz / 400 g) diced tomatoes,  1 small onion, finely diced,  3 cloves garlic, minced,  1 tsp fresh ginger, grated,  1 tsp cumin,  1 tsp coriander,   tsp turmeric,   tsp garam masala,   tsp cayenne (optional),  1 tbsp avocado oil,  Salt to taste, fresh coriander and lemon to serve",
+    "macros": {
+      "calories": 430,
+      "carbs_g": 68,
+      "protein_g": 18,
+      "fat_g": 9
+    },
+    "dietary": [
+      "Vegan",
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R037",
+    "name": "Saag Paneer with Jeera Rice",
+    "category": "Indian    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 2",
+    "ingredients": "1 cups baby spinach +  cup frozen peas, blended smooth,  7 oz (200 g) low-fat paneer, cubed,  1 small onion, diced,  2 cloves garlic, minced,  1 tsp ginger, grated,   tsp cumin seeds,   tsp turmeric,   tsp garam masala,  2 tbsp plain low-fat yogurt,  1 tbsp avocado oil,  Salt to taste,  1 cup cooked basmati rice (cumin seeds toasted in oil, then rice cooked)",
+    "macros": {
+      "calories": 480,
+      "carbs_g": 52,
+      "protein_g": 26,
+      "fat_g": 16
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R038",
+    "name": "Arroz con Pollo (Chicken & Rice)",
+    "category": "Mexican    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 30 min   |    Serves: 3",
+    "ingredients": "3 boneless chicken thighs (about 14 oz / 400 g),  1 cup long-grain or basmati rice,  1 cups low-sodium chicken broth,  1 can (14 oz / 400 g) diced tomatoes,   small onion, diced,  2 cloves garlic, minced,   cup frozen peas,  1 tsp cumin,   tsp smoked paprika,   tsp turmeric (for colour),  1 tbsp avocado oil,  Salt and pepper, fresh cilantro and lime to serve",
+    "macros": {
+      "calories": 490,
+      "carbs_g": 54,
+      "protein_g": 34,
+      "fat_g": 11
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R039",
+    "name": "Bean & Cheese Quesadilla with Guacamole",
+    "category": "Mexican    Lunch",
+    "timing": "Prep: 8 min   |    Cook: 10 min   |    Serves: 1",
+    "ingredients": "2 whole wheat flour tortillas (8-inch),   cup canned refried beans (low-sodium) or mashed black beans,   cup shredded Monterey Jack or pepper jack cheese,   cup corn kernels,  1 ripe avocado, mashed with lime and a pinch of salt,  2 tbsp low-sodium salsa,  Fresh cilantro to garnish",
+    "macros": {
+      "calories": 510,
+      "carbs_g": 54,
+      "protein_g": 22,
+      "fat_g": 22
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R040",
+    "name": "Soba Noodle Salad with Edamame & Sesame Ginger Dressing",
+    "category": "Japanese    Lunch",
+    "timing": "Prep: 12 min   |    Cook: 8 min   |    Serves: 2",
+    "ingredients": "6 oz (170 g) dried soba noodles (100% buckwheat for GF),  1 cup frozen edamame, thawed,  1 medium carrot, julienned,   red bell pepper, thinly sliced,  2 scallions, sliced,  1 tbsp low-sodium soy sauce or tamari,  1 tbsp rice vinegar,  1 tsp fresh ginger, grated,  1 tsp honey,  1 tsp sesame oil (omit for SesF),  1 tsp sesame seeds (omit for SesF),  1 tsp avocado oil",
+    "macros": {
+      "calories": 420,
+      "carbs_g": 62,
+      "protein_g": 20,
+      "fat_g": 9
+    },
+    "dietary": [
+      "Vegan",
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R041",
+    "name": "Grilled Chicken Caesar Salad (No Croutons)",
+    "category": "American    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 12 min   |    Serves: 2",
+    "ingredients": "2 boneless chicken breasts (about 10 oz / 280 g),  4 cups chopped romaine lettuce,  3 tbsp plain Greek yogurt,  1 tbsp fresh lemon juice,  1 tsp Worcestershire sauce,  1 small clove garlic, minced,  2 tbsp grated Parmesan,   tsp Dijon mustard,  Salt and black pepper to taste,  Lemon wedges to serve",
+    "macros": {
+      "calories": 340,
+      "carbs_g": 8,
+      "protein_g": 40,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R042",
+    "name": "Lentil Vegetable Soup with Whole Wheat Roll",
+    "category": "American    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 30 min   |    Serves: 3",
+    "ingredients": "1 cup red lentils, rinsed,  1 medium carrot, diced,  2 stalks celery, diced,  1 small onion, diced,  2 cloves garlic, minced,  1 can (14 oz / 400 g) diced tomatoes,  4 cups low-sodium vegetable or chicken broth,  1 tsp cumin,   tsp turmeric,   tsp smoked paprika,  1 tbsp olive oil,  Juice of  lemon,  Salt and pepper, fresh parsley to serve,  2 whole wheat dinner rolls",
+    "macros": {
+      "calories": 400,
+      "carbs_g": 64,
+      "protein_g": 18,
+      "fat_g": 7
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "gluten"
+    ]
+  },
+  {
+    "id": "R043",
+    "name": "Salmon Teriyaki with Steamed Broccoli & Rice",
+    "category": "Japanese    Lunch",
+    "timing": "Prep: 5 min   |    Cook: 18 min   |    Serves: 2",
+    "ingredients": "2 salmon fillets (5 oz / 140 g each), skin-on,  3 tbsp low-sodium soy sauce or tamari,  1 tbsp honey,  1 tsp rice vinegar,  1 tsp fresh ginger, grated,  1 tsp cornstarch dissolved in 1 tsp water,  1 cups cooked brown rice,  2 cups broccoli florets, steamed,  1 tsp sesame seeds (omit for SesF),  Lemon wedge to serve",
+    "macros": {
+      "calories": 510,
+      "carbs_g": 46,
+      "protein_g": 38,
+      "fat_g": 14
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "fish",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R044",
+    "name": "Doenjang Jjigae (Korean Fermented Soybean Stew)",
+    "category": "Korean    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 2",
+    "ingredients": "2 tbsp doenjang (Korean fermented soybean paste),  3 cups low-sodium vegetable or anchovy broth,  1 block (7 oz / 200 g) firm tofu, cubed,  1 small zucchini, diced,   cup mushrooms (shiitake or oyster), sliced,   small onion, diced,  2 cloves garlic, minced,  1 scallion, sliced,  1 small green chilli (optional),  1 cup cooked brown rice per person to serve",
+    "macros": {
+      "calories": 370,
+      "carbs_g": 44,
+      "protein_g": 20,
+      "fat_g": 9
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "soy"
+    ]
+  },
+  {
+    "id": "R045",
+    "name": "Rajma (Kidney Bean Curry) with Rice",
+    "category": "Indian    Lunch",
+    "timing": "Prep: 5 min   |    Cook: 25 min   |    Serves: 2",
+    "ingredients": "1 can (15 oz / 425 g) red kidney beans, rinsed,  1 can (14 oz / 400 g) diced tomatoes,  1 small onion, finely diced,  3 cloves garlic, minced,  1 tsp ginger, grated,  1 tsp cumin seeds,  1 tsp coriander powder,   tsp turmeric,   tsp garam masala,   tsp cayenne (optional),  1 tbsp avocado or coconut oil,  Salt to taste, fresh coriander and lime to serve,  1 cups cooked basmati rice",
+    "macros": {
+      "calories": 420,
+      "carbs_g": 68,
+      "protein_g": 17,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegan",
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R046",
+    "name": "Aloo Gobi Wrap with Mint Yogurt",
+    "category": "Indian    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 2",
+    "ingredients": "2 medium potatoes, diced small,  2 cups cauliflower florets, chopped,  1 small onion, sliced,  2 cloves garlic, minced,   tsp turmeric,  1 tsp cumin,   tsp garam masala,  1 tbsp avocado oil,  Salt to taste,  4 small whole wheat rotis or wraps,   cup plain low-fat yogurt + 2 tbsp chopped fresh mint + pinch of cumin (dip)",
+    "macros": {
+      "calories": 390,
+      "carbs_g": 64,
+      "protein_g": 14,
+      "fat_g": 9
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R047",
+    "name": "Fish Tacos with Mango Slaw & Lime Crema",
+    "category": "Mexican    Lunch",
+    "timing": "Prep: 12 min   |    Cook: 10 min   |    Serves: 2",
+    "ingredients": "10 oz (280 g) tilapia or mahi-mahi fillets,  1 tsp cumin,  tsp smoked paprika,  tsp garlic powder,  Salt and pepper, 1 tbsp avocado oil,  6 small corn tortillas,  1 cup shredded purple cabbage,   ripe mango, diced,  Juice of 1 lime,   cup plain Greek yogurt + 1 tsp lime juice + pinch of salt,  Fresh cilantro",
+    "macros": {
+      "calories": 470,
+      "carbs_g": 44,
+      "protein_g": 34,
+      "fat_g": 12
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "fish"
+    ]
+  },
+  {
+    "id": "R048",
+    "name": "Pozole Verde with Chicken (Green Hominy Stew)",
+    "category": "Mexican    Lunch",
+    "timing": "Prep: 10 min   |    Cook: 30 min   |    Serves: 3",
+    "ingredients": "2 boneless chicken breasts (about 10 oz / 280 g), poached and shredded,  1 can (15 oz / 425 g) hominy, rinsed,  4 cups low-sodium chicken broth,  4 tomatillos, husked and quartered,  1 small onion, quartered,  2 cloves garlic,  1 jalapeo, deseeded,   cup cilantro,  1 tsp cumin,  Salt to taste,  Shredded cabbage, sliced radishes, lime wedges to serve",
+    "macros": {
+      "calories": 400,
+      "carbs_g": 42,
+      "protein_g": 32,
+      "fat_g": 6
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R049",
+    "name": "Spinach & Feta Stuffed Whole Wheat Pita",
+    "category": "American    Lunch",
+    "timing": "Prep: 8 min   |    Cook: 0 min   |    Serves: 1",
+    "ingredients": "1 large whole wheat pita pocket,  1 cup baby spinach,  3 tbsp crumbled feta cheese,   cup canned chickpeas, rinsed,  4 cherry tomatoes, halved,  2 tbsp hummus,  1 tsp olive oil, 1 tsp lemon juice,  Salt and pepper to taste",
+    "macros": {
+      "calories": 380,
+      "carbs_g": 48,
+      "protein_g": 18,
+      "fat_g": 13
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R050",
+    "name": "Caprese Whole Wheat Sandwich with Pesto",
+    "category": "American    Lunch",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 1",
+    "ingredients": "2 slices whole wheat sourdough or multigrain bread,  3 oz (85 g) fresh mozzarella, sliced,  1 medium tomato, sliced,  6 fresh basil leaves,  1 tbsp basil pesto (store-bought or homemade  check for tree nuts),  1 tsp balsamic glaze,  Salt and black pepper to taste",
+    "macros": {
+      "calories": 420,
+      "carbs_g": 38,
+      "protein_g": 20,
+      "fat_g": 18
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R051",
+    "name": "Sheet Pan Chicken Thighs with Sweet Potato & Broccoli",
+    "category": "American    Dinner",
+    "timing": "Prep: 10 min   |    Cook: 30 min   |    Serves: 2",
+    "ingredients": "4 bone-in chicken thighs (skin removed, about 1.5 lb / 680 g),  2 medium sweet potatoes, cubed,  2 cups broccoli florets,  2 tbsp olive oil,  1 tsp garlic powder,  1 tsp smoked paprika,   tsp onion powder,  Salt and black pepper to taste,  Fresh parsley and lemon wedges to serve",
+    "macros": {
+      "calories": 490,
+      "carbs_g": 42,
+      "protein_g": 38,
+      "fat_g": 16
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R052",
+    "name": "Beef & Vegetable Stir-Fry with Brown Rice",
+    "category": "Chinese    Dinner",
+    "timing": "Prep: 15 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "1 lb flank steak, thinly sliced against the grain,  2 cups brown rice, cooked,  2 cups broccoli florets,  1 red bell pepper, sliced,  1 cup snap peas,  1 medium carrot, julienned,  3 cloves garlic, minced,  1 tsp fresh ginger, grated,  3 tbsp low-sodium soy sauce (or coconut aminos for SoyF),  1 tbsp rice vinegar,  1 tsp sesame oil (omit for SesF),  1 tbsp cornstarch,  1 tbsp avocado oil,  2 green onions, sliced",
+    "macros": {
+      "calories": 520,
+      "carbs_g": 55,
+      "protein_g": 38,
+      "fat_g": 14
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R053",
+    "name": "Baked Salmon with Quinoa & Roasted Asparagus",
+    "category": "American    Dinner",
+    "timing": "Prep: 10 min   |    Cook: 25 min   |    Serves: 4",
+    "ingredients": "4 salmon fillets (5 oz each),  1 cups quinoa, rinsed,  3 cups water,  1 lb asparagus, tough ends trimmed,  2 tbsp olive oil,  2 cloves garlic, minced,  1 lemon (zest + juice),  1 tsp dried dill,   tsp smoked paprika,  Salt and pepper to taste,  2 tbsp fresh parsley, chopped",
+    "macros": {
+      "calories": 510,
+      "carbs_g": 40,
+      "protein_g": 42,
+      "fat_g": 18
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "fish"
+    ]
+  },
+  {
+    "id": "R054",
+    "name": "Chicken Katsu with Brown Rice & Miso Soup",
+    "category": "Japanese    Dinner",
+    "timing": "Prep: 15 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "4 boneless chicken breasts (5 oz each), pounded to -inch thick,  1 cup panko breadcrumbs (GF panko for GF),  2 eggs, beaten (or aquafaba for EF),   cup all-purpose flour (or rice flour for GF/WF),  1 tsp garlic powder,   tsp salt,  2 tbsp avocado oil,  2 cups brown rice, cooked,  3 cups water,  2 tsp white miso paste,  1 cup silken tofu, cubed,  2 green onions, sliced,  1 sheet dried nori, cut into strips",
+    "macros": {
+      "calories": 540,
+      "carbs_g": 58,
+      "protein_g": 44,
+      "fat_g": 12
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "egg",
+      "gluten",
+      "soy"
+    ]
+  },
+  {
+    "id": "R055",
+    "name": "Bulgogi Beef Bowl with Rice & Kimchi",
+    "category": "Korean    Dinner",
+    "timing": "Prep: 20 min   |    Cook: 10 min   |    Serves: 4",
+    "ingredients": "1 lb beef ribeye or sirloin, very thinly sliced,  2 cups short-grain white rice or brown rice, cooked,  1 cup store-bought kimchi (or cucumber slices for SoyF/low-sodium),  2 cups baby spinach or shredded lettuce,  1 medium carrot, julienned,  1 cucumber, sliced,  2 tbsp toasted sesame seeds (omit for SesF),  3 tbsp low-sodium soy sauce (or coconut aminos),  1 tbsp brown sugar or honey,  1 tbsp sesame oil (omit for SesF),  3 cloves garlic, minced,  1 tsp fresh ginger, grated,  2 green onions, chopped,   Asian pear or apple, grated (natural tenderizer)",
+    "macros": {
+      "calories": 530,
+      "carbs_g": 58,
+      "protein_g": 36,
+      "fat_g": 15
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R056",
+    "name": "Butter Chicken (Murgh Makhani) with Basmati Rice",
+    "category": "Indian    Dinner",
+    "timing": "Prep: 20 min   |    Cook: 30 min   |    Serves: 4",
+    "ingredients": "1.5 lbs boneless chicken thighs, cut into chunks,  1 cups basmati rice, rinsed and cooked,  1 can (14 oz) crushed tomatoes,   cup full-fat coconut milk (for DF version),  1 medium onion, diced,  4 cloves garlic, minced,  1 tbsp fresh ginger, grated,  2 tbsp ghee or avocado oil,  1 tsp garam masala,  1 tsp cumin,  1 tsp turmeric,  1 tsp coriander,   tsp chili powder,  Salt to taste,  Fresh cilantro for garnish,   cup plain yogurt (or coconut yogurt for DF),  1 tbsp lemon juice",
+    "macros": {
+      "calories": 560,
+      "carbs_g": 52,
+      "protein_g": 40,
+      "fat_g": 20
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "GF"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R057",
+    "name": "Dal Makhani with Brown Rice",
+    "category": "Indian    Dinner",
+    "timing": "Prep: 15 min   |    Cook: 45 min   |    Serves: 4",
+    "ingredients": "1 cup whole black lentils (urad dal), soaked overnight and drained,   cup kidney beans, canned (rinsed and drained),  2 cups brown rice, cooked,  1 can (14 oz) diced tomatoes,   cup coconut milk,  1 medium onion, finely diced,  4 cloves garlic, minced,  1 tbsp fresh ginger, grated,  2 tbsp ghee or avocado oil,  1 tsp cumin seeds,  1 tsp garam masala,  1 tsp coriander powder,   tsp smoked paprika,  Salt to taste,  Fresh cilantro and lemon wedges to serve",
+    "macros": {
+      "calories": 490,
+      "carbs_g": 72,
+      "protein_g": 22,
+      "fat_g": 14
+    },
+    "dietary": [
+      "Vegetarian",
+      "Ve",
+      "Low-Sugar / Diabetic-Friendly",
+      "GF"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R058",
+    "name": "Carne Asada Tacos with Black Beans & Pico de Gallo",
+    "category": "Mexican    Dinner",
+    "timing": "Prep: 20 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "1.5 lbs skirt steak,  8 small corn tortillas (certified GF for GF),  1 can (15 oz) black beans, rinsed and drained,  2 limes (juice),  1 orange (juice),  3 cloves garlic, minced,  1 tsp cumin,  1 tsp chili powder,  1 tbsp olive oil,  3 roma tomatoes, diced,   white onion, finely diced,  1 jalapeo, seeded and minced,   cup fresh cilantro, chopped,  Juice of 1 lime,  Salt to taste,  1 avocado, sliced,  Crumbled cotija cheese (optional  omit for DF)",
+    "macros": {
+      "calories": 545,
+      "carbs_g": 50,
+      "protein_g": 38,
+      "fat_g": 20
+    },
+    "dietary": [
+      "GF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R059",
+    "name": "Ground Turkey Enchiladas with Red Sauce",
+    "category": "Mexican    Dinner",
+    "timing": "Prep: 20 min   |    Cook: 30 min   |    Serves: 4",
+    "ingredients": "1 lb lean ground turkey,  8 corn tortillas (certified GF for GF),  1 can (15 oz) black beans, rinsed,  1 cup frozen corn kernels,  1 cups red enchilada sauce (store-bought low-sodium),  1 cup shredded Mexican-blend cheese (omit for DF),  1 small onion, diced,  2 cloves garlic, minced,  1 tsp cumin,  1 tsp chili powder,   tsp oregano,  1 tbsp olive oil,  Fresh cilantro and lime wedges to serve,  1 avocado, sliced, to serve",
+    "macros": {
+      "calories": 520,
+      "carbs_g": 52,
+      "protein_g": 36,
+      "fat_g": 18
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R060",
+    "name": "Tofu & Vegetable Curry with Brown Rice",
+    "category": "Indian    Dinner",
+    "timing": "Prep: 15 min   |    Cook: 25 min   |    Serves: 4",
+    "ingredients": "14 oz extra-firm tofu, pressed and cubed,  2 cups brown rice, cooked,  1 can (14 oz) full-fat coconut milk,  1 can (14 oz) diced tomatoes,  2 cups baby spinach,  1 cup frozen peas,  1 medium onion, diced,  3 cloves garlic, minced,  1 tbsp fresh ginger, grated,  2 tbsp avocado oil,  1 tsp curry powder,  1 tsp turmeric,  1 tsp cumin,   tsp garam masala,  Salt to taste,  Fresh cilantro and lemon wedges",
+    "macros": {
+      "calories": 480,
+      "carbs_g": 56,
+      "protein_g": 20,
+      "fat_g": 20
+    },
+    "dietary": [
+      "Vegetarian",
+      "Ve",
+      "GF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "soy"
+    ]
+  },
+  {
+    "id": "R061",
+    "name": "Teriyaki Chicken Bowl with Brown Rice & Edamame",
+    "category": "Japanese    Dinner",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "1.5 lbs boneless skinless chicken thighs,  2 cups brown rice, cooked,  1 cup shelled edamame, thawed,  1 cup shredded purple cabbage,  1 large carrot, julienned,  2 green onions, sliced,  1 tbsp sesame seeds (omit for SesF),  1 tbsp avocado oil,  Teriyaki sauce: 4 tbsp low-sodium soy sauce (or coconut aminos for SoyF),  2 tbsp honey or maple syrup,  1 tbsp rice vinegar,  1 tsp fresh ginger, grated,  2 cloves garlic, minced,  1 tsp cornstarch dissolved in 1 tsp water",
+    "macros": {
+      "calories": 530,
+      "carbs_g": 55,
+      "protein_g": 40,
+      "fat_g": 12
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "DF"
+    ],
+    "allergens": [
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R062",
+    "name": "Bibimbap with Seasoned Ground Beef & Mixed Vegetables",
+    "category": "Korean    Dinner",
+    "timing": "Prep: 20 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "1 lb lean ground beef,  2 cups short-grain white rice, cooked,  2 cups baby spinach,  1 cup bean sprouts,  1 large carrot, julienned,  1 zucchini, julienned,  4 eggs (omit for EF),  2 tbsp avocado oil,  Gochujang sauce (serve on side; omit for low-spice): 2 tbsp gochujang paste,  1 tbsp sesame oil (omit for SesF),  1 tbsp honey,  1 tsp rice vinegar,  Beef seasoning: 2 tbsp low-sodium soy sauce, 1 tsp sesame oil, 1 tsp garlic, minced",
+    "macros": {
+      "calories": 550,
+      "carbs_g": 52,
+      "protein_g": 36,
+      "fat_g": 20
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "egg",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R063",
+    "name": "Chicken Tikka Masala with Garlic Naan",
+    "category": "Indian    Dinner",
+    "timing": "Prep: 20 min   |    Cook: 30 min   |    Serves: 4",
+    "ingredients": "1.5 lbs boneless chicken breast, cubed,  4 pieces store-bought naan (or GF flatbread for GF/WF),  1 can (14 oz) crushed tomatoes,   cup full-fat coconut milk,  1 medium onion, diced,  4 cloves garlic, minced,  1 tbsp fresh ginger, grated,  2 tbsp ghee or avocado oil,  2 tsp garam masala,  1 tsp cumin,  1 tsp turmeric,  1 tsp coriander,   tsp chili powder,   cup plain yogurt (or coconut yogurt for DF),  Juice of  lemon,  Fresh cilantro to garnish",
+    "macros": {
+      "calories": 560,
+      "carbs_g": 48,
+      "protein_g": 42,
+      "fat_g": 18
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R064",
+    "name": "Sheet Pan Shrimp Fajitas with Guacamole",
+    "category": "Mexican    Dinner",
+    "timing": "Prep: 15 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "1.5 lbs large shrimp, peeled and deveined,  8 small flour tortillas (or corn for GF/WF),  3 bell peppers (red, yellow, green), sliced,  1 large onion, sliced into strips,  2 tbsp avocado oil,  2 tsp chili powder,  1 tsp cumin,  1 tsp garlic powder,   tsp smoked paprika,  Juice of 1 lime,  Salt to taste,  Guacamole: 2 avocados mashed with lime juice, salt,  diced tomato, cilantro,  Optional: plain Greek yogurt (or coconut yogurt for DF) as sour cream substitute",
+    "macros": {
+      "calories": 490,
+      "carbs_g": 48,
+      "protein_g": 34,
+      "fat_g": 18
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten",
+      "shellfish"
+    ]
+  },
+  {
+    "id": "R065",
+    "name": "Turkey Meatballs with Whole Wheat Spaghetti & Marinara",
+    "category": "American    Dinner",
+    "timing": "Prep: 20 min   |    Cook: 25 min   |    Serves: 4",
+    "ingredients": "1 lb lean ground turkey,  12 oz whole wheat spaghetti (or GF pasta for GF/WF),  2 cups store-bought low-sodium marinara sauce,   cup breadcrumbs (GF breadcrumbs for GF),  1 egg (or 1 tbsp flaxseed + 3 tbsp water for EF),  2 cloves garlic, minced,  2 tbsp fresh parsley, chopped,   cup Parmesan cheese, grated (omit for DF),   tsp Italian seasoning,  Salt and pepper to taste,  1 tbsp olive oil,  Fresh basil to garnish",
+    "macros": {
+      "calories": 540,
+      "carbs_g": 62,
+      "protein_g": 38,
+      "fat_g": 14
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "egg",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R066",
+    "name": "Miso-Glazed Salmon with Bok Choy & Jasmine Rice",
+    "category": "Japanese    Dinner",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "4 salmon fillets (5 oz each),  2 cups jasmine rice, cooked,  4 baby bok choy, halved lengthwise,  2 tbsp white miso paste,  1 tbsp honey or maple syrup,  1 tbsp low-sodium soy sauce (or tamari for GF),  1 tbsp rice vinegar,  1 tsp sesame oil (omit for SesF),  1 tsp fresh ginger, grated,  1 tbsp avocado oil,  1 tbsp sesame seeds, to garnish (omit for SesF),  2 green onions, sliced",
+    "macros": {
+      "calories": 510,
+      "carbs_g": 44,
+      "protein_g": 40,
+      "fat_g": 18
+    },
+    "dietary": [
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "fish",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R067",
+    "name": "Beef & Broccoli Stir-Fry with Garlic Brown Rice",
+    "category": "Chinese    Dinner",
+    "timing": "Prep: 15 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "1 lb sirloin or flank steak, thinly sliced,  4 cups broccoli florets,  2 cups brown rice, cooked,  3 cloves garlic, minced (2 for sauce, 1 for rice),  1 tsp fresh ginger, grated,  1 tbsp avocado oil,  Sauce: 4 tbsp low-sodium soy sauce (or coconut aminos for SoyF),  1 tbsp oyster sauce (omit for SoyF/SF  use hoisin or extra soy),  1 tbsp honey,  1 tsp cornstarch dissolved in 2 tsp water,   tsp sesame oil (omit for SesF),  1 tbsp sesame seeds (omit for SesF)",
+    "macros": {
+      "calories": 510,
+      "carbs_g": 50,
+      "protein_g": 36,
+      "fat_g": 15
+    },
+    "dietary": [
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R068",
+    "name": "Rajma (Red Kidney Bean Curry) with Basmati Rice",
+    "category": "Indian    Dinner",
+    "timing": "Prep: 10 min   |    Cook: 30 min   |    Serves: 4",
+    "ingredients": "2 cans (15 oz each) red kidney beans, drained and rinsed,  1 cups basmati rice, cooked,  1 can (14 oz) crushed tomatoes,  1 medium onion, finely diced,  4 cloves garlic, minced,  1 tbsp fresh ginger, grated,  2 tbsp avocado oil,  1 tsp cumin seeds,  1 tsp turmeric,  1 tsp coriander powder,  1 tsp garam masala,   tsp chili powder,  1 cup water,  Salt to taste,  Fresh cilantro and lemon wedges to serve",
+    "macros": {
+      "calories": 460,
+      "carbs_g": 76,
+      "protein_g": 20,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Vegetarian",
+      "Ve",
+      "GF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R069",
+    "name": "Slow-Cooker Turkey & Sweet Potato Shepherd's Pie",
+    "category": "American    Dinner",
+    "timing": "Prep: 20 min   |    Cook: 40 min   |    Serves: 6",
+    "ingredients": "1.5 lbs lean ground turkey,  3 large sweet potatoes, peeled and cubed,  1 cup frozen corn,  1 cup frozen peas,  2 medium carrots, diced,  1 medium onion, diced,  3 cloves garlic, minced,  1 cup low-sodium chicken broth,  2 tbsp tomato paste,  1 tsp Worcestershire sauce (check GF label for GF),  1 tsp thyme,  1 tsp rosemary,  2 tbsp avocado oil,  2 tbsp butter or ghee (optional, for mash  omit for DF),  Salt and pepper to taste",
+    "macros": {
+      "calories": 480,
+      "carbs_g": 52,
+      "protein_g": 30,
+      "fat_g": 16
+    },
+    "dietary": [
+      "GF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R070",
+    "name": "Paneer Tikka with Basmati Rice & Cucumber Raita",
+    "category": "Indian    Dinner",
+    "timing": "Prep: 20 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "14 oz paneer (Indian cheese), cubed,  1 cups basmati rice, cooked,  1 red bell pepper, cubed,  1 green bell pepper, cubed,  1 medium red onion, cut into chunks,  2 tbsp avocado oil,  Marinade:  cup plain yogurt,  1 tbsp lemon juice,  2 cloves garlic, minced,  1 tsp ginger, grated,  1 tsp cumin,  1 tsp coriander,  1 tsp garam masala,   tsp turmeric,   tsp chili powder,  Raita: 1 cup plain Greek yogurt,   cucumber, grated and squeezed dry,  1 tsp cumin, pinch of salt, fresh mint",
+    "macros": {
+      "calories": 500,
+      "carbs_g": 48,
+      "protein_g": 26,
+      "fat_g": 24
+    },
+    "dietary": [
+      "Vegetarian",
+      "GF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R071",
+    "name": "One-Pan Lemon Herb Chicken Thighs with Root Vegetables",
+    "category": "American    Dinner",
+    "timing": "Prep: 10 min   |    Cook: 35 min   |    Serves: 4",
+    "ingredients": "1.5 lbs bone-in, skin-on chicken thighs,  2 medium sweet potatoes, cubed,  2 large carrots, cut into chunks,  1 cup green beans, trimmed,  4 cloves garlic, smashed,  2 tbsp olive oil,  Juice and zest of 1 lemon,  1 tsp dried thyme,  1 tsp dried rosemary,   tsp garlic powder,  Salt and pepper to taste,  Fresh parsley to garnish",
+    "macros": {
+      "calories": 510,
+      "carbs_g": 36,
+      "protein_g": 38,
+      "fat_g": 24
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R072",
+    "name": "Agedashi Tofu with Dashi Broth & Steamed Rice",
+    "category": "Japanese    Dinner",
+    "timing": "Prep: 15 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "14 oz extra-firm tofu, pressed and cubed,  2 cups jasmine rice, cooked,   cup potato starch or cornstarch,  2 cups dashi broth (or vegetable broth for vegan),  3 tbsp low-sodium soy sauce (or tamari for GF),  2 tbsp mirin,  1 tsp sugar,  2 cups avocado oil or neutral oil for frying,  2 green onions, thinly sliced,  1 tsp fresh ginger, finely grated,  1 tsp sesame seeds (omit for SesF),  Optional: bonito flakes (omit for FF/vegan)",
+    "macros": {
+      "calories": 440,
+      "carbs_g": 54,
+      "protein_g": 20,
+      "fat_g": 16
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R073",
+    "name": "Black Bean & Sweet Potato Enchilada Casserole",
+    "category": "Mexican    Dinner",
+    "timing": "Prep: 20 min   |    Cook: 30 min   |    Serves: 6",
+    "ingredients": "2 cans (15 oz each) black beans, drained and rinsed,  2 medium sweet potatoes, peeled, cubed, and roasted,  8 corn tortillas, cut into strips (certified GF),  2 cups red enchilada sauce (low-sodium),  1 cup frozen corn,  1 red bell pepper, diced,  1 small onion, diced,  2 cloves garlic, minced,  1 tsp cumin,  1 tsp chili powder,  1 cup shredded vegan cheese (or regular Mexican-blend  omit for DF/Ve),  1 tbsp avocado oil,  Fresh cilantro, avocado, and lime to serve",
+    "macros": {
+      "calories": 460,
+      "carbs_g": 70,
+      "protein_g": 18,
+      "fat_g": 12
+    },
+    "dietary": [
+      "Vegetarian",
+      "Ve",
+      "GF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R074",
+    "name": "Honey Garlic Baked Salmon with Quinoa & Broccolini",
+    "category": "American    Dinner",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "4 salmon fillets (5 oz each),  1 cups quinoa, rinsed and cooked,  1 lb broccolini (or broccoli florets), trimmed,  3 cloves garlic, minced,  2 tbsp honey,  2 tbsp low-sodium soy sauce (or coconut aminos for SoyF),  1 tbsp apple cider vinegar,  1 tbsp olive oil,   tsp smoked paprika,  Lemon wedges and fresh dill to serve",
+    "macros": {
+      "calories": 510,
+      "carbs_g": 42,
+      "protein_g": 42,
+      "fat_g": 16
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "fish",
+      "soy"
+    ]
+  },
+  {
+    "id": "R075",
+    "name": "Chana Masala with Basmati Rice & Chapati",
+    "category": "Indian    Dinner",
+    "timing": "Prep: 10 min   |    Cook: 25 min   |    Serves: 4",
+    "ingredients": "2 cans (15 oz each) chickpeas, drained and rinsed,  1 cups basmati rice, cooked,  4 store-bought chapati or whole wheat flatbread (or GF flatbread for GF/WF),  1 can (14 oz) diced tomatoes,  1 medium onion, finely diced,  4 cloves garlic, minced,  1 tbsp fresh ginger, grated,  2 tbsp avocado oil,  1 tsp cumin seeds,  1 tsp coriander powder,  1 tsp turmeric,  1 tsp garam masala,   tsp chili powder,  Juice of  lemon,  Fresh cilantro and sliced onion to serve",
+    "macros": {
+      "calories": 480,
+      "carbs_g": 76,
+      "protein_g": 18,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Vegetarian",
+      "Ve",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "gluten"
+    ]
+  },
+  {
+    "id": "R076",
+    "name": "Pre-Game Pasta with Light Turkey Marinara",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "12 oz white spaghetti or penne (NOT whole wheat  white pasta digests faster pre-game),   lb lean ground turkey,  1 cups low-sodium marinara sauce,  2 cloves garlic, minced,   tsp Italian seasoning,  1 tbsp olive oil,  Salt to taste,  Optional: 2 tbsp Parmesan (omit for DF)",
+    "macros": {
+      "calories": 500,
+      "carbs_g": 70,
+      "protein_g": 30,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R077",
+    "name": "White Rice & Grilled Chicken with Light Teriyaki",
+    "category": "Japanese    Pre-Game Fueling",
+    "timing": "Prep: 10 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "1.5 lbs boneless skinless chicken breast,  2 cups white jasmine rice, cooked (white rice preferred over brown pre-game),  Light teriyaki: 3 tbsp low-sodium soy sauce (or coconut aminos for SoyF),  1 tbsp honey,  1 tsp rice vinegar,   tsp cornstarch,  1 tbsp avocado oil,  Steamed edamame or steamed broccoli (small portion  limit fiber pre-game),  Pickled ginger (optional)",
+    "macros": {
+      "calories": 490,
+      "carbs_g": 60,
+      "protein_g": 38,
+      "fat_g": 8
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "soy"
+    ]
+  },
+  {
+    "id": "R078",
+    "name": "Banana Oatmeal with Honey & Walnuts",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 10 min   |    Serves: 2",
+    "ingredients": "1 cup old-fashioned rolled oats (certified GF for GF),  2 cups water or low-fat milk (or oat milk for DF),  2 ripe bananas  1 mashed in, 1 sliced on top,  1 tbsp honey or maple syrup,  2 tbsp chopped walnuts (omit for TNF  use sunflower seeds instead),   tsp cinnamon,  Pinch of salt",
+    "macros": {
+      "calories": 380,
+      "carbs_g": 64,
+      "protein_g": 12,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R079",
+    "name": "Peanut Butter & Banana Toast with Honey",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 3 min   |    Serves: 2",
+    "ingredients": "4 slices white bread or whole wheat (use GF bread for GF/WF),  3 tbsp natural peanut butter (omit for PF  use sunflower butter),  2 ripe bananas, sliced,  1 tbsp honey,  Optional: sprinkle of chia seeds for Omega-3",
+    "macros": {
+      "calories": 350,
+      "carbs_g": 52,
+      "protein_g": 14,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten",
+      "peanut"
+    ]
+  },
+  {
+    "id": "R080",
+    "name": "Greek Yogurt Parfait with Granola & Mixed Berries",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "1 cups plain non-fat Greek yogurt (or coconut yogurt for DF),   cup low-fat granola (certified GF for GF  look for low-fiber variety pre-game),  1 cup mixed berries (strawberries, blueberries, raspberries),  1 tbsp honey,  Optional: 1 tbsp chia seeds (only if eating 2+ hours before game)",
+    "macros": {
+      "calories": 380,
+      "carbs_g": 58,
+      "protein_g": 22,
+      "fat_g": 6
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R081",
+    "name": "Brown Rice Cakes with Almond Butter & Sliced Banana",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "6 plain brown rice cakes,  3 tbsp almond butter (or sunflower butter for TNF/PF),  2 ripe bananas, sliced,  1 tbsp honey,  Optional: pinch of cinnamon",
+    "macros": {
+      "calories": 320,
+      "carbs_g": 52,
+      "protein_g": 10,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegetarian",
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "tree nut"
+    ]
+  },
+  {
+    "id": "R082",
+    "name": "Chicken & White Rice Congee (Rice Porridge)",
+    "category": "Chinese    Pre-Game Fueling",
+    "timing": "Prep: 10 min   |    Cook: 30 min   |    Serves: 4",
+    "ingredients": "1 cup long-grain white rice,  6 cups low-sodium chicken broth,  1 lb boneless chicken breast, thinly sliced,  2 tsp fresh ginger, grated,  2 cloves garlic, minced,  1 tbsp low-sodium soy sauce (or coconut aminos for SoyF),  2 green onions, sliced,   tsp white pepper,  Salt to taste,  Optional toppings: a drizzle of sesame oil (omit for SesF), soft-boiled egg",
+    "macros": {
+      "calories": 380,
+      "carbs_g": 50,
+      "protein_g": 32,
+      "fat_g": 5
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "egg",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R083",
+    "name": "Whole Wheat Toast with Turkey & Avocado",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 3 min   |    Serves: 2",
+    "ingredients": "4 slices whole wheat bread (or GF bread for GF/WF),  6 oz deli turkey breast (low-sodium),  1 ripe avocado, sliced,  1 tsp lemon juice,  Salt and pepper to taste,  Optional: 1 slice tomato per toast, fresh spinach",
+    "macros": {
+      "calories": 360,
+      "carbs_g": 38,
+      "protein_g": 22,
+      "fat_g": 14
+    },
+    "dietary": [
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "gluten"
+    ]
+  },
+  {
+    "id": "R084",
+    "name": "Mango Lassi with Oat & Date Energy Balls",
+    "category": "Indian    Pre-Game Fueling",
+    "timing": "Prep: 15 min   |    Cook: 0 min   |    Serves: 4",
+    "ingredients": "Mango Lassi: 2 cups plain low-fat yogurt (or coconut yogurt for DF),  1 cups frozen mango chunks,   cup low-fat milk or oat milk,  1 tbsp honey,   tsp cardamom,  Energy Balls: 1 cup rolled oats (certified GF for GF),  8 Medjool dates, pitted,  2 tbsp almond butter (or sunflower butter for TNF/PF),  2 tbsp shredded coconut (optional),  Pinch of salt",
+    "macros": {
+      "calories": 390,
+      "carbs_g": 65,
+      "protein_g": 14,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten",
+      "tree nut"
+    ]
+  },
+  {
+    "id": "R085",
+    "name": "Aa Bowl with Granola & Sliced Fruit",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 10 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "2 packets (3.5 oz each) unsweetened frozen aa pure,  1 cup frozen blueberries,  1 frozen banana,   cup oat milk or almond milk,  Toppings:  cup low-fat granola (certified GF for GF),  1 banana, sliced,   cup fresh strawberries, sliced,  1 tbsp honey,  Optional: 1 tbsp hemp seeds for extra protein",
+    "macros": {
+      "calories": 370,
+      "carbs_g": 68,
+      "protein_g": 10,
+      "fat_g": 7
+    },
+    "dietary": [
+      "Vegetarian",
+      "Ve",
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "tree nut"
+    ]
+  },
+  {
+    "id": "R086",
+    "name": "Egg White Veggie Scramble with White Toast",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 8 min   |    Serves: 2",
+    "ingredients": "6 egg whites (or 3 whole eggs if EF isn't a concern),  2 slices white bread (or GF bread for GF/WF),   cup baby spinach,   cup diced red bell pepper,  2 tbsp diced onion,  1 tsp olive oil,  Salt and pepper to taste,  Optional: 1 tbsp salsa on the side",
+    "macros": {
+      "calories": 260,
+      "carbs_g": 28,
+      "protein_g": 20,
+      "fat_g": 4
+    },
+    "dietary": [
+      "DF",
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "egg",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R087",
+    "name": "Tteokbokki-Style Rice Cakes with Mild Sauce",
+    "category": "Korean    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 10 min   |    Serves: 2",
+    "ingredients": "8 oz cylindrical Korean rice cakes (tteok), fresh or thawed,  1 cup low-sodium chicken or vegetable broth,  1 tbsp gochujang paste (reduce for lower heat),  1 tbsp low-sodium soy sauce (or coconut aminos for SoyF),  1 tbsp honey,  1 clove garlic, minced,  1 green onion, sliced,  Optional: 1 soft-boiled egg (halved)",
+    "macros": {
+      "calories": 340,
+      "carbs_g": 68,
+      "protein_g": 8,
+      "fat_g": 2
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "egg",
+      "soy"
+    ]
+  },
+  {
+    "id": "R088",
+    "name": "Chapati with Honey & Banana (Indian Pre-Game Wrap)",
+    "category": "Indian    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 5 min   |    Serves: 2",
+    "ingredients": "4 small whole wheat chapati or tortillas (or GF tortilla for GF/WF),  2 ripe bananas,  2 tbsp honey,  1 tbsp almond butter (optional  omit for TNF/PF; skip if <1 hr before game),  Pinch of cardamom",
+    "macros": {
+      "calories": 300,
+      "carbs_g": 58,
+      "protein_g": 8,
+      "fat_g": 4
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten",
+      "tree nut"
+    ]
+  },
+  {
+    "id": "R089",
+    "name": "Homemade Sports Drink with Watermelon & Electrolytes",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 4",
+    "ingredients": "4 cups fresh watermelon, cubed,  Juice of 2 limes,  2 cups cold water,   tsp sea salt (natural sodium/electrolyte),  2 tbsp honey or maple syrup,  Optional:  cup coconut water for extra potassium,  Ice to serve",
+    "macros": {
+      "calories": 80,
+      "carbs_g": 20,
+      "protein_g": 1,
+      "fat_g": 0
+    },
+    "dietary": [
+      "Vegetarian",
+      "Ve",
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R090",
+    "name": "Blueberry & Banana Smoothie with Oats",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "2 ripe bananas (1 frozen for thickness),  1 cup frozen blueberries,   cup old-fashioned oats (certified GF for GF),  1 cups low-fat milk or oat milk (for DF),  1 tbsp honey,   tsp vanilla extract,  Optional: 1 scoop of protein-free collagen powder (whole food only)",
+    "macros": {
+      "calories": 360,
+      "carbs_g": 68,
+      "protein_g": 12,
+      "fat_g": 4
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R091",
+    "name": "Onigiri (Japanese Rice Balls) with Tuna & Pickled Plum",
+    "category": "Japanese    Pre-Game Fueling",
+    "timing": "Prep: 15 min   |    Cook: 0 min   |    Serves: 4",
+    "ingredients": "2 cups short-grain white rice, cooked and slightly warm,  1 can (5 oz) tuna in water, drained and mixed with 1 tsp soy sauce,  2 umeboshi (pickled plums), pitted and chopped (or use a pinch of salt as substitute),  4 sheets nori (seaweed), cut into strips (omit for FF/SesF),  1 tsp sesame seeds (omit for SesF),  Salt to taste",
+    "macros": {
+      "calories": 300,
+      "carbs_g": 56,
+      "protein_g": 16,
+      "fat_g": 2
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly",
+      "Low-Sodium"
+    ],
+    "allergens": [
+      "fish",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R092",
+    "name": "Arepa with Black Beans & Scrambled Eggs",
+    "category": "Mexican    Pre-Game Fueling",
+    "timing": "Prep: 10 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "2 cups masarepa (pre-cooked white cornmeal  naturally GF),  2 cups warm water,   tsp salt,  1 can (15 oz) black beans, drained, warmed with a pinch of cumin,  4 eggs, scrambled (omit for EF  use extra beans),  1 tsp olive oil,  Optional: sliced avocado, salsa",
+    "macros": {
+      "calories": 420,
+      "carbs_g": 64,
+      "protein_g": 18,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegetarian",
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "egg"
+    ]
+  },
+  {
+    "id": "R093",
+    "name": "Fruit & Nut Butter Energy Smoothie",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "2 ripe bananas (1 frozen),  1 cup frozen mango chunks,  1 tbsp almond butter or peanut butter (omit for TNF/PF  use sunflower butter),  1 cup oat milk or low-fat milk,  1 tbsp honey,   tsp vanilla extract,  Pinch of cinnamon",
+    "macros": {
+      "calories": 340,
+      "carbs_g": 62,
+      "protein_g": 8,
+      "fat_g": 7
+    },
+    "dietary": [
+      "Vegetarian",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "peanut",
+      "tree nut"
+    ]
+  },
+  {
+    "id": "R094",
+    "name": "Idli with Coconut Chutney (Steamed Rice Cakes)",
+    "category": "Indian    Pre-Game Fueling",
+    "timing": "Prep: 10 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "12 store-bought or homemade idli (fermented rice & lentil cakes  naturally GF),  Coconut Chutney:  cup shredded coconut (fresh or frozen),  2 tbsp roasted chana dal (split chickpeas),  1 green chili (seeded for mild),   inch fresh ginger,  Juice of  lemon,  Salt to taste,  Water to blend,  Tempering: 1 tsp avocado oil,  tsp mustard seeds, 8 curry leaves",
+    "macros": {
+      "calories": 280,
+      "carbs_g": 52,
+      "protein_g": 10,
+      "fat_g": 5
+    },
+    "dietary": [
+      "Vegetarian",
+      "Ve",
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R095",
+    "name": "White Flour Tortilla with Honey, Strawberries & Ricotta",
+    "category": "American    Pre-Game Fueling",
+    "timing": "Prep: 5 min   |    Cook: 2 min   |    Serves: 2",
+    "ingredients": "4 small white flour tortillas (or GF tortilla for GF/WF),   cup ricotta cheese (or coconut cream for DF),  1 cup fresh strawberries, sliced,  2 tbsp honey,  Optional: pinch of cinnamon,  tsp vanilla in ricotta",
+    "macros": {
+      "calories": 320,
+      "carbs_g": 50,
+      "protein_g": 12,
+      "fat_g": 7
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R096",
+    "name": "Chocolate Milk & Banana Recovery Shake",
+    "category": "American    Post-Game Recovery",
+    "timing": "Prep: 3 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "2 cups low-fat chocolate milk (or oat milk + 2 tbsp cocoa + 1 tbsp honey for DF),  2 frozen bananas,  1 tbsp almond butter (optional  omit for TNF/PF),   tsp vanilla extract,  Pinch of sea salt (replenishes sodium lost in sweat)",
+    "macros": {
+      "calories": 360,
+      "carbs_g": 58,
+      "protein_g": 16,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "tree nut"
+    ]
+  },
+  {
+    "id": "R097",
+    "name": "Grilled Chicken & Vegetable Recovery Bowl with Quinoa",
+    "category": "American    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "1.5 lbs boneless chicken breast, grilled and sliced,  1 cups quinoa, rinsed and cooked,  2 cups roasted broccoli florets,  1 cup cherry tomatoes, halved,  1 avocado, sliced,  2 tbsp olive oil,  Juice of 1 lemon,  1 tsp garlic powder,   tsp turmeric (anti-inflammatory),  Salt and pepper to taste,  Fresh parsley to garnish",
+    "macros": {
+      "calories": 520,
+      "carbs_g": 40,
+      "protein_g": 44,
+      "fat_g": 20
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R098",
+    "name": "Salmon & Sweet Potato Recovery Plate",
+    "category": "American    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 25 min   |    Serves: 4",
+    "ingredients": "4 salmon fillets (5 oz each),  2 large sweet potatoes, cubed and roasted,  2 cups steamed or roasted broccolini,  2 tbsp olive oil,  1 tsp garlic powder,  1 tsp smoked paprika,  Juice of 1 lemon,  2 tbsp fresh dill or parsley,  Salt and pepper",
+    "macros": {
+      "calories": 510,
+      "carbs_g": 38,
+      "protein_g": 42,
+      "fat_g": 20
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "fish"
+    ]
+  },
+  {
+    "id": "R099",
+    "name": "Greek Yogurt & Berry Protein Parfait (Post-Game)",
+    "category": "American    Post-Game Recovery",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "2 cups plain full-fat Greek yogurt (or high-protein coconut yogurt for DF),  1 cup mixed berries (blueberries, strawberries, raspberries),   cup granola (certified GF for GF),  1 tbsp honey,  1 tbsp chia seeds (Omega-3 and fiber for recovery),  Optional: 1 tbsp hemp seeds for extra protein",
+    "macros": {
+      "calories": 360,
+      "carbs_g": 44,
+      "protein_g": 24,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Vegetarian",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R100",
+    "name": "Tuna & Avocado Rice Bowl (Post-Game Recovery)",
+    "category": "Japanese    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "2 cans (5 oz each) tuna in water, drained,  1 cups cooked white or brown rice,  1 ripe avocado, sliced,   cucumber, thinly sliced,  1 cup shredded purple cabbage,  2 tbsp low-sodium soy sauce (or coconut aminos for SoyF),  1 tbsp rice vinegar,  1 tsp sesame oil (omit for SesF),  1 tsp honey,  1 tbsp sesame seeds (omit for SesF),  2 green onions, sliced",
+    "macros": {
+      "calories": 460,
+      "carbs_g": 44,
+      "protein_g": 38,
+      "fat_g": 16
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "fish",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R101",
+    "name": "Korean Doenjang Jjigae (Soybean Paste Stew) Recovery Bowl",
+    "category": "Korean    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "2 tbsp doenjang (Korean fermented soybean paste),  6 cups low-sodium vegetable or anchovy broth,  1 block (14 oz) firm tofu, cubed,  1 medium zucchini, diced,  1 cup mushrooms (shiitake or oyster), sliced,  3 cloves garlic, minced,  1 green chili (optional, for older athletes),  3 green onions, chopped,  2 cups cooked white rice (serve alongside)",
+    "macros": {
+      "calories": 380,
+      "carbs_g": 52,
+      "protein_g": 22,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegetarian",
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "soy"
+    ]
+  },
+  {
+    "id": "R102",
+    "name": "Chicken Tikka Masala Recovery Rice Bowl (Indian)",
+    "category": "Indian    Post-Game Recovery",
+    "timing": "Prep: 15 min   |    Cook: 25 min   |    Serves: 4",
+    "ingredients": "1.5 lbs boneless chicken thighs, cubed,  1 cup plain Greek yogurt (for marinade),  2 tbsp tikka masala spice blend,  1 can (14 oz) crushed tomatoes,  1 cup full-fat coconut milk (DF option) or heavy cream,  1 large onion, diced,  3 cloves garlic, minced,  1-inch fresh ginger, grated,  2 tbsp olive oil,  2 cups cooked basmati rice,  Fresh cilantro for garnish",
+    "macros": {
+      "calories": 520,
+      "carbs_g": 48,
+      "protein_g": 38,
+      "fat_g": 18
+    },
+    "dietary": [
+      "GF",
+      "SoyF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R103",
+    "name": "Egg Fried Rice with Edamame & Vegetables (Chinese)",
+    "category": "Chinese    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "3 cups cooked cold rice (day-old works best),  3 large eggs, beaten,  1 cup frozen edamame, thawed,  1 cup frozen peas and carrots mix,  3 green onions, chopped,  2 cloves garlic, minced,  2 tbsp low-sodium soy sauce (or tamari for GF),  1 tbsp sesame oil (omit for SesF),  1 tbsp neutral oil,   tsp white pepper",
+    "macros": {
+      "calories": 420,
+      "carbs_g": 58,
+      "protein_g": 24,
+      "fat_g": 12
+    },
+    "dietary": [
+      "Vegetarian",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "egg",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R104",
+    "name": "Black Bean & Sweet Potato Burrito Bowl (Mexican)",
+    "category": "Mexican    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "2 cans (15 oz each) black beans, drained and rinsed,  2 medium sweet potatoes, peeled and diced,  2 cups cooked brown rice,  1 cup corn kernels (fresh or frozen),  1 cup salsa (store-bought or fresh),  1 avocado, diced,  1 lime, juiced,  1 tsp cumin, 1 tsp chili powder,  2 tbsp olive oil,  Fresh cilantro, Greek yogurt or sour cream (optional garnish)",
+    "macros": {
+      "calories": 460,
+      "carbs_g": 74,
+      "protein_g": 20,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "GF",
+      "DF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R105",
+    "name": "Teriyaki Beef & Broccoli Recovery Bowl (Japanese)",
+    "category": "Japanese    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "1.5 lbs flank steak or sirloin, thinly sliced,  4 cups broccoli florets,  2 cups cooked white rice,  3 tbsp low-sodium soy sauce (or tamari for GF),  2 tbsp honey,  1 tbsp rice vinegar,  1 tsp sesame oil (omit for SesF),  2 cloves garlic, minced,  1 tsp fresh ginger, grated,  1 tbsp sesame seeds (omit for SesF),  1 tbsp neutral oil",
+    "macros": {
+      "calories": 490,
+      "carbs_g": 46,
+      "protein_g": 40,
+      "fat_g": 14
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R106",
+    "name": "Lentil & Vegetable Recovery Soup (Indian Masoor Dal)",
+    "category": "Indian    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 30 min   |    Serves: 6",
+    "ingredients": "2 cups red lentils, rinsed,  1 can (14 oz) diced tomatoes,  1 large onion, diced,  3 cloves garlic, minced,  1-inch ginger, grated,  1 tsp turmeric, 1 tsp cumin, 1 tsp coriander,   tsp garam masala,  6 cups low-sodium vegetable broth,  2 cups spinach, roughly chopped,  2 tbsp olive oil,  Lemon juice and cilantro to serve,  Whole wheat naan or brown rice (serve alongside)",
+    "macros": {
+      "calories": 340,
+      "carbs_g": 50,
+      "protein_g": 22,
+      "fat_g": 7
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "GF",
+      "DF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "gluten"
+    ]
+  },
+  {
+    "id": "R107",
+    "name": "Turkey & Avocado Whole Grain Wrap (American)",
+    "category": "American    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "8 oz sliced turkey breast (low-sodium deli turkey),  2 whole-wheat tortillas (10-inch),  1 ripe avocado, mashed with lime juice,   cup baby spinach,   cup shredded carrots,   cup sliced cucumber,  2 tbsp hummus,  Salt and pepper to taste,  Optional: 1 tbsp pumpkin seeds for extra zinc",
+    "macros": {
+      "calories": 440,
+      "carbs_g": 42,
+      "protein_g": 32,
+      "fat_g": 16
+    },
+    "dietary": [
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "gluten"
+    ]
+  },
+  {
+    "id": "R108",
+    "name": "Miso Salmon Onigiri Bowl (Japanese Post-Game)",
+    "category": "Japanese    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 15 min   |    Serves: 2",
+    "ingredients": "2 salmon fillets (6 oz each),  2 tbsp white miso paste,  1 tbsp mirin (or honey + rice vinegar),  1 tbsp low-sodium soy sauce (or tamari for GF),  1 cups cooked Japanese short-grain rice,  1 cup edamame (shelled, thawed),   cup shredded purple cabbage,  1 tsp sesame seeds (omit for SesF),  2 sheets nori (seaweed), cut into strips,  1 tsp rice vinegar",
+    "macros": {
+      "calories": 510,
+      "carbs_g": 46,
+      "protein_g": 44,
+      "fat_g": 18
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "fish",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R109",
+    "name": "Chicken & Quinoa Power Salad with Lemon Tahini (American)",
+    "category": "American    Post-Game Recovery",
+    "timing": "Prep: 15 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "1.5 lbs grilled chicken breast, sliced,  2 cups cooked quinoa,  4 cups mixed greens (spinach, arugula, kale),  1 cup cherry tomatoes, halved,   cup cucumber, diced,   cup red onion, thinly sliced,   cup kalamata olives (optional),  2 tbsp tahini (omit for SesF),  2 tbsp lemon juice,  1 tbsp olive oil,  1 clove garlic, minced,  Salt and pepper",
+    "macros": {
+      "calories": 470,
+      "carbs_g": 36,
+      "protein_g": 42,
+      "fat_g": 16
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "SoyF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "sesame"
+    ]
+  },
+  {
+    "id": "R110",
+    "name": "Cottage Cheese & Pineapple Recovery Bowl (American)",
+    "category": "American    Post-Game Recovery",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "2 cups full-fat cottage cheese (or low-fat for lighter option),  1 cup fresh pineapple chunks (or canned in juice, drained),   cup sliced strawberries,   cup granola (GF certified for GF),  1 tbsp honey,  1 tsp vanilla extract,  Optional: 2 tbsp sliced almonds for healthy fat",
+    "macros": {
+      "calories": 380,
+      "carbs_g": 46,
+      "protein_g": 28,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Vegetarian",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R111",
+    "name": "Edamame & Brown Rice Recovery Bowl with Ginger Miso Dressing",
+    "category": "Japanese    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 5 min   |    Serves: 2",
+    "ingredients": "2 cups cooked brown rice,  1 cups shelled edamame (thawed from frozen),  1 cup shredded red cabbage,  1 medium carrot, julienned or grated,   cucumber, thinly sliced,  2 tbsp white miso paste,  1 tbsp rice vinegar,  1 tbsp low-sodium soy sauce (or tamari for GF),  1 tsp fresh ginger, grated,  1 tsp sesame oil (omit for SesF),  1 tbsp sesame seeds (omit for SesF),  2 green onions, thinly sliced",
+    "macros": {
+      "calories": 390,
+      "carbs_g": 56,
+      "protein_g": 22,
+      "fat_g": 10
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R112",
+    "name": "Paneer & Chana Dal Recovery Thali (Indian)",
+    "category": "Indian    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 25 min   |    Serves: 4",
+    "ingredients": "1 cup chana dal (split chickpeas), rinsed,  8 oz paneer, cubed and pan-fried golden,  1 can (14 oz) diced tomatoes,  1 large onion, diced,  3 cloves garlic, minced,  1 tsp turmeric, 1 tsp cumin, 1 tsp coriander,  tsp garam masala,  2 tbsp ghee or neutral oil,  3 cups water or low-sodium vegetable broth,  Fresh cilantro and lemon juice to serve,  2 cups cooked basmati rice or whole-wheat roti",
+    "macros": {
+      "calories": 480,
+      "carbs_g": 54,
+      "protein_g": 32,
+      "fat_g": 16
+    },
+    "dietary": [
+      "Vegetarian",
+      "GF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "gluten"
+    ]
+  },
+  {
+    "id": "R113",
+    "name": "Birria-Style Beef & Bean Recovery Tacos (Mexican)",
+    "category": "Mexican    Post-Game Recovery",
+    "timing": "Prep: 15 min   |    Cook: 30 min   |    Serves: 4",
+    "ingredients": "1.5 lbs beef chuck, cut into chunks,  1 can (15 oz) pinto beans, drained,  3 dried guajillo chiles, seeded and soaked,  1 can (14 oz) diced tomatoes,  4 cloves garlic, minced,  1 tsp cumin, 1 tsp oregano,  tsp smoked paprika,  2 cups low-sodium beef broth,  8 corn tortillas (GF),   cup diced white onion,  Fresh cilantro, lime wedges for serving",
+    "macros": {
+      "calories": 510,
+      "carbs_g": 46,
+      "protein_g": 40,
+      "fat_g": 18
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R114",
+    "name": "Sweet Potato & Egg Recovery Hash (American)",
+    "category": "American    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 20 min   |    Serves: 4",
+    "ingredients": "2 large sweet potatoes, peeled and diced small,  6 large eggs,  1 red bell pepper, diced,  1 small onion, diced,  2 cups baby spinach,  2 tbsp olive oil,  1 tsp smoked paprika,  tsp cumin, salt & pepper,  Optional: hot sauce or salsa on the side",
+    "macros": {
+      "calories": 400,
+      "carbs_g": 42,
+      "protein_g": 24,
+      "fat_g": 16
+    },
+    "dietary": [
+      "Vegetarian",
+      "GF",
+      "DF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "egg"
+    ]
+  },
+  {
+    "id": "R115",
+    "name": "Kimchi Fried Rice with Eggs & Beef (Korean)",
+    "category": "Korean    Post-Game Recovery",
+    "timing": "Prep: 10 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "3 cups cooked day-old rice,  1 cup kimchi, chopped (plus 2 tbsp kimchi brine),  8 oz lean ground beef,  4 large eggs (2 scrambled into rice + 2 fried on top),  2 tbsp low-sodium soy sauce (or tamari for GF),  1 tbsp sesame oil (omit for SesF),  3 green onions, sliced,  1 tbsp neutral oil,  1 tsp gochugaru (Korean red pepper  optional, for older athletes)",
+    "macros": {
+      "calories": 470,
+      "carbs_g": 44,
+      "protein_g": 34,
+      "fat_g": 18
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "egg",
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R116",
+    "name": "Apple Slices with Almond Butter & Granola (American)",
+    "category": "American    Mid-Day Snacks",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "2 medium apples, cored and sliced,  4 tbsp natural almond butter (no added sugar),   cup granola (GF certified for GF),  1 tsp honey (optional),  Pinch of cinnamon",
+    "macros": {
+      "calories": 290,
+      "carbs_g": 36,
+      "protein_g": 10,
+      "fat_g": 14
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "DF",
+      "PF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "tree nut"
+    ]
+  },
+  {
+    "id": "R117",
+    "name": "Custom Athlete Trail Mix (American)",
+    "category": "American    Mid-Day Snacks",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 4",
+    "ingredients": "cup roasted pumpkin seeds (pepitas),   cup roasted almonds or cashews,   cup dried cranberries or raisins (no added sugar),   cup dark chocolate chips (70%+ cacao),   cup sunflower seeds,  Optional:  cup coconut flakes (unsweetened)",
+    "macros": {
+      "calories": 260,
+      "carbs_g": 26,
+      "protein_g": 12,
+      "fat_g": 14
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "GF",
+      "DF",
+      "PF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R118",
+    "name": "Hummus & Veggie Sticks with Whole Wheat Pita (American/Mediterranean)",
+    "category": "American    Mid-Day Snacks",
+    "timing": "Prep: 10 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "cup store-bought or homemade hummus,  1 medium cucumber, cut into sticks,  2 medium carrots, peeled and cut into sticks,  1 red bell pepper, sliced,  2 whole wheat pita breads, cut into triangles (or rice crackers for GF),  Optional:  tsp za'atar or smoked paprika on hummus",
+    "macros": {
+      "calories": 260,
+      "carbs_g": 38,
+      "protein_g": 10,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "DF",
+      "TNF",
+      "PF",
+      "SoyF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "gluten"
+    ]
+  },
+  {
+    "id": "R119",
+    "name": "Mini Cheese & Bean Quesadilla Triangles (Mexican)",
+    "category": "Mexican    Mid-Day Snacks",
+    "timing": "Prep: 5 min   |    Cook: 10 min   |    Serves: 2",
+    "ingredients": "2 small whole wheat or corn tortillas (6-inch),   cup canned black beans, drained and rinsed,   cup shredded Monterey Jack or cheddar cheese,  2 tbsp salsa (no added sugar),  Optional: 1 tbsp Greek yogurt as sour cream substitute,  Optional: sliced avocado",
+    "macros": {
+      "calories": 300,
+      "carbs_g": 32,
+      "protein_g": 16,
+      "fat_g": 12
+    },
+    "dietary": [
+      "Vegetarian",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R120",
+    "name": "Smoked Salmon & Cream Cheese Cucumber Rounds (American)",
+    "category": "American    Mid-Day Snacks",
+    "timing": "Prep: 10 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "1 large English cucumber, sliced into -inch rounds,  4 oz smoked salmon, torn into small pieces,  4 tbsp cream cheese (or dairy-free cream cheese for DF),  1 tbsp capers (optional),  Fresh dill or chives for garnish,  Lemon zest and black pepper",
+    "macros": {
+      "calories": 200,
+      "carbs_g": 8,
+      "protein_g": 14,
+      "fat_g": 12
+    },
+    "dietary": [
+      "GF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "fish"
+    ]
+  },
+  {
+    "id": "R121",
+    "name": "Hard-Boiled Eggs & Cheese Snack Box (American)",
+    "category": "American    Mid-Day Snacks",
+    "timing": "Prep: 5 min   |    Cook: 12 min   |    Serves: 2",
+    "ingredients": "4 large eggs,  2 oz sharp cheddar or string cheese,  1 cup grape tomatoes,   cup baby carrots,  1 tbsp Everything Bagel Seasoning (omit for SesF),  Salt and pepper to taste",
+    "macros": {
+      "calories": 280,
+      "carbs_g": 10,
+      "protein_g": 22,
+      "fat_g": 18
+    },
+    "dietary": [
+      "Vegetarian",
+      "GF",
+      "SoyF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "egg",
+      "gluten"
+    ]
+  },
+  {
+    "id": "R122",
+    "name": "Mango Lassi with Chia Seeds (Indian)",
+    "category": "Indian    Mid-Day Snacks",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "1 cup plain whole-milk yogurt (or coconut yogurt for DF),  1 cup frozen or fresh mango chunks,   cup milk (or oat milk for DF),  1 tbsp chia seeds,  1 tsp honey,   tsp ground cardamom,  Pinch of salt",
+    "macros": {
+      "calories": 240,
+      "carbs_g": 36,
+      "protein_g": 12,
+      "fat_g": 6
+    },
+    "dietary": [
+      "Vegetarian",
+      "GF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R123",
+    "name": "Seaweed & Edamame Rice Crackers Snack Box (Japanese)",
+    "category": "Japanese    Mid-Day Snacks",
+    "timing": "Prep: 5 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "cup shelled edamame (thawed),  1 oz roasted seaweed snack sheets (nori),  1 oz brown rice crackers (GF),  1 tbsp tamari dipping sauce (or low-sodium soy sauce),   tsp sesame seeds (omit for SesF)",
+    "macros": {
+      "calories": 190,
+      "carbs_g": 22,
+      "protein_g": 10,
+      "fat_g": 6
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "GF",
+      "DF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "sesame",
+      "soy"
+    ]
+  },
+  {
+    "id": "R124",
+    "name": "Peanut Butter Banana Energy Bites (American)",
+    "category": "American    Mid-Day Snacks",
+    "timing": "Prep: 15 min   |    Cook: 0 min   |    Serves: 4",
+    "ingredients": "1 cup rolled oats (GF certified for GF),   cup natural peanut butter (or sunflower seed butter for PF),  3 tbsp honey,  1 ripe banana, mashed,   cup dark chocolate chips,  2 tbsp ground flaxseed,   tsp vanilla extract,  Pinch of salt",
+    "macros": {
+      "calories": 250,
+      "carbs_g": 30,
+      "protein_g": 10,
+      "fat_g": 12
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "GF",
+      "DF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "gluten",
+      "peanut"
+    ]
+  },
+  {
+    "id": "R125",
+    "name": "Guacamole & Baked Tortilla Chips (Mexican)",
+    "category": "Mexican    Mid-Day Snacks",
+    "timing": "Prep: 10 min   |    Cook: 0 min   |    Serves: 4",
+    "ingredients": "3 ripe avocados, pitted and mashed,  1 lime, juiced,   cup red onion, finely diced,  1 jalapeo, seeded and minced (optional),  2 tbsp fresh cilantro, chopped,  Salt and pepper to taste,  4 oz baked corn tortilla chips (GF)",
+    "macros": {
+      "calories": 220,
+      "carbs_g": 22,
+      "protein_g": 4,
+      "fat_g": 14
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "GF",
+      "DF",
+      "TNF",
+      "PF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "gluten"
+    ]
+  },
+  {
+    "id": "R126",
+    "name": "Greek Yogurt Bark with Berries & Granola (American)",
+    "category": "American    Mid-Day Snacks",
+    "timing": "Prep: 10 min   |    Cook: 0 min   |    Serves: 4",
+    "ingredients": "2 cups plain Greek yogurt,  2 tbsp honey,  1 cup mixed berries (blueberries, raspberries, sliced strawberries),   cup granola (GF certified for GF),  1 tbsp chia seeds,  Optional: 1 tbsp dark chocolate chips",
+    "macros": {
+      "calories": 230,
+      "carbs_g": 30,
+      "protein_g": 14,
+      "fat_g": 6
+    },
+    "dietary": [
+      "Vegetarian",
+      "PF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  },
+  {
+    "id": "R127",
+    "name": "Savory Roasted Chickpeas (Indian-Spiced)",
+    "category": "Indian    Mid-Day Snacks",
+    "timing": "Prep: 5 min   |    Cook: 30 min   |    Serves: 4",
+    "ingredients": "2 cans (15 oz each) chickpeas, drained, rinsed, and patted very dry,  2 tbsp olive oil,  1 tsp cumin, 1 tsp smoked paprika,  tsp turmeric,   tsp garlic powder,  tsp salt,  Optional:  tsp cayenne for heat",
+    "macros": {
+      "calories": 220,
+      "carbs_g": 28,
+      "protein_g": 12,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegetarian",
+      "Vegan",
+      "GF",
+      "DF",
+      "TNF",
+      "PF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": []
+  },
+  {
+    "id": "R128",
+    "name": "Tuna Salad Lettuce Cups (American)",
+    "category": "American    Mid-Day Snacks",
+    "timing": "Prep: 10 min   |    Cook: 0 min   |    Serves: 2",
+    "ingredients": "2 cans (5 oz each) tuna in water, drained,  2 tbsp plain Greek yogurt or light mayo,  1 celery stalk, finely diced,  2 tbsp red onion, minced,  1 tsp lemon juice,  Salt, pepper, and dill to taste,  6 large romaine or butter lettuce leaves (for cups),  Optional: sliced cucumber inside cups",
+    "macros": {
+      "calories": 200,
+      "carbs_g": 6,
+      "protein_g": 32,
+      "fat_g": 4
+    },
+    "dietary": [
+      "GF",
+      "DF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "egg",
+      "fish"
+    ]
+  },
+  {
+    "id": "R129",
+    "name": "Banana Oat Pancake Bites (American)",
+    "category": "American    Mid-Day Snacks",
+    "timing": "Prep: 10 min   |    Cook: 15 min   |    Serves: 4",
+    "ingredients": "2 ripe bananas, mashed,  2 large eggs,  1 cup rolled oats (GF certified for GF),  2 tbsp natural peanut butter,  1 tsp cinnamon,   tsp vanilla extract,   cup blueberries or mini dark chocolate chips,  Pinch of salt",
+    "macros": {
+      "calories": 240,
+      "carbs_g": 34,
+      "protein_g": 10,
+      "fat_g": 8
+    },
+    "dietary": [
+      "Vegetarian",
+      "DF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy",
+      "egg",
+      "gluten",
+      "peanut"
+    ]
+  },
+  {
+    "id": "R130",
+    "name": "Spiced Warm Milk with Turmeric & Dates (Indian Golden Milk)",
+    "category": "Indian    Mid-Day Snacks",
+    "timing": "Prep: 5 min   |    Cook: 5 min   |    Serves: 2",
+    "ingredients": "2 cups whole milk (or oat milk for DF),  1 tsp ground turmeric,   tsp ground cinnamon,   tsp ground ginger,  Pinch of black pepper (enhances curcumin absorption by 2000%),  1 tbsp honey,  4 Medjool dates, pitted and chopped",
+    "macros": {
+      "calories": 250,
+      "carbs_g": 40,
+      "protein_g": 10,
+      "fat_g": 6
+    },
+    "dietary": [
+      "Vegetarian",
+      "GF",
+      "SoyF",
+      "SesF",
+      "Low-Sugar / Diabetic-Friendly"
+    ],
+    "allergens": [
+      "dairy"
+    ]
+  }
+]

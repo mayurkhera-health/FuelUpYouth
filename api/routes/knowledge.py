@@ -7,6 +7,7 @@ import os
 from api.database import get_conn
 from api.services.knowledge.ingest import ingest_file, ingest_all
 from api.services.knowledge.answer import answer_with_knowledge
+from api.services.knowledge.approved_sources import list_sources
 
 router = APIRouter()
 
@@ -22,6 +23,9 @@ class AskRequest(BaseModel):
     question: str
     athlete_id: int
     is_first_message: bool = False
+    history: list[dict] = []
+    recipe_category: Optional[str] = None
+    prefer_recipe: bool = False
 
 
 class StatusUpdate(BaseModel):
@@ -53,6 +57,70 @@ def trigger_ingest(file_path: Optional[str] = None,
     if file_path:
         return ingest_file(file_path)
     return ingest_all()
+
+
+@router.get("/sources")
+def get_approved_sources():
+    """Trusted organizations the Nutrition Coach draws from."""
+    return {"sources": list_sources()}
+
+
+@router.get("/health")
+def coach_health():
+    """Diagnostics for the Nutrition Coach pipeline (no admin key required)."""
+    from api.services.bedrock_client import is_configured, model_id
+    from api.database import get_conn
+
+    conn = get_conn()
+    try:
+        chunk_count = conn.execute(
+            """SELECT COUNT(*) FROM knowledge_chunks kc
+               JOIN knowledge_items ki ON kc.item_id = ki.id
+               WHERE ki.review_status = 'approved'"""
+        ).fetchone()[0]
+        item_count = conn.execute(
+            "SELECT COUNT(*) FROM knowledge_items WHERE review_status = 'approved'"
+        ).fetchone()[0]
+    except Exception as exc:
+        return {
+            "status": "degraded",
+            "error": str(exc),
+            "bedrock_configured": is_configured(),
+            "bedrock_model_id": model_id(),
+        }
+    finally:
+        conn.close()
+
+    return {
+        "status": "ok" if chunk_count > 0 and is_configured() else "degraded",
+        "approved_items": item_count,
+        "approved_chunks": chunk_count,
+        "bedrock_configured": is_configured(),
+        "bedrock_model_id": model_id(),
+    }
+
+
+@router.post("/ask")
+def ask_knowledge(body: AskRequest):
+    """Nutrition Coach — answers from approved sports nutrition sources with citations."""
+    conn = get_conn()
+    try:
+        athlete = conn.execute(
+            "SELECT * FROM athletes WHERE id = ?", (body.athlete_id,)
+        ).fetchone()
+        if not athlete:
+            raise HTTPException(404, "Athlete not found.")
+        athlete_dict = dict(athlete)
+    finally:
+        conn.close()
+    return answer_with_knowledge(
+        body.question,
+        athlete_dict,
+        history=body.history,
+        is_first_message=body.is_first_message,
+        recipe_category=body.recipe_category,
+        prefer_recipe=body.prefer_recipe,
+    )
 
 
 @router.get("/{slug}")
@@ -121,19 +189,3 @@ def archive_item(slug: str, x_admin_key: Optional[str] = Header(None)):
         return {"slug": slug, "review_status": "archived", "message": "Item archived (not deleted)."}
     finally:
         conn.close()
-
-
-@router.post("/ask")
-def ask_knowledge(body: AskRequest):
-    """Public endpoint — athletes/parents ask questions."""
-    conn = get_conn()
-    try:
-        athlete = conn.execute(
-            "SELECT * FROM athletes WHERE id = ?", (body.athlete_id,)
-        ).fetchone()
-        if not athlete:
-            raise HTTPException(404, "Athlete not found.")
-        athlete_dict = dict(athlete)
-    finally:
-        conn.close()
-    return answer_with_knowledge(body.question, athlete_dict, body.is_first_message)

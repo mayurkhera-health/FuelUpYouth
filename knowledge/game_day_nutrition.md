@@ -1,7 +1,8 @@
 ---
 title: "Complete Game-Day Nutrition Guide for Youth Soccer"
 category: "game-day"
-source: "ACSM / Everett MD 2025 / Academy of Nutrition and Dietetics"
+organization: and
+source: "Academy of Nutrition and Dietetics"
 source_urls:
   - "https://www.eatright.org/fitness/sports-and-performance"
 last_reviewed_date: "2026-06-10"

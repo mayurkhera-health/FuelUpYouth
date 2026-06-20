@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
-from api.models import MealLogCreate, MealLogResponse, PhotoMealAnalyzeRequest
+from api.models import MealLogCreate, MealLogResponse, PhotoMealAnalyzeRequest, VoiceMealAnalyzeRequest
 from api.database import get_conn
-from api.services import photo_meal_analyzer
+from api.services import photo_meal_analyzer, voice_meal_analyzer
 
 router = APIRouter()
 
@@ -45,6 +45,34 @@ def analyze_photo_meal(data: PhotoMealAnalyzeRequest):
         raise HTTPException(503, str(e))
     except Exception as e:
         raise HTTPException(500, f"Photo analysis failed: {e}")
+
+    return {"analysis": analysis}
+
+
+@router.post("/analyze-voice")
+def analyze_voice_meal(data: VoiceMealAnalyzeRequest):
+    transcription = (data.transcription or "").strip()
+    if len(transcription) < 3:
+        raise HTTPException(400, "Please provide a meal description (at least 3 characters).")
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM athletes WHERE id = ?", (data.athlete_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Athlete not found.")
+        athlete = dict(row)
+    finally:
+        conn.close()
+
+    allergies = data.allergies or _parse_allergies(athlete.get("allergies"))
+
+    try:
+        analysis = voice_meal_analyzer.analyze_voice(transcription, allergies=allergies)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Voice analysis failed: {e}")
 
     return {"analysis": analysis}
 

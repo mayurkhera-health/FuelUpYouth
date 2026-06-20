@@ -1,7 +1,8 @@
 ---
 title: "Pre-Practice and Pre-Game Meal Timing for Youth Soccer"
 category: "meal-timing"
-source: "ACSM / Academy of Nutrition and Dietetics / Everett MD 2025"
+organization: and
+source: "Academy of Nutrition and Dietetics"
 source_urls:
   - "https://www.eatright.org/fitness/sports-and-performance"
 last_reviewed_date: "2026-06-10"
