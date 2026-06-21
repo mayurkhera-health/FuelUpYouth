@@ -284,20 +284,48 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
 
     profile = resolve_category(category)
     first_name = athlete.get("first_name", "athlete")
-    restriction_note = ""
-    if allergies:
-        restriction_note = f" They're free of your listed allergens ({', '.join(allergies)})."
+    sport = athlete.get("sport", "their sport")
+    age = athlete.get("age", "")
+    position = athlete.get("position", "")
+    allergies_note = f"Allergies/restrictions: {', '.join(allergies)}." if allergies else "No known allergies."
     option_count = len(result.get("recipes") or [])
-    if option_count > 1:
-        answer = (
-            f"Here are **{option_count} {profile['label'].lower()}** options for {first_name} — "
-            f"from our science-backed recipe library.{restriction_note} "
-            f"**Tap one to select it**, then add your pick to your meal plan."
+
+    # Build conversational opener via Bedrock instead of hardcoded template
+    from api.services import bedrock_client
+
+    _opener_system = (
+        "You are FuelUp's Nutrition Coach for youth athletes ages 9-17. "
+        "You speak directly to the parent or athlete in a warm, knowledgeable tone. "
+        "Keep responses concise — 2-3 sentences max. "
+        "Never use bullet points or headers. Never mention 'the catalog' or 'our library'. "
+        "Do not list the recipes — that happens separately. "
+        "End with a natural offer to show specific recipes, like: "
+        "'Want me to show you a couple of options that fit?' or similar."
+    )
+
+    _opener_user = (
+        f"Athlete: {first_name}, age {age}, plays {position} {sport}. "
+        f"{allergies_note} "
+        f"They asked: \"{question}\" "
+        f"This is a {profile['label'].lower()} situation. "
+        f"I have {option_count} matching recipes ready to show them. "
+        f"Write a warm 2-3 sentence conversational response that addresses their question "
+        f"with the key nutrition principle, then naturally offer to show the recipes."
+    )
+
+    try:
+        answer = bedrock_client.converse_text(
+            system=_opener_system,
+            user=_opener_user,
+            max_tokens=150,
+            temperature=0.7,
         )
-    else:
+    except Exception:
+        logger.warning("Conversational opener generation failed, falling back to template")
+        restriction_note = f" Free of your listed allergens ({', '.join(allergies)})." if allergies else ""
         answer = (
-            f"Here's a **{profile['label']}** pick for {first_name} — "
-            f"from our science-backed recipe library.{restriction_note}"
+            f"Here are **{option_count} {profile['label'].lower()}** options for {first_name}."
+            f"{restriction_note} Tap one to add it to your meal plan."
         )
 
     return {
