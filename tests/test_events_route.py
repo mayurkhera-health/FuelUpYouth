@@ -66,3 +66,20 @@ def test_rest_event_derives_low_for_elite(client):
     })
     assert r.status_code == 201, r.text
     assert r.json()["intensity"] == "low"
+
+
+def test_targets_reflect_event_intensity(client):
+    aid = _make_athlete(client, "Recreational")
+    # Recreational would derive "low" for a game; send explicit "high" to prove threading
+    client.post("/api/events/", json={
+        "athlete_id": aid, "event_name": "Game", "event_type": "game",
+        "event_date": "2026-07-01", "intensity": "high",
+    })
+    r = client.get(f"/api/nutrition/targets/{aid}?date=2026-07-01")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["intensity"] == "high"
+    # A date with no event -> rest, no intensity -> full band (intensity None)
+    r2 = client.get(f"/api/nutrition/targets/{aid}?date=2026-07-02")
+    assert r2.status_code == 200, r2.text
+    assert r2.json().get("intensity") is None
