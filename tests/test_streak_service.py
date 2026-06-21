@@ -200,3 +200,14 @@ def test_register_confirmation_recelebrates_after_reset():
     ss.register_confirmation(1, conn, later - timedelta(days=1))  # current 1 -> tier 0, resets marker
     assert ss.register_confirmation(1, conn, later)["just_reached_milestone"] == 2
     conn.close()
+
+
+def test_freeze_not_reported_when_streak_runs_out_of_history():
+    """A bridge past the start of history is not a 'used' freeze (no day follows it)."""
+    conn = _streak_db()
+    today = date(2026, 6, 17)
+    _confirm(conn, 1, today.isoformat())  # day-1 athlete: only today logged
+    result = ss.compute_current_streak(1, conn, today)
+    assert result["current"] == 1
+    assert result["freeze_used_this_week"] is False
+    conn.close()

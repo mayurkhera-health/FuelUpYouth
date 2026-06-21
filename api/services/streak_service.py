@@ -86,12 +86,15 @@ def compute_current_streak(athlete_id: int, conn, today=None) -> dict:
     """
     Consecutive qualifying days ending today (or yesterday if today is not yet
     logged — today never breaks the streak). Up to `freeze_tokens` missed days
-    that fall within the rolling 7-day window are bridged (auto-freeze).
+    that fall within the rolling 7-day window are bridged (auto-freeze). A bridge
+    only counts as a 'used' freeze once a qualifying day actually follows it, so a
+    streak that simply runs out of history does not report a wasted freeze.
     """
     today_d = _as_date(today)
     qual = _qualifying_dates(athlete_id, conn)
     max_bridges = _freeze_tokens(athlete_id, conn)
     bridges_used = 0
+    pending_bridges = 0
 
     # Today-grace: if today is not yet logged, anchor on yesterday.
     anchor = today_d if today_d.isoformat() in qual else today_d - timedelta(days=1)
@@ -100,11 +103,15 @@ def compute_current_streak(athlete_id: int, conn, today=None) -> dict:
     while streak <= 3650:  # safety bound (~10y)
         if d.isoformat() in qual:
             streak += 1
+            # A qualifying day followed the bridged gap(s): the freeze actually
+            # protected the streak, so commit the pending bridges now.
+            bridges_used += pending_bridges
+            pending_bridges = 0
             d -= timedelta(days=1)
             continue
         within_7 = d >= today_d - timedelta(days=6)
-        if bridges_used < max_bridges and within_7:
-            bridges_used += 1
+        if (bridges_used + pending_bridges) < max_bridges and within_7:
+            pending_bridges += 1
             d -= timedelta(days=1)
             continue
         break
