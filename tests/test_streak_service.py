@@ -148,3 +148,55 @@ def test_no_confirmations_is_zero():
     conn = _streak_db()
     assert ss.compute_current_streak(1, conn, date(2026, 6, 17))["current"] == 0
     conn.close()
+
+
+def _streak_db_with_state():
+    conn = _streak_db()
+    _create_streak_state(conn)
+    return conn
+
+
+def test_get_streak_block_shape():
+    conn = _streak_db_with_state()
+    today = date(2026, 6, 17)
+    _confirm(conn, 1, today.isoformat())
+    _confirm(conn, 1, (today - timedelta(days=1)).isoformat())
+    block = ss.get_streak(1, conn, today)
+    assert block["current"] == 2
+    assert block["today_done"] is True
+    assert block["next_milestone"] == 5          # ladder 2/5/10/21, current 2 -> next 5
+    assert block["just_reached_milestone"] is None  # read path never celebrates
+    assert len(block["week_strip"]) == 7
+    conn.close()
+
+
+def test_register_confirmation_fires_milestone_once():
+    conn = _streak_db_with_state()
+    today = date(2026, 6, 17)
+    _confirm(conn, 1, today.isoformat())
+    _confirm(conn, 1, (today - timedelta(days=1)).isoformat())  # current = 2 -> tier 2
+
+    first = ss.register_confirmation(1, conn, today)
+    assert first["just_reached_milestone"] == 2   # crosses tier 2
+
+    second = ss.register_confirmation(1, conn, today)
+    assert second["just_reached_milestone"] is None  # already celebrated
+    conn.close()
+
+
+def test_register_confirmation_recelebrates_after_reset():
+    conn = _streak_db_with_state()
+    today = date(2026, 6, 17)
+    _confirm(conn, 1, today.isoformat())
+    _confirm(conn, 1, (today - timedelta(days=1)).isoformat())
+    assert ss.register_confirmation(1, conn, today)["just_reached_milestone"] == 2
+
+    # Simulate a later day where the streak has fallen back to 1, then climbs to 2 again.
+    conn.execute("DELETE FROM confirmations")
+    later = date(2026, 7, 1)
+    _confirm(conn, 1, later.isoformat())
+    _confirm(conn, 1, (later - timedelta(days=1)).isoformat())
+    # last_celebrated reset happens on the intervening low-streak registration
+    ss.register_confirmation(1, conn, later - timedelta(days=1))  # current 1 -> tier 0, resets marker
+    assert ss.register_confirmation(1, conn, later)["just_reached_milestone"] == 2
+    conn.close()

@@ -110,3 +110,64 @@ def compute_current_streak(athlete_id: int, conn, today=None) -> dict:
         break
 
     return {"current": streak, "freeze_used_this_week": bridges_used > 0}
+
+
+def _ensure_streak_state(conn) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS streak_state (
+            athlete_id                INTEGER PRIMARY KEY,
+            freeze_tokens             INTEGER NOT NULL DEFAULT 1,
+            last_celebrated_milestone INTEGER NOT NULL DEFAULT 0,
+            updated_at                TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+
+
+def get_streak(athlete_id: int, conn, today=None) -> dict:
+    """Read-path streak block for the Today screen. Never celebrates (that is
+    the write path's job), so `just_reached_milestone` is always None here."""
+    today_d = _as_date(today)
+    qual = _qualifying_dates(athlete_id, conn)
+    cur = compute_current_streak(athlete_id, conn, today_d)
+    next_m = next((m for m in MILESTONES if m > cur["current"]), None)
+    return {
+        "current": cur["current"],
+        "best": _best_streak(qual),
+        "week_strip": _week_strip(qual, today_d),
+        "today_done": today_d.isoformat() in qual,
+        "freeze_used_this_week": cur["freeze_used_this_week"],
+        "next_milestone": next_m,
+        "just_reached_milestone": None,
+    }
+
+
+def register_confirmation(athlete_id: int, conn, today=None) -> dict:
+    """Write-path hook. Call after a confirmation is recorded. Updates the
+    milestone marker and returns the streak block with `just_reached_milestone`
+    set when the athlete crosses a new tier."""
+    _ensure_streak_state(conn)
+    block = get_streak(athlete_id, conn, today)
+    cur = block["current"]
+    reached = max((m for m in MILESTONES if m <= cur), default=0)
+
+    row = conn.execute(
+        "SELECT last_celebrated_milestone FROM streak_state WHERE athlete_id = ?",
+        (athlete_id,),
+    ).fetchone()
+    last = int(row["last_celebrated_milestone"]) if row else 0
+
+    just = None
+    if reached != last:
+        conn.execute(
+            "INSERT INTO streak_state (athlete_id, last_celebrated_milestone) VALUES (?, ?) "
+            "ON CONFLICT(athlete_id) DO UPDATE SET "
+            "last_celebrated_milestone = excluded.last_celebrated_milestone, "
+            "updated_at = datetime('now')",
+            (athlete_id, reached),
+        )
+        conn.commit()
+        if reached > last:          # climbing up -> celebrate; dropping -> just reset marker
+            just = reached
+
+    block["just_reached_milestone"] = just
+    return block
