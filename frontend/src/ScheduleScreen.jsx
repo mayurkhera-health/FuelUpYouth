@@ -10,7 +10,7 @@ const EVENT_COLORS = {
 };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const blank = { event_name: "", event_type: "practice", event_date: "", start_time: "", duration_hours: "1.5", city: "" };
+const blank = { event_name: "", event_type: "practice", event_date: "", start_time: "", duration_hours: "1.5", city: "", intensity: "" };
 
 // ── ICS Parser ───────────────────────────────────────────────────────────────
 function parseICS(text) {
@@ -240,6 +240,7 @@ export default function ScheduleScreen({ athlete, onScheduleImported }) {
   async function handleAdd(e) {
     e.preventDefault();
     if (!form.event_name.trim() || !form.event_date) return setFormError("Name and date are required.");
+    if (!form.intensity) return setFormError("Please select an intensity level.");
     setSaving(true); setFormError("");
     const res = await fetch(`${API}/api/events/`, {
       method: "POST",
@@ -342,6 +343,15 @@ export default function ScheduleScreen({ athlete, onScheduleImported }) {
                 <option value="game">Game</option>
                 <option value="tournament">Tournament</option>
                 <option value="rest">Rest</option>
+              </select>
+            </div>
+            <div style={s.field}>
+              <label style={s.label}>Intensity</label>
+              <select style={s.input} value={form.intensity} onChange={e => setForm(f => ({ ...f, intensity: e.target.value }))}>
+                <option value="">Select intensity</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
               </select>
             </div>
           </div>
