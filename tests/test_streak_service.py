@@ -96,3 +96,55 @@ def test_week_strip_is_monday_to_sunday():
     qual = {"2026-06-15", "2026-06-17"}
     strip = ss._week_strip(qual, date(2026, 6, 17))
     assert strip == [True, False, True, False, False, False, False]
+
+
+def test_current_streak_counts_consecutive_days():
+    conn = _streak_db()
+    today = date(2026, 6, 17)
+    for days_ago in range(3):  # 06-17, 06-16, 06-15
+        _confirm(conn, 1, (today - timedelta(days=days_ago)).isoformat())
+    assert ss.compute_current_streak(1, conn, today)["current"] == 3
+    conn.close()
+
+
+def test_today_not_logged_does_not_break_streak():
+    """Today is still 'open' — a prior streak stays alive until the day ends."""
+    conn = _streak_db()
+    today = date(2026, 6, 17)
+    _confirm(conn, 1, (today - timedelta(days=1)).isoformat())  # yesterday
+    _confirm(conn, 1, (today - timedelta(days=2)).isoformat())  # day before
+    # today NOT logged -> streak counts back from yesterday = 2 (not 0)
+    assert ss.compute_current_streak(1, conn, today)["current"] == 2
+    conn.close()
+
+
+def test_freeze_bridges_one_missed_day():
+    """One missed day within the last 7 is auto-protected (freeze)."""
+    conn = _streak_db()
+    today = date(2026, 6, 17)
+    _confirm(conn, 1, today.isoformat())                          # today
+    # 06-16 MISSED
+    _confirm(conn, 1, (today - timedelta(days=2)).isoformat())    # 06-15
+    _confirm(conn, 1, (today - timedelta(days=3)).isoformat())    # 06-14
+    result = ss.compute_current_streak(1, conn, today)
+    assert result["current"] == 3          # today + 06-15 + 06-14, bridging 06-16
+    assert result["freeze_used_this_week"] is True
+    conn.close()
+
+
+def test_freeze_bridges_at_most_one_day():
+    """Two consecutive missed days cannot both be bridged with a single token."""
+    conn = _streak_db()
+    today = date(2026, 6, 17)
+    _confirm(conn, 1, today.isoformat())                          # today
+    # 06-16 and 06-15 BOTH missed
+    _confirm(conn, 1, (today - timedelta(days=3)).isoformat())    # 06-14
+    # streak = just today; cannot reach 06-14 across a 2-day gap
+    assert ss.compute_current_streak(1, conn, today)["current"] == 1
+    conn.close()
+
+
+def test_no_confirmations_is_zero():
+    conn = _streak_db()
+    assert ss.compute_current_streak(1, conn, date(2026, 6, 17))["current"] == 0
+    conn.close()

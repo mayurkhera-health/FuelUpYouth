@@ -69,3 +69,44 @@ def _week_strip(qual: set, today: date) -> list:
     """Mon..Sun booleans for the week containing `today`."""
     monday = today - timedelta(days=today.weekday())
     return [(monday + timedelta(days=i)).isoformat() in qual for i in range(7)]
+
+
+def _freeze_tokens(athlete_id: int, conn) -> int:
+    try:
+        row = conn.execute(
+            "SELECT freeze_tokens FROM streak_state WHERE athlete_id = ?",
+            (athlete_id,),
+        ).fetchone()
+    except sqlite3.OperationalError:
+        return DEFAULT_FREEZE_TOKENS
+    return int(row["freeze_tokens"]) if row else DEFAULT_FREEZE_TOKENS
+
+
+def compute_current_streak(athlete_id: int, conn, today=None) -> dict:
+    """
+    Consecutive qualifying days ending today (or yesterday if today is not yet
+    logged — today never breaks the streak). Up to `freeze_tokens` missed days
+    that fall within the rolling 7-day window are bridged (auto-freeze).
+    """
+    today_d = _as_date(today)
+    qual = _qualifying_dates(athlete_id, conn)
+    max_bridges = _freeze_tokens(athlete_id, conn)
+    bridges_used = 0
+
+    # Today-grace: if today is not yet logged, anchor on yesterday.
+    anchor = today_d if today_d.isoformat() in qual else today_d - timedelta(days=1)
+    streak = 0
+    d = anchor
+    while streak <= 3650:  # safety bound (~10y)
+        if d.isoformat() in qual:
+            streak += 1
+            d -= timedelta(days=1)
+            continue
+        within_7 = d >= today_d - timedelta(days=6)
+        if bridges_used < max_bridges and within_7:
+            bridges_used += 1
+            d -= timedelta(days=1)
+            continue
+        break
+
+    return {"current": streak, "freeze_used_this_week": bridges_used > 0}
