@@ -31,14 +31,20 @@ def get_recipe_by_id(recipe_id: str) -> dict:
 
 # Maps recipe_categories profile keys to recipe_db category values.
 PROFILE_TO_DB_CATEGORIES = {
-    "halftime": ["halftime"],
-    "pre_game": ["pre-game", "tournament"],
-    "post_game": ["post-game-recovery"],
-    "snack": ["pre-game-snack"],
-    "lunch": ["practice", "meal-prep"],
-    "dinner": ["strength", "practice"],
-    "breakfast": ["practice"],
-    "hydration": ["halftime"],
+    "pre_game":       ["pre-game", "tournament", "Pre-Game Fueling"],
+    "pre_game_snack": ["pre-game-snack", "Mid-Day Snacks"],
+    "halftime":       ["halftime", "Mid-Day Snacks"],
+    "post_game":      ["post-game-recovery", "Post-Game Recovery"],
+    "practice":       ["practice", "Pre-Game Fueling"],
+    "strength":       ["strength", "Dinner", "Post-Game Recovery"],
+    "tournament":     ["tournament", "Pre-Game Fueling", "Mid-Day Snacks"],
+    "meal_prep":      ["meal-prep", "Breakfast", "Lunch", "Dinner"],
+    "breakfast":      ["practice", "Breakfast"],
+    "lunch":          ["practice", "meal-prep", "Lunch"],
+    "dinner":         ["strength", "practice", "Dinner"],
+    "hydration":      ["halftime", "Mid-Day Snacks"],
+    "recovery":       ["post-game-recovery", "Post-Game Recovery"],
+    "snack":          ["pre-game-snack", "Mid-Day Snacks"],
 }
 
 
@@ -61,10 +67,12 @@ def get_valid_recipes(
     seen: set[str] = set()
     candidates: list[dict] = []
     for cat in db_categories:
-        for recipe in get_recipes(category=cat, allergens_to_avoid=allergens):
-            if recipe["id"] not in seen:
-                seen.add(recipe["id"])
-                candidates.append(recipe)
+        exact_cats = [c for c in TIMING_CATEGORIES if c == cat or c.endswith(cat)]
+        for exact_cat in exact_cats:
+            for recipe in get_recipes(category=exact_cat, allergens_to_avoid=allergens):
+                if recipe["id"] not in seen:
+                    seen.add(recipe["id"])
+                    candidates.append(recipe)
 
     if dietary:
         matched = [
