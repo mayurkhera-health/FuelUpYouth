@@ -17,6 +17,15 @@ def _normalize_start_time(v: Optional[str]) -> Optional[str]:
     raise ValueError(f"start_time must be HH:MM or H:MMam/pm, got {v!r}")
 
 
+def _normalize_intensity(v):
+    if v is None or v == "":
+        return None
+    s = str(v).strip().lower()
+    if s not in ("low", "medium", "high"):
+        raise ValueError("intensity must be one of: low, medium, high")
+    return s
+
+
 class ParentCreate(BaseModel):
     full_name: str
     email: str
@@ -74,11 +83,17 @@ class EventCreate(BaseModel):
     start_time: Optional[str] = None  # HH:MM (24h)
     duration_hours: Optional[float] = None
     city: Optional[str] = None
+    intensity: Optional[str] = None  # low / medium / high; derived if omitted
 
     @field_validator("start_time", mode="before")
     @classmethod
     def normalize_start_time(cls, v):
         return _normalize_start_time(v)
+
+    @field_validator("intensity", mode="before")
+    @classmethod
+    def normalize_intensity(cls, v):
+        return _normalize_intensity(v)
 
 
 class EventUpdate(BaseModel):
@@ -88,11 +103,17 @@ class EventUpdate(BaseModel):
     start_time: Optional[str] = None  # HH:MM (24h)
     duration_hours: Optional[float] = None
     city: Optional[str] = None
+    intensity: Optional[str] = None  # low / medium / high
 
     @field_validator("start_time", mode="before")
     @classmethod
     def normalize_start_time(cls, v):
         return _normalize_start_time(v)
+
+    @field_validator("intensity", mode="before")
+    @classmethod
+    def normalize_intensity(cls, v):
+        return _normalize_intensity(v)
 
 
 class EventResponse(BaseModel):
@@ -104,6 +125,7 @@ class EventResponse(BaseModel):
     start_time: Optional[str]
     duration_hours: Optional[float]
     city: Optional[str]
+    intensity: Optional[str] = None
     created_at: str
 
 
