@@ -1,3 +1,5 @@
+from typing import Optional
+
 EVENT_TYPE_MAP = {
     "soccer game": "game",
     "game": "game",
@@ -69,7 +71,7 @@ def normalize_event_type(event_type: str) -> str:
     return EVENT_TYPE_MAP.get(event_type.lower().strip(), "rest")
 
 
-def derive_intensity(event_type: str, competition_level) -> str:
+def derive_intensity(event_type: str, competition_level: Optional[str]) -> str:
     """Derive intensity (low/medium/high) for ICS-imported, legacy, or
     otherwise-unspecified events. Manual events carry an explicit value.
 
@@ -111,7 +113,7 @@ def calc_rmr(weight_lbs: float, height_ft: int, height_in: float, gender: str) -
     return 11.1 * wt_kg + 8.4 * ht_cm - 340
 
 
-def calc_daily_targets(athlete: dict, event_type: str = "rest", intensity: str = None) -> dict:
+def calc_daily_targets(athlete: dict, event_type: str = "rest", intensity: Optional[str] = None) -> dict:
     wt_kg = lbs_to_kg(athlete["weight_lbs"])
     rmr = calc_rmr(athlete["weight_lbs"], athlete["height_ft"], athlete["height_in"], athlete["gender"])
     norm = normalize_event_type(event_type)
