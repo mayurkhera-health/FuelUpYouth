@@ -4,6 +4,7 @@ from typing import List
 from api.models import EventCreate, EventUpdate, EventResponse
 from api.database import get_conn
 from api.services.window_templates import on_event_added_or_changed
+from api.services.nutrition_calc import derive_intensity
 
 router = APIRouter()
 
@@ -25,11 +26,17 @@ def fetch_ics(url: str):
 def create_event(data: EventCreate):
     conn = get_conn()
     try:
-        if not conn.execute("SELECT id FROM athletes WHERE id = ?", (data.athlete_id,)).fetchone():
+        athlete = conn.execute(
+            "SELECT id, competition_level FROM athletes WHERE id = ?", (data.athlete_id,)
+        ).fetchone()
+        if not athlete:
             raise HTTPException(404, "Athlete not found.")
+
+        intensity = data.intensity or derive_intensity(data.event_type, athlete["competition_level"])
+
         conn.execute(
-            "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours, city) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (data.athlete_id, data.event_name, data.event_type, data.event_date, data.start_time, data.duration_hours, data.city),
+            "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours, city, intensity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (data.athlete_id, data.event_name, data.event_type, data.event_date, data.start_time, data.duration_hours, data.city, intensity),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM events WHERE rowid = last_insert_rowid()").fetchone()
@@ -54,10 +61,20 @@ def update_event(event_id: int, data: EventUpdate):
         new_start    = data.start_time     if data.start_time     is not None else existing["start_time"]
         new_dur      = data.duration_hours if data.duration_hours is not None else existing["duration_hours"]
         new_city     = data.city           if data.city           is not None else existing["city"]
+        if data.intensity is not None:
+            new_intensity = data.intensity
+        elif existing["intensity"]:
+            new_intensity = existing["intensity"]
+        else:
+            athlete = conn.execute(
+                "SELECT competition_level FROM athletes WHERE id = ?", (existing["athlete_id"],)
+            ).fetchone()
+            level = athlete["competition_level"] if athlete else None
+            new_intensity = derive_intensity(new_type, level)
 
         conn.execute(
-            "UPDATE events SET event_name=?, event_type=?, event_date=?, start_time=?, duration_hours=?, city=? WHERE id=?",
-            (new_name, new_type, new_date, new_start, new_dur, new_city, event_id),
+            "UPDATE events SET event_name=?, event_type=?, event_date=?, start_time=?, duration_hours=?, city=?, intensity=? WHERE id=?",
+            (new_name, new_type, new_date, new_start, new_dur, new_city, new_intensity, event_id),
         )
         conn.commit()
         updated = dict(conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone())
