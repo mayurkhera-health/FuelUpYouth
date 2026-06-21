@@ -211,3 +211,13 @@ def test_freeze_not_reported_when_streak_runs_out_of_history():
     assert result["current"] == 1
     assert result["freeze_used_this_week"] is False
     conn.close()
+
+
+def test_register_is_importable_by_route_layer():
+    # Guards the exact call the route makes: register_confirmation(athlete_id, conn, today=log_date)
+    conn = _streak_db_with_state()
+    _confirm(conn, 7, "2026-06-17")
+    block = ss.register_confirmation(7, conn, today="2026-06-17")
+    assert block["current"] == 1
+    assert "just_reached_milestone" in block
+    conn.close()

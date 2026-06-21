@@ -41,6 +41,7 @@ def record_confirmation(
         raise HTTPException(400, f"Invalid window_type: {window_type}")
 
     from api.database import get_conn
+    from api.services import streak_service
     conn = get_conn()
     try:
         conn.execute(
@@ -53,7 +54,8 @@ def record_confirmation(
             "SELECT * FROM confirmations WHERE athlete_id = ? AND window_key = ? AND log_date = ?",
             (athlete_id, window_key, log_date),
         ).fetchone()
-        return dict(row)
+        streak = streak_service.register_confirmation(athlete_id, conn, today=log_date)
+        return {**dict(row), "streak": streak}
     finally:
         conn.close()
 
