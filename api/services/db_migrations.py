@@ -4,6 +4,7 @@ Called at FastAPI startup; safe to run multiple times.
 """
 
 from api.database import get_conn
+from api.services.nutrition_calc import derive_intensity
 
 
 def run_all():
@@ -17,6 +18,8 @@ def run_all():
         _create_notification_log(conn)
         _create_streak_state(conn)
         _add_timezone_to_tokens(conn)
+        _add_intensity_to_events(conn)
+        _add_intensity_to_daily_targets(conn)
         conn.commit()
     finally:
         conn.close()
@@ -197,3 +200,22 @@ def _create_streak_state(conn):
             updated_at                TEXT    NOT NULL DEFAULT (datetime('now'))
         )
     """)
+
+
+def _add_intensity_to_events(conn):
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
+    if "intensity" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN intensity TEXT")
+        rows = conn.execute("""
+            SELECT e.id AS id, e.event_type AS event_type, a.competition_level AS competition_level
+            FROM events e LEFT JOIN athletes a ON a.id = e.athlete_id
+        """).fetchall()
+        for r in rows:
+            intensity = derive_intensity(r["event_type"], r["competition_level"])
+            conn.execute("UPDATE events SET intensity = ? WHERE id = ?", (intensity, r["id"]))
+
+
+def _add_intensity_to_daily_targets(conn):
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(daily_targets)").fetchall()]
+    if "intensity" not in cols:
+        conn.execute("ALTER TABLE daily_targets ADD COLUMN intensity TEXT")

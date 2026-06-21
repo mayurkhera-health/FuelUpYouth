@@ -18,25 +18,27 @@ def get_targets(athlete_id: int, date: str = None, event_type: str = None):
         athlete = dict(row)
         target_date = date or str(dt_date.today())
 
+        events = conn.execute(
+            "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time",
+            (athlete_id, target_date),
+        ).fetchall()
         if not event_type:
-            events = conn.execute(
-                "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time",
-                (athlete_id, target_date),
-            ).fetchall()
             event_type = dict(events[0])["event_type"] if events else "rest"
+        intensity = dict(events[0]).get("intensity") if events else None
 
-        targets = nutrition_calc.calc_daily_targets(athlete, event_type)
+        targets = nutrition_calc.calc_daily_targets(athlete, event_type, intensity)
         targets["athlete_id"] = athlete_id
         targets["target_date"] = target_date
 
         conn.execute(
             """INSERT OR REPLACE INTO daily_targets
-               (athlete_id, target_date, event_type, total_calories,
+               (athlete_id, target_date, event_type, intensity, total_calories,
                 carbs_g_min, carbs_g_max, protein_g_min, protein_g_max,
                 fat_g_min, fat_g_max, iron_mg, calcium_mg,
                 hydration_oz_min, hydration_oz_max, lea_alert, targets_raw)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (athlete_id, target_date, targets["event_type"], targets["total_calories"],
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (athlete_id, target_date, targets["event_type"], targets.get("intensity"),
+             targets["total_calories"],
              targets["carbs_g_min"], targets["carbs_g_max"],
              targets["protein_g_min"], targets["protein_g_max"],
              targets["fat_g_min"], targets["fat_g_max"],

@@ -1,5 +1,8 @@
+from typing import Optional
+
 EVENT_TYPE_MAP = {
     "soccer game": "game",
+    "game": "game",
     "soccer tournament": "tournament",
     "tournament": "tournament",
     "club soccer practice": "practice",
@@ -68,6 +71,39 @@ def normalize_event_type(event_type: str) -> str:
     return EVENT_TYPE_MAP.get(event_type.lower().strip(), "rest")
 
 
+def derive_intensity(event_type: str, competition_level: Optional[str]) -> str:
+    """Derive intensity (low/medium/high) for ICS-imported, legacy, or
+    otherwise-unspecified events. Manual events carry an explicit value.
+
+    Rest/recovery events floor to "low" for everyone; all other events map
+    from competition level. Tolerant of both the 3 current labels and the
+    legacy 4-value labels."""
+    if normalize_event_type(event_type) == "rest":
+        return "low"
+    level = (competition_level or "").strip().lower()
+    if level == "":
+        return "low"
+    if "elite" in level:
+        return "high"
+    if "recreational" in level:
+        return "low"
+    if "competitive" in level or "club" in level:
+        return "medium"
+    return "low"
+
+
+def _reposition(lo: float, hi: float, intensity: str):
+    """Return a sub-band positioned within [lo, hi] by intensity.
+    Never exceeds the original scientific bounds."""
+    span = hi - lo
+    if intensity == "low":
+        return lo, lo + 0.5 * span
+    if intensity == "high":
+        return lo + 0.5 * span, hi
+    # medium (and any unexpected value): middle 50%
+    return lo + 0.25 * span, hi - 0.25 * span
+
+
 def calc_rmr(weight_lbs: float, height_ft: int, height_in: float, gender: str) -> float:
     """Everett MD 2025 RMR formula — NEVER use Harris-Benedict for youth."""
     wt_kg = lbs_to_kg(weight_lbs)
@@ -77,16 +113,22 @@ def calc_rmr(weight_lbs: float, height_ft: int, height_in: float, gender: str) -
     return 11.1 * wt_kg + 8.4 * ht_cm - 340
 
 
-def calc_daily_targets(athlete: dict, event_type: str = "rest") -> dict:
+def calc_daily_targets(athlete: dict, event_type: str = "rest", intensity: Optional[str] = None) -> dict:
     wt_kg = lbs_to_kg(athlete["weight_lbs"])
     rmr = calc_rmr(athlete["weight_lbs"], athlete["height_ft"], athlete["height_in"], athlete["gender"])
     norm = normalize_event_type(event_type)
 
     total_calories = int(rmr * PAL_MULTIPLIERS.get(norm, 1.55))
-    carb_min = int(CARB_TARGETS[norm][0] * wt_kg)
-    carb_max = int(CARB_TARGETS[norm][1] * wt_kg)
-    protein_min = round(PROTEIN_TARGETS[norm][0] * wt_kg, 1)
-    protein_max = round(PROTEIN_TARGETS[norm][1] * wt_kg, 1)
+
+    carb_lo, carb_hi = CARB_TARGETS[norm]
+    prot_lo, prot_hi = PROTEIN_TARGETS[norm]
+    if intensity:
+        carb_lo, carb_hi = _reposition(carb_lo, carb_hi, intensity)
+        prot_lo, prot_hi = _reposition(prot_lo, prot_hi, intensity)
+    carb_min = int(carb_lo * wt_kg)
+    carb_max = int(carb_hi * wt_kg)
+    protein_min = round(prot_lo * wt_kg, 1)
+    protein_max = round(prot_hi * wt_kg, 1)
     fat_min = int(total_calories * 0.20 / 9)
     fat_max = int(total_calories * 0.35 / 9)
 
@@ -100,6 +142,7 @@ def calc_daily_targets(athlete: dict, event_type: str = "rest") -> dict:
 
     return {
         "event_type": norm,
+        "intensity": intensity,
         "total_calories": total_calories,
         "carbs_g_min": carb_min,
         "carbs_g_max": carb_max,

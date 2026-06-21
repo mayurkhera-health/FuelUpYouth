@@ -50,11 +50,19 @@ def test_food_submissions_table_exists(conn):
     assert row is not None
 
 
-def test_seed_loads_all_60_foods(conn):
+def _csv_row_count() -> int:
+    import csv
+    from pathlib import Path
+    csv_path = Path(__file__).resolve().parent.parent / "fueling_foods_seed.csv"
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        return sum(1 for _ in csv.DictReader(f))
+
+
+def test_seed_loads_all_foods(conn):
     from db.setup import seed_fueling_foods
     seed_fueling_foods(conn)
     count = conn.execute("SELECT COUNT(*) FROM fueling_foods").fetchone()[0]
-    assert count == 60
+    assert count == _csv_row_count()
 
 
 def test_seed_is_idempotent(conn):
@@ -62,7 +70,7 @@ def test_seed_is_idempotent(conn):
     seed_fueling_foods(conn)
     seed_fueling_foods(conn)
     count = conn.execute("SELECT COUNT(*) FROM fueling_foods").fetchone()[0]
-    assert count == 60
+    assert count == _csv_row_count()
 
 
 def test_seed_allergen_tags_stored_correctly(conn):
