@@ -15,6 +15,7 @@ def run_all():
         _create_expo_push_tokens(conn)
         _create_window_logs(conn)
         _create_notification_log(conn)
+        _create_streak_state(conn)
         _add_timezone_to_tokens(conn)
         conn.commit()
     finally:
@@ -185,3 +186,14 @@ def _add_timezone_to_tokens(conn):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(expo_push_tokens)").fetchall()]
     if "timezone" not in cols:
         conn.execute("ALTER TABLE expo_push_tokens ADD COLUMN timezone TEXT")
+
+
+def _create_streak_state(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS streak_state (
+            athlete_id                INTEGER PRIMARY KEY,
+            freeze_tokens             INTEGER NOT NULL DEFAULT 1,
+            last_celebrated_milestone INTEGER NOT NULL DEFAULT 0,
+            updated_at                TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
