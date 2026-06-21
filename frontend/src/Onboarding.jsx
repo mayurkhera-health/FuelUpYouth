@@ -354,10 +354,12 @@ export default function Onboarding({ onComplete }) {
                   onChange={(e) => setAthlete({ ...athlete, competition_level: e.target.value })}>
                   <option value="">Select level</option>
                   <option>Recreational</option>
-                  <option>Club</option>
-                  <option>Competitive</option>
-                  <option>Elite</option>
+                  <option>Competitive Club</option>
+                  <option>Elite Club</option>
                 </select>
+                <p style={{ fontSize: "12px", color: "#6b7280", margin: "6px 0 0" }}>
+                  Recreational (AYSO, YMCA) · Competitive Club (most travel clubs, NorCal, NPL lower) · Elite Club (ECNL, GA, MLS Next, DPL, EA)
+                </p>
               </div>
             </div>
 

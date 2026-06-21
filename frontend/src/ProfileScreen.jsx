@@ -3,7 +3,7 @@ import { useState } from "react";
 const API = import.meta.env.VITE_API_URL ?? "";
 
 const POSITIONS   = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
-const LEVELS      = ["Recreational", "Club", "Competitive", "Elite"];
+const LEVELS      = ["Recreational", "Competitive Club", "Elite Club"];
 const GENDERS     = ["Girl", "Boy", "Prefer not to say"];
 const ALLERGIES   = ["Gluten", "Dairy", "Eggs", "Peanuts", "Tree Nuts", "Fish", "Shellfish", "Soy", "Sesame"];
 const DIETS       = ["Vegetarian", "Vegan", "Halal", "Kosher", "Gluten-Free", "Dairy-Free"];
@@ -139,6 +139,9 @@ export default function ProfileScreen({ athlete, onSave }) {
               <Chip key={l} label={l} active={form.competition_level === l} onClick={() => set("competition_level", l)} />
             ))}
           </div>
+          <p style={{ fontSize: "12px", color: "#6b7280", margin: "6px 0 0" }}>
+            Recreational (AYSO, YMCA) · Competitive Club (travel clubs, NorCal, NPL lower) · Elite Club (ECNL, GA, MLS Next, DPL, EA)
+          </p>
         </Field>
       </div>
 
