@@ -221,3 +221,39 @@ def test_register_is_importable_by_route_layer():
     assert block["current"] == 1
     assert "just_reached_milestone" in block
     conn.close()
+
+
+def test_build_today_view_includes_streak(monkeypatch):
+    """build_today_view must add a 'streak' block computed from confirmations."""
+    import api.services.today_service as tsvc
+
+    conn = _streak_db_with_state()
+    # Minimal athletes/events/meal_plans so build_today_view runs.
+    conn.executescript("""
+        CREATE TABLE athletes (id INTEGER PRIMARY KEY, first_name TEXT, sport TEXT);
+        CREATE TABLE events (id INTEGER PRIMARY KEY, athlete_id INTEGER, event_type TEXT,
+            event_name TEXT, event_date TEXT, start_time TEXT, duration_hours REAL);
+        CREATE TABLE meal_plans (id INTEGER PRIMARY KEY, athlete_id INTEGER, plan_date TEXT,
+            slot_name TEXT, logged INTEGER DEFAULT 0);
+        INSERT INTO athletes (id, first_name, sport) VALUES (1, 'Alex', 'soccer');
+    """)
+    today = "2026-06-17"
+    _confirm(conn, 1, today)
+
+    # build_today_view imports these locally from their own modules, so patch THERE.
+    import api.services.window_templates as wt
+    import api.services.nutrition_analysis as na
+    monkeypatch.setattr(
+        wt, "generate_windows_for_day",
+        lambda athlete_id, day, events, force_v2=False: {"day_type": "rest", "windows": []},
+        raising=False,
+    )
+    monkeypatch.setattr(na, "get_week_start", lambda: "2026-06-15", raising=False)
+    monkeypatch.setattr(na, "get_week_dates",
+                        lambda ws: [f"2026-06-{15+i:02d}" for i in range(7)], raising=False)
+
+    view = tsvc.build_today_view(1, conn, today=today)
+    assert "streak" in view
+    assert view["streak"]["current"] == 1
+    assert view["streak"]["today_done"] is True
+    conn.close()

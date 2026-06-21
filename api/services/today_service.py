@@ -890,6 +890,8 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
 
         readiness_grid.append({"date": d, "day": DAY_ABBR[i], "score": score, "is_today": d == today_str})
 
+    from api.services.streak_service import get_streak
+
     return {
         "athlete":        {"first_name": athlete["first_name"], "sport": athlete.get("sport", "soccer")},
         "today_event":    today_event,
@@ -899,4 +901,5 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
         "windows":        windows,
         "next_game":      next_game,
         "readiness_grid": readiness_grid,
+        "streak":         get_streak(athlete_id, conn, today_str),
     }
