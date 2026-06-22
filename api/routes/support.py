@@ -1,0 +1,83 @@
+"""
+Support / problem reports.
+
+POST /api/support/report — persist a user-submitted problem report (with an
+optional screenshot) and email the team. The report is saved to the DB and a
+201 is returned REGARDLESS of email outcome: email is best-effort so a delivery
+failure never loses the report or fails the request.
+"""
+
+import uuid
+import logging
+from pathlib import Path
+
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+
+from api.database import get_conn
+from api.services.email_service import send_email
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+# Screenshots are written here — same ephemeral /tmp pattern as meal photos
+# (api/routes/today.py). Acceptable: the report row + email carry the content.
+_REPORTS_DIR = Path("/tmp/fuelup_reports")
+
+_REPORT_RECIPIENTS = ["mayurkhera@gmail.com", "purvihshah@gmail.com"]
+
+
+async def _store_screenshot(screenshot: UploadFile) -> str | None:
+    """Save the uploaded screenshot to disk; return its path, or None on failure."""
+    try:
+        content = await screenshot.read()
+        _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        raw = screenshot.filename or "screenshot.jpg"
+        ext = raw.rsplit(".", 1)[-1] if "." in raw else "jpg"
+        path = _REPORTS_DIR / f"report_{uuid.uuid4().hex[:8]}.{ext}"
+        path.write_bytes(content)
+        return str(path)
+    except Exception:
+        logger.exception("screenshot store failed")
+        return None
+
+
+@router.post("/report", status_code=201)
+async def submit_report(
+    description: str = Form(...),
+    app_version: str | None = Form(None),
+    platform: str | None = Form(None),
+    role_hint: str | None = Form(None),
+    screenshot: UploadFile | None = File(None),
+):
+    desc = description.strip()
+    if not desc:
+        raise HTTPException(400, "Description is required.")
+
+    screenshot_url = await _store_screenshot(screenshot) if screenshot is not None else None
+
+    conn = get_conn()
+    try:
+        cur = conn.execute(
+            """INSERT INTO problem_reports
+                   (description, screenshot_url, app_version, platform, role_hint)
+               VALUES (?, ?, ?, ?, ?)""",
+            (desc, screenshot_url, app_version, platform, role_hint),
+        )
+        conn.commit()
+        report_id = cur.lastrowid
+    finally:
+        conn.close()
+
+    # Best-effort notification — must never block or fail the 201.
+    subject = f"FuelUp problem report #{report_id} ({role_hint or 'unknown'})"
+    body = (
+        f"New problem report #{report_id}\n\n"
+        f"Role: {role_hint or 'unknown'}\n"
+        f"Platform: {platform or 'unknown'}\n"
+        f"App version: {app_version or 'unknown'}\n"
+        f"Screenshot: {screenshot_url or 'none'}\n\n"
+        f"Description:\n{desc}\n"
+    )
+    email_sent = send_email(subject, body, _REPORT_RECIPIENTS, attachment_path=screenshot_url)
+
+    return {"ok": True, "id": report_id, "email_sent": email_sent}
