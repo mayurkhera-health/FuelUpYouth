@@ -65,18 +65,24 @@ async def submit_report(
         )
         conn.commit()
         report_id = cur.lastrowid
+        created_at = conn.execute(
+            "SELECT created_at FROM problem_reports WHERE id = ?", (report_id,)
+        ).fetchone()[0]
     finally:
         conn.close()
 
     # Best-effort notification — must never block or fail the 201.
-    subject = f"FuelUp problem report #{report_id} ({role_hint or 'unknown'})"
+    subject = f"FuelUp — Problem Report from {role_hint or 'unknown'} (v{app_version or 'unknown'})"
     body = (
-        f"New problem report #{report_id}\n\n"
-        f"Role: {role_hint or 'unknown'}\n"
-        f"Platform: {platform or 'unknown'}\n"
-        f"App version: {app_version or 'unknown'}\n"
-        f"Screenshot: {screenshot_url or 'none'}\n\n"
-        f"Description:\n{desc}\n"
+        "A new problem report was submitted via the FuelUp app.\n\n"
+        f"Role:        {role_hint or 'not provided'}\n"
+        f"App version: {app_version or 'not provided'}\n"
+        f"Platform:    {platform or 'not provided'}\n"
+        f"Submitted:   {created_at} UTC\n\n"
+        "--- What they reported ---\n"
+        f"{desc}\n\n"
+        "--- Screenshot ---\n"
+        f"{'Attached — see image below.' if screenshot_url else 'No screenshot provided.'}"
     )
     email_sent = send_email(subject, body, _REPORT_RECIPIENTS, attachment_path=screenshot_url)
 
