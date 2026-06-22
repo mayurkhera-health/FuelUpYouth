@@ -24,6 +24,12 @@ def run_all():
     finally:
         conn.close()
 
+    # Table-rebuild migrations run on their OWN connection, AFTER the batch above
+    # has committed and closed. A rebuild must toggle PRAGMA foreign_keys, which
+    # cannot change inside a transaction — so it owns its full transaction/pragma
+    # lifecycle in isolation and must never share the batch connection.
+    _migrate_athlete_logins_unique()
+
 
 def _create_confirmations(conn):
     conn.execute("""
@@ -219,3 +225,68 @@ def _add_intensity_to_daily_targets(conn):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(daily_targets)").fetchall()]
     if "intensity" not in cols:
         conn.execute("ALTER TABLE daily_targets ADD COLUMN intensity TEXT")
+
+
+def _migrate_athlete_logins_unique():
+    """
+    Add UNIQUE(athlete_id) to athlete_logins — defense-in-depth behind the
+    code-level already-claimed guard in routes/auth.py (the guard is the primary
+    safety; this stops a duplicate athlete login at the DB layer too).
+
+    Production was created from db/setup.py, which lacked the constraint, so this
+    rebuilds the table (SQLite can't ALTER ADD CONSTRAINT). Runs on a DEDICATED
+    connection with its own transaction + foreign_keys toggle, because PRAGMA
+    foreign_keys cannot change inside a transaction and must not collide with
+    run_all()'s batch transaction. Idempotent: once the unique index exists it
+    returns immediately, so it's safe on every deploy.
+    """
+    conn = get_conn()
+    try:
+        # No-op if the table doesn't exist yet (fresh DBs get UNIQUE from setup.py).
+        if not conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='athlete_logins'"
+        ).fetchone():
+            return
+
+        # IDEMPOTENCY: skip if a UNIQUE index on exactly (athlete_id) already exists.
+        for idx in conn.execute("PRAGMA index_list(athlete_logins)").fetchall():
+            if idx[2]:  # unique flag
+                cols = [r[2] for r in conn.execute(f"PRAGMA index_info('{idx[1]}')").fetchall()]
+                if cols == ["athlete_id"]:
+                    return  # constraint already present — nothing to do
+
+        # REBUILD. athlete_logins has an outgoing ON DELETE CASCADE FK to athletes,
+        # so disable FK enforcement around the drop/rename. Toggle in autocommit
+        # (isolation_level=None), wrap the rebuild in an explicit BEGIN/COMMIT so it
+        # stays atomic, ROLLBACK on error, and always restore foreign_keys=ON.
+        conn.isolation_level = None
+        try:
+            conn.execute("PRAGMA foreign_keys=OFF")
+            conn.execute("BEGIN")
+            conn.execute("""
+                CREATE TABLE athlete_logins_new (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email       TEXT UNIQUE NOT NULL,
+                    athlete_id  INTEGER NOT NULL UNIQUE REFERENCES athletes(id) ON DELETE CASCADE,
+                    created_at  TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            # Row-preserving + dedup-safe: keep the earliest login per athlete_id.
+            conn.execute("""
+                INSERT INTO athlete_logins_new (id, email, athlete_id, created_at)
+                SELECT id, email, athlete_id, created_at FROM athlete_logins
+                WHERE id IN (SELECT MIN(id) FROM athlete_logins GROUP BY athlete_id)
+            """)
+            conn.execute("DROP TABLE athlete_logins")
+            conn.execute("ALTER TABLE athlete_logins_new RENAME TO athlete_logins")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_athlete_logins_email ON athlete_logins(email)"
+            )
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+        finally:
+            conn.execute("PRAGMA foreign_keys=ON")
+    finally:
+        conn.close()

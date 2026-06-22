@@ -80,7 +80,7 @@ def create_athlete_login(athlete_id: int, data: AthleteCreateLoginRequest):
         if not parent:
             raise HTTPException(
                 403,
-                "Ask your parent to set up Fueling2Win first — no parent account was found for that email.",
+                "Ask your parent to set up FuelUp first — no parent account was found for that email.",
             )
         parent_id = dict(parent)["id"]
 
@@ -93,6 +93,16 @@ def create_athlete_login(athlete_id: int, data: AthleteCreateLoginRequest):
             raise HTTPException(
                 403, "This athlete profile is not linked to that parent account."
             )
+
+        # Gate 3: athlete must not already have a login.
+        # Explicit check so the operation is sound regardless of whether the live
+        # athlete_logins table has the UNIQUE(athlete_id) constraint (prod currently
+        # does not — see db_migrations). Prevents a silent duplicate login for the
+        # same athlete claimed under a second email.
+        if conn.execute(
+            "SELECT 1 FROM athlete_logins WHERE athlete_id = ?", (athlete_id,)
+        ).fetchone():
+            raise HTTPException(409, "This athlete already has a login.")
 
         # Create login credentials
         try:

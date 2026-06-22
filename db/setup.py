@@ -241,7 +241,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS athlete_logins (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             email       TEXT UNIQUE NOT NULL,
-            athlete_id  INTEGER NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+            athlete_id  INTEGER NOT NULL UNIQUE REFERENCES athletes(id) ON DELETE CASCADE,
             created_at  TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
