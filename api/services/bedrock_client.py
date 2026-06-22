@@ -23,15 +23,21 @@ def embed_model_id() -> str:
     return os.getenv("BEDROCK_EMBED_MODEL_ID", DEFAULT_EMBED_MODEL)
 
 
+def _bedrock_config() -> Config:
+    # max_attempts is TOTAL attempts in "standard" mode → 2 means one retry.
+    # Standard mode retries only transient errors (throttling, 5xx, timeouts).
+    return Config(
+        read_timeout=30,
+        connect_timeout=10,
+        retries={"max_attempts": 2, "mode": "standard"},
+    )
+
+
 def _client():
     return boto3.client(
         "bedrock-runtime",
         region_name=_region(),
-        config=Config(
-            read_timeout=30,
-            connect_timeout=10,
-            retries={"max_attempts": 0},
-        ),
+        config=_bedrock_config(),
     )
 
 
