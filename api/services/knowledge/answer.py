@@ -45,11 +45,15 @@ _SAFETY_TERMS = [
 
 _CLASSIFIER_SYSTEM = f"""You route Nutrition Coach questions for youth soccer athletes ages 9-17.
 
-Choose exactly ONE path:
+Choose exactly ONE path. Deciding question for recipe vs knowledge: did the user EXPLICITLY say the word "recipe"/"recipes", OR ask to be shown a specific named dish? YES → recipe. NO → knowledge. When unsure, choose knowledge.
 
-- "knowledge" — Sports nutrition education: fueling timing, hydration, micronutrients, what *types* of foods fit a window, recovery, calculations, general fueling guidance. Use when the user asks WHY/WHEN/HOW MUCH or what to eat without asking for a full recipe with ingredients and steps.
+- "knowledge" — Default for ALL sports-nutrition questions AND all food/meal/snack guidance, answered with text. Includes WHY/WHEN/HOW MUCH of fueling (timing, hydration, micronutrients, recovery, calculations), evaluating something ("is my meal plan good?"), and general food guidance like "what should I eat", "suggest a meal", "give me an example of a snack", "recommend something to eat", "what's a good breakfast". These are ALL knowledge — NOT recipe — unless the user explicitly says "recipe"/"recipes" or names a specific dish to show.
 
-- "recipe" — User wants a concrete meal or snack recommendation with ingredients, or asks to suggest, recommend, pick, find, or get a specific dish from our recipe library. If path is "recipe", set recipe_category to the best match:
+- "recipe" — ONLY when the user EXPLICITLY:
+  • uses the word "recipe" or "recipes" ("show me recipes", "give me a chicken recipe"), OR
+  • asks to be shown a specific NAMED dish ("show me a pasta dish", "give me a smoothie").
+  Generic asks for food/meals/snacks/examples WITHOUT the word "recipe" and WITHOUT a named dish are knowledge, not recipe.
+  Set recipe_category to the best match:
   halftime | pre_game | post_game | breakfast | lunch | dinner | snack | hydration
 
 - "out_of_scope" — The question cannot be answered by knowledge or recipe selection alone. Route here when:
@@ -59,19 +63,31 @@ Choose exactly ONE path:
   • Medical diagnosis, treatment, supplements for under-18, or weight-loss/dieting requests
 
   NOT out_of_scope if the user lists options and asks you to choose ("I have bananas and pretzels at home — which is better pre-game?") → knowledge
-  NOT out_of_scope if they want a recipe from our library → recipe
+  NOT out_of_scope if they explicitly ask for a recipe from our library → recipe
 
 {_COACH_CAPABILITIES}
 
 Examples:
-- "What should I eat before a game?" → knowledge
-- "How much water on practice days?" → knowledge
-- "Suggest a halftime snack" → recipe, halftime
-- "Give me something to eat after the game" → recipe, post_game
+recipe (explicit "recipe"/"recipes" or a specific named dish):
+- "Show me recipes" → recipe, snack
+- "Give me a chicken recipe for dinner" → recipe, dinner
+- "Recommend a breakfast recipe" → recipe, breakfast
+- "Show me a pasta dish for the night before a game" → recipe, pre_game
+- "Any halftime snack recipes?" → recipe, halftime
+
+knowledge (ALL other food/meal guidance — text answer, NO recipe card):
+- "What should I eat before practice?" → knowledge
+- "Suggest a meal for game day" → knowledge
+- "Give me an example of a pre-game snack" → knowledge
+- "What's a good breakfast for a tournament?" → knowledge
+- "Recommend something to eat" → knowledge
+- "How much protein do I need?" → knowledge
+- "When should I eat before a game?" → knowledge
+- "Is my meal plan good?" → knowledge
+
+out_of_scope:
 - "What can I eat at Trader Joe's?" → out_of_scope
 - "What's the best thing on the McDonald's menu?" → out_of_scope
-- "I grabbed yogurt and a granola bar at Target — which for after practice?" → knowledge
-- "Recommend a breakfast recipe" → recipe, breakfast
 
 Return ONLY valid JSON, no markdown:
 {{"path": "knowledge" | "recipe" | "out_of_scope", "recipe_category": null | "category_key"}}"""
@@ -431,15 +447,6 @@ def _citations_from_chunks(chunks: list[KnowledgeChunk]) -> list[dict]:
     return citations
 
 
-def _looks_like_meal_request(question: str) -> bool:
-    q = question.lower()
-    keywords = (
-        "suggest", "recommend", "give me", "recipe", "pick", "find",
-        "ideas for", "meal for", "snack for", "breakfast", "lunch", "dinner",
-    )
-    return any(kw in q for kw in keywords)
-
-
 def answer_with_knowledge(
     question: str,
     athlete: dict,
@@ -475,8 +482,6 @@ def answer_with_knowledge(
         category_for_recipe = recipe_category
     elif route["path"] == "recipe" and route.get("recipe_category"):
         category_for_recipe = route["recipe_category"]
-    elif recipe_category and _looks_like_meal_request(contextual_question):
-        category_for_recipe = recipe_category
 
     if category_for_recipe:
         return _answer_with_recipe(contextual_question, athlete, category_for_recipe)
