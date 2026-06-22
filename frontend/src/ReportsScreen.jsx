@@ -75,7 +75,7 @@ export default function ReportsScreen({ athlete }) {
           </button>
         </div>
         {error.daily && <p style={s.error}>{error.daily}</p>}
-        {loading.daily && !daily && <LoadingState message={reportMsg} />}
+        {loading.daily && !daily && <LoadingState message={reportMsg} subtle />}
         {daily && (
           <>
             <ScoreGauge score={daily.fuel_score} badge={daily.badge} />
@@ -114,7 +114,7 @@ export default function ReportsScreen({ athlete }) {
           </button>
         </div>
         {error.weekly && <p style={s.error}>{error.weekly}</p>}
-        {loading.weekly && !weekly && <LoadingState message={reportMsg} />}
+        {loading.weekly && !weekly && <LoadingState message={reportMsg} subtle />}
         {weekly && (
           <div style={s.weeklyCard}>
             {weekly.summary && <p style={s.weeklyText}>{weekly.summary}</p>}
@@ -157,7 +157,7 @@ export default function ReportsScreen({ athlete }) {
           <input style={s.dateInput} type="date" value={tourneyDate} onChange={e => setTourneyDate(e.target.value)} />
         </div>
         {error.tourney && <p style={s.error}>{error.tourney}</p>}
-        {loading.tourney && !tourney && <LoadingState message={reportMsg} />}
+        {loading.tourney && !tourney && <LoadingState message={reportMsg} subtle />}
         {tourney && (
           <div style={s.tourneyCard}>
             <div style={s.tourneyRow}>
