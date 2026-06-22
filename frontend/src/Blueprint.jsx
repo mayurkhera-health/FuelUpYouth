@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import LoadingState from "./components/LoadingState";
+import ErrorState from "./components/ErrorState";
+import { LOADING_MESSAGES } from "./constants/loadingMessages";
+import { useRotatingMessage } from "./hooks/useRotatingMessage";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -262,27 +266,64 @@ export default function Blueprint({ athlete, onAddSchedule }) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const loadingMsg = useRotatingMessage(LOADING_MESSAGES.blueprint, { active: loading });
 
   useEffect(() => {
     if (!athlete?.id) return;
-    setLoading(true);
-    fetch(`${API}/api/athletes/${athlete.id}/blueprint`, { cache: "no-store" })
-      .then(r => r.ok ? r.json() : Promise.reject("Failed to load Blueprint"))
-      .then(json => { setData(json); setLoading(false); })
-      .catch(e  => { setError(String(e)); setLoading(false); });
-  }, [athlete?.id]);
+    let timer = null;
+    let cancelled = false;
+    const startedAt = Date.now();
+    const POLL_MS = 2500;
+    const MAX_MS = 40000;
 
-  if (loading) return (
-    <div style={s.center}>
-      <div style={s.spinner} />
-      <p style={s.loadingText}>Building your Nutrition Blueprint…</p>
-    </div>
-  );
-  if (error) return (
-    <div style={s.center}>
-      <p style={{ color: "#dc2626", textAlign: "center" }}>⚠ {error}</p>
-    </div>
-  );
+    setLoading(true);
+    setError(null);
+    setData(null);
+
+    const poll = async () => {
+      try {
+        const r = await fetch(`${API}/api/athletes/${athlete.id}/blueprint`, { cache: "no-store" });
+
+        if (r.status === 404) {
+          const body = await r.json().catch(() => ({}));
+          if (body?.detail?.status === "pending") {
+            if (Date.now() - startedAt > MAX_MS) {
+              if (!cancelled) { setError("This is taking longer than expected. Please try again."); setLoading(false); }
+              return;
+            }
+            timer = setTimeout(poll, POLL_MS);
+            return;
+          }
+          if (!cancelled) { setError("Athlete not found."); setLoading(false); }
+          return;
+        }
+
+        if (!r.ok) {
+          if (!cancelled) { setError("Failed to load Blueprint"); setLoading(false); }
+          return;
+        }
+
+        const json = await r.json();
+        if (cancelled) return;
+        if (json.status === "error") {
+          setError(json.message || "We couldn't build your blueprint. Please try again.");
+          setLoading(false);
+          return;
+        }
+        setData(json);
+        setLoading(false);
+      } catch (e) {
+        if (!cancelled) { setError(String(e)); setLoading(false); }
+      }
+    };
+
+    poll();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [athlete?.id, reloadKey]);
+
+  if (loading) return <LoadingState message={loadingMsg} />;
+  if (error) return <ErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />;
   if (!data) return null;
 
   const bp  = data.blueprint;
