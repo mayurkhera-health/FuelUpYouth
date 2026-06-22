@@ -1,4 +1,6 @@
 import os
+import time
+
 import requests
 
 
@@ -30,7 +32,15 @@ def derive_sweat_profile(athlete: dict) -> str:
     return profile
 
 
-def get_weather(city: str) -> dict:
+_WEATHER_TTL_SECONDS = 1800  # 30 minutes
+_weather_cache: dict[str, tuple[float, dict]] = {}  # city(lower) -> (fetched_at, result)
+
+
+def _now() -> float:
+    return time.monotonic()
+
+
+def _fetch_weather(city: str) -> dict:
     api_key = os.getenv("OPENWEATHERMAP_API_KEY")
     if not api_key:
         return {"temp_f": None, "humidity": None, "description": "unknown", "error": "No API key configured"}
@@ -48,6 +58,20 @@ def get_weather(city: str) -> dict:
         }
     except Exception as e:
         return {"temp_f": None, "humidity": None, "description": "unknown", "error": str(e)}
+
+
+def get_weather(city: str) -> dict:
+    """Cached weather lookup. Successful results are cached per city for the TTL;
+    error results are never cached (so a transient failure self-heals next call).
+    In-memory, per-process — correct for the single-VM deployment."""
+    key = (city or "").strip().lower()
+    cached = _weather_cache.get(key)
+    if cached and (_now() - cached[0]) < _WEATHER_TTL_SECONDS:
+        return cached[1]
+    result = _fetch_weather(city)
+    if not result.get("error"):
+        _weather_cache[key] = (_now(), result)
+    return result
 
 
 def calc_sweat_output(athlete: dict, event: dict, weather: dict) -> dict:
