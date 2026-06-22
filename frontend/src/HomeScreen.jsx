@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import LoadingState from "./components/LoadingState";
 import ErrorState from "./components/ErrorState";
-import { LOADING_MESSAGES } from "./constants/loadingMessages";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 const TODAY = new Date().toISOString().split("T")[0];
@@ -647,7 +646,7 @@ export default function HomeScreen({ athlete, onNavigate }) {
     finally { setLogging(false); }
   }
 
-  if (loading) return <LoadingState message={LOADING_MESSAGES.generic[0]} />;
+  if (loading) return <LoadingState message="Loading today's plan…" />;
   if (loadError) return <ErrorState message="Couldn't load today's plan." onRetry={() => setReloadKey((k) => k + 1)} />;
 
   return (

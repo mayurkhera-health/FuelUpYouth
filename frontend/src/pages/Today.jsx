@@ -7,7 +7,6 @@ import QuickRow            from "../components/today/QuickRow";
 import Toast, { useToast } from "../components/today/Toast";
 import LoadingState from "../components/LoadingState";
 import ErrorState from "../components/ErrorState";
-import { LOADING_MESSAGES } from "../constants/loadingMessages";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -52,7 +51,7 @@ export default function Today({ athlete, onNavigate }) {
     } catch (e) { void e; }
   }
 
-  if (loading) return <LoadingState message={LOADING_MESSAGES.generic[0]} />;
+  if (loading) return <LoadingState message="Loading today's briefing…" />;
   if (loadError) return <ErrorState message="Couldn't load today's briefing." onRetry={() => setReloadKey((k) => k + 1)} />;
 
   const events       = summary?.events ?? [];
