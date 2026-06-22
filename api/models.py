@@ -50,7 +50,7 @@ class AthleteCreate(BaseModel):
     height_ft: int
     height_in: float
     position: Optional[str] = None  # Goalkeeper / Defender / Midfielder / Forward
-    competition_level: Optional[str] = None  # Recreational / Club / Competitive / Elite
+    competition_level: Optional[str] = None  # recreational / competitive_club / elite_club (legacy values tolerated)
     sweat_profile: Optional[str] = None  # Light / Moderate / Heavy / Very Heavy
     allergies: Optional[str] = None
     dietary_restrictions: Optional[str] = None
