@@ -20,6 +20,7 @@ def run_all():
         _add_timezone_to_tokens(conn)
         _add_intensity_to_events(conn)
         _add_intensity_to_daily_targets(conn)
+        _create_problem_reports(conn)
         conn.commit()
     finally:
         conn.close()
@@ -225,6 +226,20 @@ def _add_intensity_to_daily_targets(conn):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(daily_targets)").fetchall()]
     if "intensity" not in cols:
         conn.execute("ALTER TABLE daily_targets ADD COLUMN intensity TEXT")
+
+
+def _create_problem_reports(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS problem_reports (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            description    TEXT NOT NULL,
+            screenshot_url TEXT,
+            app_version    TEXT,
+            platform       TEXT,
+            role_hint      TEXT,
+            created_at     TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
 
 def _migrate_athlete_logins_unique():
