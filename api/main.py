@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
+        # Starlette ignores @app.on_event("startup") when a lifespan is set, so the
+        # db_migrations.run_all() registered there never runs. Invoke it here (first,
+        # before knowledge ingest) so schema migrations actually apply on deploy.
+        from api.services import db_migrations
+        db_migrations.run_all()
         run_startup()
     except Exception:
         logger.exception("Startup migrations/ingest failed — coach may be unavailable")
