@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import LoadingState from "./components/LoadingState";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -53,7 +54,7 @@ export default function RecipesScreen({ athlete }) {
     setSwapping(null);
   }
 
-  if (loading) return <p style={s.empty}>Loading recipes…</p>;
+  if (loading) return <LoadingState message="Loading recipes…" />;
 
   return (
     <div>

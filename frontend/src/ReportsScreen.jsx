@@ -1,4 +1,7 @@
 import { useState } from "react";
+import LoadingState from "./components/LoadingState";
+import { LOADING_MESSAGES } from "./constants/loadingMessages";
+import { useRotatingMessage } from "./hooks/useRotatingMessage";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 const TODAY = new Date().toISOString().split("T")[0];
@@ -53,6 +56,9 @@ export default function ReportsScreen({ athlete }) {
     }
   }
 
+  const anyReportLoading = loading.daily || loading.weekly || loading.tourney;
+  const reportMsg = useRotatingMessage(LOADING_MESSAGES.reports, { active: anyReportLoading });
+
   return (
     <div>
       <h2 style={s.title}>Reports</h2>
@@ -69,6 +75,7 @@ export default function ReportsScreen({ athlete }) {
           </button>
         </div>
         {error.daily && <p style={s.error}>{error.daily}</p>}
+        {loading.daily && !daily && <LoadingState message={reportMsg} />}
         {daily && (
           <>
             <ScoreGauge score={daily.fuel_score} badge={daily.badge} />
@@ -107,6 +114,7 @@ export default function ReportsScreen({ athlete }) {
           </button>
         </div>
         {error.weekly && <p style={s.error}>{error.weekly}</p>}
+        {loading.weekly && !weekly && <LoadingState message={reportMsg} />}
         {weekly && (
           <div style={s.weeklyCard}>
             {weekly.summary && <p style={s.weeklyText}>{weekly.summary}</p>}
@@ -149,6 +157,7 @@ export default function ReportsScreen({ athlete }) {
           <input style={s.dateInput} type="date" value={tourneyDate} onChange={e => setTourneyDate(e.target.value)} />
         </div>
         {error.tourney && <p style={s.error}>{error.tourney}</p>}
+        {loading.tourney && !tourney && <LoadingState message={reportMsg} />}
         {tourney && (
           <div style={s.tourneyCard}>
             <div style={s.tourneyRow}>
