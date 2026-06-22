@@ -229,6 +229,57 @@ def _make_test_conn():
     return conn
 
 
+def _make_today_conn():
+    """In-memory DB with every table build_today_view + get_streak read from."""
+    conn = _make_test_conn()  # window_logs + meal_plans
+    conn.execute("""
+        CREATE TABLE athletes (
+            id INTEGER PRIMARY KEY, first_name TEXT, sport TEXT, gender TEXT
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id INTEGER NOT NULL, event_name TEXT, event_type TEXT,
+            event_date TEXT, start_time TEXT, duration_hours REAL
+        )
+    """)
+    # get_streak reads these two unguarded
+    conn.execute("CREATE TABLE confirmations (athlete_id INTEGER, log_date TEXT)")
+    conn.execute("CREATE TABLE report_config (key TEXT, value TEXT)")
+    conn.commit()
+    return conn
+
+
+def test_has_schedule_false_with_zero_events():
+    """A newly-claimed athlete with no events ever → has_schedule = False
+    (distinguishes 'no schedule set up' from a genuine rest day)."""
+    conn = _make_today_conn()
+    conn.execute("INSERT INTO athletes (id, first_name, sport) VALUES (1, 'Ryan', 'soccer')")
+    conn.commit()
+
+    view = build_today_view(1, conn, today="2026-06-22")
+    assert view is not None
+    assert view["has_schedule"] is False
+    conn.close()
+
+
+def test_has_schedule_true_with_one_event():
+    """An athlete with at least one event (any date, any type) → has_schedule = True."""
+    conn = _make_today_conn()
+    conn.execute("INSERT INTO athletes (id, first_name, sport) VALUES (2, 'Ryan', 'soccer')")
+    conn.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours) "
+        "VALUES (2, 'Practice', 'practice', '2026-07-01', '16:00', 1.5)"
+    )
+    conn.commit()
+
+    view = build_today_view(2, conn, today="2026-06-22")
+    assert view is not None
+    assert view["has_schedule"] is True
+    conn.close()
+
+
 def test_record_window_capture_uses_log_date():
     """record_window_capture respects client-supplied log_date, not server date."""
     conn = _make_test_conn()

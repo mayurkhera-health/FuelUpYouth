@@ -863,6 +863,12 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
             "days_away":  days_away,
         }
 
+    # Does this athlete have ANY events ever? Distinguishes a genuine rest day
+    # from a never-set-up schedule (both otherwise look identical on Today).
+    has_schedule = conn.execute(
+        "SELECT COUNT(*) FROM events WHERE athlete_id = ?", (athlete_id,)
+    ).fetchone()[0] > 0
+
     week_start_str = get_week_start()
     week_dates     = get_week_dates(week_start_str)
     DAY_ABBR       = ["M", "T", "W", "T", "F", "S", "S"]
@@ -900,6 +906,7 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
         "readiness":      readiness,
         "windows":        windows,
         "next_game":      next_game,
+        "has_schedule":   has_schedule,
         "readiness_grid": readiness_grid,
         "streak":         get_streak(athlete_id, conn, today_str),
     }
