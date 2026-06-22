@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import LoadingState from "./components/LoadingState";
+import { LOADING_MESSAGES } from "./constants/loadingMessages";
+import { useRotatingMessage } from "./hooks/useRotatingMessage";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -293,6 +296,8 @@ export default function MealPlannerScreen({ athlete, onNavigate, freshImport = f
 
   const athleteAllergens = (athlete.allergies || "").split(",").map(a => a.trim().toLowerCase()).filter(Boolean);
 
+  const planMsg = useRotatingMessage(LOADING_MESSAGES.meal_plan_gen, { active: loading });
+
   useEffect(() => {
     fetch(`${API}/api/recipes/`)
       .then(r => r.json())
@@ -400,7 +405,7 @@ export default function MealPlannerScreen({ athlete, onNavigate, freshImport = f
       {error && <div style={s.errorBox}>{error}</div>}
 
       {loading ? (
-        <div style={s.loadingMsg}>Loading plan…</div>
+        <LoadingState message={planMsg} />
       ) : weekData ? (
         <>
           <WeekDots

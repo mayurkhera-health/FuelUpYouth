@@ -5,17 +5,22 @@ import DailyMission        from "../components/today/DailyMission";
 import ScienceEdge         from "../components/today/ScienceEdge";
 import QuickRow            from "../components/today/QuickRow";
 import Toast, { useToast } from "../components/today/Toast";
+import LoadingState from "../components/LoadingState";
+import ErrorState from "../components/ErrorState";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
 export default function Today({ athlete, onNavigate }) {
   const [summary, setSummary]     = useState(null);
   const [loading, setLoading]     = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [waterCups, setWaterCups] = useState(0);
   const { message: toastMsg, showToast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch(`${API}/api/athletes/${athlete.id}/daily-summary`);
       if (res.ok) {
@@ -23,11 +28,11 @@ export default function Today({ athlete, onNavigate }) {
         setSummary(d);
         setWaterCups(d.water_cups ?? 0);
       }
-    } catch (e) { void e; }
+    } catch (e) { void e; setLoadError(true); }
     finally { setLoading(false); }
   }, [athlete.id]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [load, reloadKey]);
 
   useEffect(() => {
     const onVisible = () => { if (!document.hidden) load(); };
@@ -46,12 +51,8 @@ export default function Today({ athlete, onNavigate }) {
     } catch (e) { void e; }
   }
 
-  if (loading) return (
-    <div style={s.loadWrap}>
-      <div style={s.spinner} />
-      <div style={s.loadText}>Loading today's briefing…</div>
-    </div>
-  );
+  if (loading) return <LoadingState message="Loading today's briefing…" />;
+  if (loadError) return <ErrorState message="Couldn't load today's briefing." onRetry={() => setReloadKey((k) => k + 1)} />;
 
   const events       = summary?.events ?? [];
   const eventType    = summary?.event_type ?? "rest";

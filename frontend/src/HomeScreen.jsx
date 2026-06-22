@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import LoadingState from "./components/LoadingState";
+import ErrorState from "./components/ErrorState";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 const TODAY = new Date().toISOString().split("T")[0];
@@ -572,6 +574,8 @@ export default function HomeScreen({ athlete, onNavigate }) {
   const [todayEvent, setTodayEvent] = useState(null);
   const [fuelScore,  setFuelScore]  = useState(null);
   const [loading,    setLoading]    = useState(true);
+  const [loadError,  setLoadError]  = useState(false);
+  const [reloadKey,  setReloadKey]  = useState(0);
   const [logging,    setLogging]    = useState(false);
 
   // Derive logged labels from meals array — single source of truth, always in sync
@@ -583,6 +587,7 @@ export default function HomeScreen({ athlete, onNavigate }) {
 
   const fetchHome = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [tRes, mRes, evRes] = await Promise.all([
         fetch(`${API}/api/nutrition/targets/${athlete.id}?date=${TODAY}`),
@@ -597,11 +602,11 @@ export default function HomeScreen({ athlete, onNavigate }) {
         const sr = await fetch(`${API}/api/reports/${athlete.id}/daily?date=${TODAY}`);
         if (sr.ok) { const sd = await sr.json(); if (sd.fuel_score !== undefined) setFuelScore(sd); }
       }
-    } catch (_) {}
+    } catch (_) { setLoadError(true); }
     finally { setLoading(false); }
   }, [athlete.id]);
 
-  useEffect(() => { fetchHome(); }, [fetchHome]);
+  useEffect(() => { fetchHome(); }, [fetchHome, reloadKey]);
 
   const consumed = meals.reduce(
     (a, m) => ({ calories: a.calories + (m.calories||0), protein_g: a.protein_g + (m.protein_g||0), water_oz: a.water_oz + (m.water_oz||0) }),
@@ -641,12 +646,8 @@ export default function HomeScreen({ athlete, onNavigate }) {
     finally { setLogging(false); }
   }
 
-  if (loading) return (
-    <div style={s.loadingWrap}>
-      <div style={s.spinner} />
-      <div style={s.loadingText}>Loading today's plan…</div>
-    </div>
-  );
+  if (loading) return <LoadingState message="Loading today's plan…" />;
+  if (loadError) return <ErrorState message="Couldn't load today's plan." onRetry={() => setReloadKey((k) => k + 1)} />;
 
   return (
     <div style={s.page}>

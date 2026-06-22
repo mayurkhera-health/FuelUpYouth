@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import LoadingState from "./components/LoadingState";
+import { LOADING_MESSAGES } from "./constants/loadingMessages";
+import { useRotatingMessage } from "./hooks/useRotatingMessage";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 const TODAY = new Date().toISOString().split("T")[0];
@@ -53,6 +56,8 @@ export default function HydrationScreen({ athlete }) {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [eventsLoading, setEventsLoading] = useState(true);
+
+  const hydrationMsg = useRotatingMessage(LOADING_MESSAGES.hydration, { active: loading });
 
   const fetchEvents = useCallback(async () => {
     const res = await fetch(`${API}/api/events/athlete/${athlete.id}`);
@@ -136,7 +141,7 @@ export default function HydrationScreen({ athlete }) {
       <div style={s.section}>
         <div style={s.sectionTitle}>Select Event</div>
         {eventsLoading ? (
-          <p style={s.hint}>Loading events…</p>
+          <LoadingState message="Loading events…" subtle />
         ) : events.length === 0 ? (
           <div style={s.noEvents}>
             No upcoming events found. Add games or practices in the Schedule tab first.
@@ -216,6 +221,8 @@ export default function HydrationScreen({ athlete }) {
       )}
 
       {error && <div style={s.errorBox}>{error}</div>}
+
+      {loading && <LoadingState message={hydrationMsg} />}
 
       {/* Results */}
       {result && (

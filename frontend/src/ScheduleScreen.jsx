@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import LoadingState from "./components/LoadingState";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
@@ -449,7 +450,7 @@ export default function ScheduleScreen({ athlete, onScheduleImported }) {
       {/* Calendar */}
       {!mode && (
         loading
-          ? <p style={s.empty}>Loading schedule…</p>
+          ? <LoadingState message="Loading schedule…" />
           : events.length === 0
             ? <div style={s.emptyState}>
                 <div style={s.emptyIcon}>📅</div>
