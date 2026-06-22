@@ -24,8 +24,10 @@ def derive_sweat_profile(athlete: dict) -> str:
     if age >= 16 and "boy" in gender:
         profile = "very heavy"
 
-    # Elite/competitive athletes have higher sweat rates due to training adaptation
-    if level in ("elite", "competitive"):
+    # Elite/competitive athletes have higher sweat rates due to training adaptation.
+    # Substring match tolerates both legacy values ("elite", "competitive") and the
+    # current 3-level labels ("elite_club", "competitive_club").
+    if "elite" in level or "competitive" in level:
         bump = {"light": "moderate", "moderate": "heavy", "heavy": "very heavy", "very heavy": "very heavy"}
         profile = bump.get(profile, profile)
 
