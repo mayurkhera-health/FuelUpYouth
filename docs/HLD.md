@@ -1,9 +1,24 @@
 # FuelUpYouth — High-Level Design
 
-**Version:** 1.2  
-**Date:** 2026-06-21  
+**Version:** 1.3  
+**Date:** 2026-06-22  
 **Status:** For Review  
 **Attribution:** Science framework — Everett MD 2025 · Boston Children's Hospital RDN · AAP · ACSM 2016
+
+---
+
+## Changelog
+
+### v1.3 (2026-06-22)
+- **Support / Problem Reports** — new `POST /api/support/report` endpoint, `problem_reports` table, and `email_service.py` (Gmail SMTP). The in-app "Report a Problem" form now persists and emails the team. See [§6.11](#611-support--problem-reports).
+- **Today `has_schedule` flag** — `build_today_view` now returns `has_schedule` (true if the athlete has any events ever), letting the client distinguish "no schedule set up yet" from a genuine rest day.
+- **Bedrock resilience** — `bedrock_client` now performs **1 retry on transient failures** (was 0 / fail-fast).
+- **Latency** — one Fly machine kept warm to remove cold-start latency; `get_weather()` gains an in-memory TTL cache.
+- **Auth hardening** — athlete-login claim path hardened; `athlete_logins` gains a `UNIQUE(athlete_id)` rebuild migration (defense-in-depth behind the code-level guard).
+- **Frontend loading UX** — shared `LoadingState`/`ErrorState` toolkit, rotating copy, and recoverable errors across AI screens; blueprint polls while generating instead of erroring.
+
+### v1.2 (2026-06-21)
+- Event intensity (§6.3, §10.4, ER diagram, §11); streak gamification.
 
 ---
 
@@ -53,6 +68,7 @@ The system is an educational food guidance tool, not medical nutrition therapy. 
 | **Background jobs** | APScheduler (`BackgroundScheduler`) | Notification tick every 15 min |
 | **Frontend** | React (Vite) | SPA, no router library; view state via `useState` |
 | **Push notifications** | Web Push / `pywebpush` (VAPID) | Web; Expo push tokens for mobile |
+| **Transactional email** | Gmail SMTP (`smtplib`, stdlib) | `email_service.py`; problem-report notifications; `GMAIL_USER`/`GMAIL_APP_PASSWORD` secrets |
 | **Hosting** | Fly.io (single VM, region `sjc`) | Uvicorn serves API + static frontend |
 | **CI / CD** | GitHub Actions → `flyctl deploy` | Auto-deploy on push to `main` |
 | **Environment config** | `.env` / Fly.io secrets | `DB_PATH`, `AWS_*`, `VAPID_*` keys |
@@ -64,6 +80,8 @@ The system is an educational food guidance tool, not medical nutrition therapy. 
 A single Fly.io VM runs everything. Uvicorn binds on port 8000 and serves:
 - All `/api/*` routes (FastAPI)
 - The compiled React SPA from `frontend/dist/` via `StaticFiles` mounted at `/` (last, so API routes take precedence)
+
+**Latency:** one machine is kept warm (no scale-to-zero) to eliminate cold-start latency on the first request. `get_weather()` uses an in-memory TTL cache so repeated weather lookups within the window avoid redundant external calls.
 
 ```mermaid
 graph TD
@@ -129,6 +147,7 @@ graph LR
         R_notif["notifications"]
         R_library["library"]
         R_legal["legal"]
+        R_support["support"]
     end
 
     subgraph "api/services/"
@@ -147,6 +166,7 @@ graph LR
         S_today["today_service"]
         S_window["window_engine_v2\nwindow_templates"]
         S_streak["streak_service\n(single source of truth)"]
+        S_email["email_service\n(Gmail SMTP)"]
     end
 
     subgraph "Data"
@@ -166,6 +186,8 @@ graph LR
     R_coach --> S_coach
     R_shopping --> S_shopping
     R_notif --> S_notif
+    R_support --> S_email
+    R_support --> DB
 
     S_claude --> S_bedrock
     S_coach --> S_bedrock
@@ -214,7 +236,7 @@ All routes use the `/api/` prefix.
 | Reports | `/api/reports` | Daily score, weekly report v1/v2, tournament readiness |
 | Meal Planner | `/api/meal-plans` | Week plan CRUD, slot assignment, log slot, AI generation |
 | Meal Plan Selections | `/api/meal-plan` | Athlete-driven slot selections |
-| Today Screen | `/api/athletes/{id}/today` | Aggregated daily view — includes `streak` block (current count, best, 7-dot week strip, freeze state, milestone) |
+| Today Screen | `/api/athletes/{id}/today` | Aggregated daily view — includes `streak` block (current count, best, 7-dot week strip, freeze state, milestone) and `has_schedule` (false = athlete has no events ever, vs. a genuine rest day) |
 | Water Log | `/api/water-log` | Log water intake |
 | Knowledge / RAG Coach | `/api/knowledge` | `/ask` (RAG coach), `/sources`, `/health`, admin ingest |
 | Nutrition Coach Chat | `/api/coach` | `/context` (prefetch), `/chat` (multi-turn) |
@@ -222,6 +244,7 @@ All routes use the `/api/` prefix.
 | Notifications | `/api/notifications` | VAPID key, web push subscribe, Expo token, prefs |
 | Library | `/api/library` | Articles, athlete article picks |
 | Legal | `/api/legal` | Legal document storage |
+| Support | `/api/support` | `POST /report` — submit a problem report (multipart: description, app_version, platform, role_hint, optional screenshot) |
 | Info / Health | `/api/info`, `/health` | Version info, health probe |
 
 ---
@@ -245,6 +268,8 @@ sequenceDiagram
 ```
 
 A parent also calls `POST /confirm` to record `consent_confirmed = true` before an athlete profile can be fully activated.
+
+**Athlete login (claim):** athletes get their own login credential via the claim flow (`athlete_logins` table, keyed to a verified parent). The claim path is guarded against duplicate logins at the code level, with a `UNIQUE(athlete_id)` rebuild migration on `athlete_logins` as defense-in-depth (`_migrate_athlete_logins_unique` in `db_migrations.py`). No athlete login exists without a verified parent account.
 
 ### 6.2 Athlete Profiles & Blueprint Generation
 
@@ -356,6 +381,33 @@ Score badges: Elite Fueler (90+), Game Ready (75+), Getting There (50+), Needs F
 
 The streak feature tracks consecutive fueling days to drive daily engagement for youth athletes on the Today screen. Full design detail is in [Section 15](#15-streak-gamification).
 
+### 6.11 Support / Problem Reports
+
+The in-app "Report a Problem" form (Settings) submits to `POST /api/support/report` as multipart form data: `description` (required), `app_version`, `platform`, `role_hint`, and an optional `screenshot` image.
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant API as /api/support
+    participant DB as SQLite
+    participant Email as email_service (Gmail SMTP)
+
+    App->>API: POST /report (multipart)
+    alt description blank
+        API-->>App: 400
+    end
+    API->>API: store screenshot to /tmp/fuelup_reports (if present)
+    API->>DB: INSERT problem_reports
+    API->>Email: send_email(subject, body, [team], attachment=screenshot)
+    Note over API,Email: best-effort — failure logged, never blocks
+    API-->>App: 201 {ok, id, email_sent}
+```
+
+**Design rules:**
+- **Report persists regardless of email outcome** — the DB insert + `201` happen first; email is best-effort. This closes a prior gap where the form POSTed to a non-existent endpoint (405) and silently dropped every report.
+- **Email** — `email_service.send_email()` uses Gmail SMTP (`smtplib.SMTP_SSL`). Recipients are the team (`mayurkhera@gmail.com`, `purvihshah@gmail.com`). The screenshot is attached as an image; the body stays plain text. Returns `False` (no-op) if `GMAIL_USER`/`GMAIL_APP_PASSWORD` are unset — the report still saves.
+- **Screenshot storage** — written to `/tmp/fuelup_reports` (ephemeral, same pattern as meal photos); the durable copy is the email attachment.
+
 ---
 
 ## 7. AI / ML Layer
@@ -400,7 +452,7 @@ Single module wrapping the AWS Bedrock `converse` API. Key behaviours:
 - **Model**: `mistral.ministral-3-8b-instruct` (overridable via `BEDROCK_MODEL_ID` env var)
 - **Embed model**: `amazon.titan-embed-text-v2:0` (overridable via `BEDROCK_EMBED_MODEL_ID`)
 - **Region**: `AWS_REGION` (default `us-east-1`)
-- **Timeouts**: 30 s read, 10 s connect, 0 retries (fail fast)
+- **Timeouts**: 30 s read, 10 s connect; **1 retry on transient failures** (e.g. throttling / 5xx), then fail
 - **`is_configured()`**: returns True when any AWS credential source is present (`AWS_ACCESS_KEY_ID`, `AWS_PROFILE`, container role URI, web identity token, or role ARN)
 - **`extract_json()`**: strips markdown code fences from model output before `json.loads()`
 - **`_sanitize_json_string_literals()`**: escapes raw newlines/control chars inside JSON strings — guards against malformed model output
@@ -835,7 +887,24 @@ erDiagram
     }
 ```
 
-Additional tables not shown: `water_logs`, `otp_codes`, `legal_documents`, `athlete_food_prefs`, `food_submissions`, `notification_log`, `articles`, `athlete_article_picks`, `athlete_logins`, `meal_plan_selections`.
+Additional tables not shown: `water_logs`, `otp_codes`, `legal_documents`, `athlete_food_prefs`, `food_submissions`, `notification_log`, `articles`, `athlete_article_picks`, `athlete_logins`, `meal_plan_selections`, `problem_reports`.
+
+**Support table:**
+
+```mermaid
+erDiagram
+    problem_reports {
+        int id PK
+        string description
+        string screenshot_url
+        string app_version
+        string platform
+        string role_hint
+        string created_at
+    }
+```
+
+`problem_reports` is standalone (no FK) — the app sends no user ID, only a `role_hint`. Created by `_create_problem_reports()` in `db_migrations.run_all()`.
 
 ### 9.2 Data Access Pattern
 
@@ -1162,4 +1231,4 @@ On milestone: `Haptics.NotificationFeedbackType.Success` + toast `"7-day streak!
 
 ---
 
-*Document generated from source: `/Users/mayurkhera/FuelUpYouth`. All technical claims are derived directly from the codebase as of 2026-06-21.*
+*Document generated from source: `/Users/mayurkhera/FuelUpYouth`. All technical claims are derived directly from the codebase as of 2026-06-22.*
