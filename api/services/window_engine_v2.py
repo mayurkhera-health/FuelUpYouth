@@ -49,16 +49,20 @@ EARLY_MORNING_MESSAGE = (
 )
 
 GAME_TYPES     = {"game", "tournament"}
-TRAINING_TYPES = {"practice", "training", "strength"}
+# "conditioning" (Gym/Conditioning) is offered in the mobile picker. v2 is LIVE
+# in prod (EVENT_RELATIVE_WINDOWS=true), so map it explicitly as a training-type
+# day by design rather than relying on the non-game fallthrough.
+TRAINING_TYPES = {"practice", "training", "strength", "conditioning"}
 ALL_TYPES      = GAME_TYPES | TRAINING_TYPES
 
 DEFAULT_DURATION_MIN: dict[str, int] = {
-    "game":       90,   # live-verified: old engine uses 90min when duration_hours is null
-    "tournament": 90,
-    "practice":   90,
-    "training":   90,
-    "strength":   60,
-    "rest":        0,
+    "game":         90,   # live-verified: old engine uses 90min when duration_hours is null
+    "tournament":   90,
+    "practice":     90,
+    "training":     90,
+    "strength":     60,
+    "conditioning": 60,   # gym session — same default as strength
+    "rest":          0,
 }
 
 EVERYDAY_DEFS = [
@@ -248,7 +252,7 @@ def _event_cycle(
                 priority       = False,
                 is_tappable    = True,
                 why = (
-                    "A full meal 3 hours before gives your body time to digest "
+                    "A full meal 3-4 hours before gives your body time to digest "
                     "and top up your fuel stores."
                 ),
                 event_index = idx,
