@@ -42,11 +42,17 @@ def _now() -> float:
     return time.monotonic()
 
 
-def _fetch_weather(city: str) -> dict:
+def _fetch_weather(city: str | None = None, lat: float | None = None, lon: float | None = None) -> dict:
     api_key = os.getenv("OPENWEATHERMAP_API_KEY")
     if not api_key:
         return {"temp_f": None, "humidity": None, "description": "unknown", "error": "No API key configured"}
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=imperial"
+    # Prefer precise coordinates (venue lat/lon) over a coarse city-name query.
+    if lat is not None and lon is not None:
+        url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=imperial"
+    elif city:
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=imperial"
+    else:
+        return {"temp_f": None, "humidity": None, "description": "unknown", "error": "No location provided"}
     try:
         resp = requests.get(url, timeout=5)
         data = resp.json()
@@ -62,15 +68,24 @@ def _fetch_weather(city: str) -> dict:
         return {"temp_f": None, "humidity": None, "description": "unknown", "error": str(e)}
 
 
-def get_weather(city: str) -> dict:
-    """Cached weather lookup. Successful results are cached per city for the TTL;
-    error results are never cached (so a transient failure self-heals next call).
+def get_weather(city: str | None = None, lat: float | None = None, lon: float | None = None) -> dict:
+    """Cached weather lookup. Prefers precise coordinates (lat/lon) when BOTH are
+    provided; otherwise falls back to a city-name query. Returns an error result if
+    neither is given. Successful results are cached per location for the TTL; error
+    results are never cached (so a transient failure self-heals next call).
     In-memory, per-process — correct for the single-VM deployment."""
-    key = (city or "").strip().lower()
+    use_coords = lat is not None and lon is not None
+    key = (
+        f"coord:{round(float(lat), 3)},{round(float(lon), 3)}"
+        if use_coords
+        else (city or "").strip().lower()
+    )
+    if not key:
+        return {"temp_f": None, "humidity": None, "description": "unknown", "error": "No location provided"}
     cached = _weather_cache.get(key)
     if cached and (_now() - cached[0]) < _WEATHER_TTL_SECONDS:
         return cached[1]
-    result = _fetch_weather(city)
+    result = _fetch_weather(city=city, lat=lat, lon=lon)
     if not result.get("error"):
         _weather_cache[key] = (_now(), result)
     return result

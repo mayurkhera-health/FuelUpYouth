@@ -83,6 +83,10 @@ class EventCreate(BaseModel):
     start_time: Optional[str] = None  # HH:MM (24h)
     duration_hours: Optional[float] = None
     city: Optional[str] = None
+    venue_name: Optional[str] = None   # Google Places name (e.g. "Mustang Soccer Complex")
+    address: Optional[str] = None      # Google Places formatted_address
+    latitude: Optional[float] = None   # precise venue coords for weather lookup
+    longitude: Optional[float] = None
     intensity: Optional[str] = None  # low / medium / high; derived if omitted
 
     @field_validator("start_time", mode="before")
@@ -103,6 +107,10 @@ class EventUpdate(BaseModel):
     start_time: Optional[str] = None  # HH:MM (24h)
     duration_hours: Optional[float] = None
     city: Optional[str] = None
+    venue_name: Optional[str] = None
+    address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     intensity: Optional[str] = None  # low / medium / high
 
     @field_validator("start_time", mode="before")
@@ -125,6 +133,10 @@ class EventResponse(BaseModel):
     start_time: Optional[str]
     duration_hours: Optional[float]
     city: Optional[str]
+    venue_name: Optional[str] = None
+    address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     intensity: Optional[str] = None
     created_at: str
 
@@ -161,7 +173,7 @@ class MealLogResponse(BaseModel):
 class SweatOutputRequest(BaseModel):
     athlete_id: int
     event_id: int
-    city: str
+    city: Optional[str] = None  # optional override; event's stored location is preferred
 
 
 class RecipeSwapRequest(BaseModel):

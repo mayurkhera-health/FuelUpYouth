@@ -10,7 +10,7 @@ import api.services.weather as weather
 def _stub_fetch(monkeypatch):
     calls = {"n": 0}
 
-    def fake_fetch(city):
+    def fake_fetch(city=None, lat=None, lon=None):
         calls["n"] += 1
         return {"temp_f": 70.0, "humidity": 50, "description": "clear", "error": None}
 
@@ -46,7 +46,7 @@ def test_errors_are_not_cached(monkeypatch):
     weather._weather_cache.clear()
     monkeypatch.setattr(weather, "_now", lambda: 1000.0)
 
-    def err_fetch(city):
+    def err_fetch(city=None, lat=None, lon=None):
         return {"temp_f": None, "humidity": None, "description": "unknown", "error": "boom"}
 
     monkeypatch.setattr(weather, "_fetch_weather", err_fetch)

@@ -50,8 +50,13 @@ def assemble_context(
     event = dict(event) if event else None
 
     weather: dict | None = None
-    if event and event.get("city"):
-        raw = get_weather(event["city"])
+    _has_coords = event and event.get("latitude") is not None and event.get("longitude") is not None
+    if event and (_has_coords or event.get("city")):
+        raw = get_weather(
+            city=event.get("city"),
+            lat=event.get("latitude"),
+            lon=event.get("longitude"),
+        )
         if not raw.get("error") and raw.get("temp_f") is not None:
             heat_flag, heat_level = _heat_flag(
                 float(raw["temp_f"]),
