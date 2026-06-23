@@ -62,8 +62,15 @@ def calculate_sweat(req: SweatOutputRequest):
         event = conn.execute("SELECT * FROM events WHERE id = ?", (req.event_id,)).fetchone()
         if not event:
             raise HTTPException(404, "Event not found.")
-        weather = weather_svc.get_weather(req.city)
-        return weather_svc.calc_sweat_output(dict(athlete), dict(event), weather)
+        ev = dict(event)
+        # Prefer the event's stored venue coordinates; fall back to its city, then
+        # to a city override on the request (backward compat).
+        weather = weather_svc.get_weather(
+            city=ev.get("city") or req.city,
+            lat=ev.get("latitude"),
+            lon=ev.get("longitude"),
+        )
+        return weather_svc.calc_sweat_output(dict(athlete), ev, weather)
     finally:
         conn.close()
 

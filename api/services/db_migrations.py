@@ -19,6 +19,7 @@ def run_all():
         _create_streak_state(conn)
         _add_timezone_to_tokens(conn)
         _add_intensity_to_events(conn)
+        _add_venue_location_to_events(conn)
         _add_intensity_to_daily_targets(conn)
         _create_problem_reports(conn)
         _create_coach_feedback(conn)
@@ -221,6 +222,21 @@ def _add_intensity_to_events(conn):
         for r in rows:
             intensity = derive_intensity(r["event_type"], r["competition_level"])
             conn.execute("UPDATE events SET intensity = ? WHERE id = ?", (intensity, r["id"]))
+
+
+def _add_venue_location_to_events(conn):
+    """Venue + precise coordinates for an event, captured from Google Places on the
+    client. `latitude`/`longitude` feed coordinate-based weather lookup; `city` is
+    kept for backward compat + fallback. All nullable (venue stays optional)."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
+    if "venue_name" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN venue_name TEXT")
+    if "address" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN address TEXT")
+    if "latitude" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN latitude REAL")
+    if "longitude" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN longitude REAL")
 
 
 def _add_intensity_to_daily_targets(conn):

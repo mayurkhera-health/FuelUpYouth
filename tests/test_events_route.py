@@ -58,6 +58,28 @@ def test_omitted_intensity_is_derived(client):
     assert r.json()["intensity"] == "high"  # Elite Club game
 
 
+def test_venue_location_round_trips(client):
+    aid = _make_athlete(client, "Recreational")
+    r = client.post("/api/events/", json={
+        "athlete_id": aid, "event_name": "Practice", "event_type": "practice",
+        "event_date": "2026-06-23",
+        "venue_name": "Mustang Soccer Complex",
+        "address": "1 Camino Ramon, San Ramon, CA",
+        "latitude": 37.78, "longitude": -121.98,
+    })
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["venue_name"] == "Mustang Soccer Complex"
+    assert body["address"] == "1 Camino Ramon, San Ramon, CA"
+    assert body["latitude"] == 37.78 and body["longitude"] == -121.98
+
+    # Update only the coordinates; venue_name must be preserved (partial update).
+    u = client.put(f"/api/events/{body['id']}", json={"latitude": 38.0, "longitude": -122.0})
+    assert u.status_code == 200, u.text
+    assert u.json()["latitude"] == 38.0
+    assert u.json()["venue_name"] == "Mustang Soccer Complex"
+
+
 def test_rest_event_derives_low_for_elite(client):
     aid = _make_athlete(client, "Elite Club")
     r = client.post("/api/events/", json={

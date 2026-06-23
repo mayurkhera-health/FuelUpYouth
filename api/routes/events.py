@@ -35,8 +35,10 @@ def create_event(data: EventCreate):
         intensity = data.intensity or derive_intensity(data.event_type, athlete["competition_level"])
 
         conn.execute(
-            "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours, city, intensity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (data.athlete_id, data.event_name, data.event_type, data.event_date, data.start_time, data.duration_hours, data.city, intensity),
+            "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours, city, venue_name, address, latitude, longitude, intensity) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (data.athlete_id, data.event_name, data.event_type, data.event_date, data.start_time, data.duration_hours,
+             data.city, data.venue_name, data.address, data.latitude, data.longitude, intensity),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM events WHERE rowid = last_insert_rowid()").fetchone()
@@ -61,6 +63,10 @@ def update_event(event_id: int, data: EventUpdate):
         new_start    = data.start_time     if data.start_time     is not None else existing["start_time"]
         new_dur      = data.duration_hours if data.duration_hours is not None else existing["duration_hours"]
         new_city     = data.city           if data.city           is not None else existing["city"]
+        new_venue    = data.venue_name     if data.venue_name     is not None else existing["venue_name"]
+        new_address  = data.address        if data.address        is not None else existing["address"]
+        new_lat      = data.latitude       if data.latitude       is not None else existing["latitude"]
+        new_lng      = data.longitude      if data.longitude      is not None else existing["longitude"]
         if data.intensity is not None:
             new_intensity = data.intensity
         elif existing["intensity"]:
@@ -73,8 +79,10 @@ def update_event(event_id: int, data: EventUpdate):
             new_intensity = derive_intensity(new_type, level)
 
         conn.execute(
-            "UPDATE events SET event_name=?, event_type=?, event_date=?, start_time=?, duration_hours=?, city=?, intensity=? WHERE id=?",
-            (new_name, new_type, new_date, new_start, new_dur, new_city, new_intensity, event_id),
+            "UPDATE events SET event_name=?, event_type=?, event_date=?, start_time=?, duration_hours=?, "
+            "city=?, venue_name=?, address=?, latitude=?, longitude=?, intensity=? WHERE id=?",
+            (new_name, new_type, new_date, new_start, new_dur,
+             new_city, new_venue, new_address, new_lat, new_lng, new_intensity, event_id),
         )
         conn.commit()
         updated = dict(conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone())
