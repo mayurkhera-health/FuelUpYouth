@@ -21,6 +21,7 @@ def run_all():
         _add_intensity_to_events(conn)
         _add_intensity_to_daily_targets(conn)
         _create_problem_reports(conn)
+        _create_coach_feedback(conn)
         conn.commit()
     finally:
         conn.close()
@@ -237,6 +238,24 @@ def _create_problem_reports(conn):
             app_version    TEXT,
             platform       TEXT,
             role_hint      TEXT,
+            created_at     TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+
+def _create_coach_feedback(conn):
+    # Thumbs up/down telemetry on coach answers. High-volume, no email. `reason`
+    # is nullable now so adding reason chips later is a pure frontend change.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS coach_feedback (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            rating         TEXT NOT NULL,
+            question       TEXT,
+            answer_excerpt TEXT,
+            window_key     TEXT,
+            recipe_intent  INTEGER,
+            role_hint      TEXT,
+            reason         TEXT,
             created_at     TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
