@@ -798,11 +798,21 @@ def _build_fuel_targets_block(athlete: dict, events: list, windows: list,
             w["category_key"] = ck
 
     # Split across CONFIRMABLE (tappable) windows only. Nudge windows
-    # (hydrate/fuel_during, short between_games) are excluded by construction, so
-    # confirming every gauge-driving window reaches ~100% (D6).
+    # (hydrate/fuel_during, short between_games) are excluded by construction (D6).
+    #
+    # On EVENT days the Today timeline hides everyday meals (index.tsx filters
+    # everyday_* when isEventDay), so the athlete can't confirm them — exclude them
+    # from the split so the confirmable event windows carry the FULL daily target
+    # (confirming all visible windows reaches ~100% and daily_met fires). REST days
+    # keep everyday windows — they ARE the day's windows. Edge guard: never pass an
+    # empty split (fall back to the full tappable list).
+    event_day = bool(events)
+    split_source = [w for w in tappable if not (event_day and w["slot_name"].startswith("everyday_"))]
+    if not split_source:
+        split_source = tappable
     split_input = [
         {"slot_name": w["slot_name"], "category_key": catkey_by_slot.get(w["slot_name"])}
-        for w in tappable
+        for w in split_source
     ]
     split = fuel_gauge.split_targets_across_windows(daily, split_input)
     logged_by_slot = {w["slot_name"]: bool(w.get("logged")) for w in tappable}
