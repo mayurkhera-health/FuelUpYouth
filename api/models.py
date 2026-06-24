@@ -55,6 +55,7 @@ class AthleteCreate(BaseModel):
     allergies: Optional[str] = None
     dietary_restrictions: Optional[str] = None
     supplement_use: Optional[str] = None
+    season_phase: Optional[str] = None  # in_season / off_season / postseason (Fuel Gauge); default applied on write
 
 
 class AthleteResponse(BaseModel):
@@ -72,6 +73,7 @@ class AthleteResponse(BaseModel):
     allergies: Optional[str]
     dietary_restrictions: Optional[str]
     supplement_use: Optional[str]
+    season_phase: Optional[str] = None  # in_season / off_season / postseason (Fuel Gauge)
     created_at: str
 
 

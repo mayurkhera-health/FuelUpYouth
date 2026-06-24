@@ -4,6 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from api.models import AthleteCreate, AthleteResponse
 from api.database import get_conn
 from api.services.nutrition_calc import calc_daily_targets
+from api.services.fueling_targets import normalize_season_phase
 from api.services import claude_ai
 
 router = APIRouter()
@@ -90,11 +91,13 @@ def create_athlete(data: AthleteCreate, background_tasks: BackgroundTasks):
         conn.execute(
             """INSERT INTO athletes
                (parent_id, first_name, age, gender, weight_lbs, height_ft, height_in,
-                position, competition_level, sweat_profile, allergies, dietary_restrictions, supplement_use)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                position, competition_level, sweat_profile, allergies, dietary_restrictions, supplement_use,
+                season_phase)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (data.parent_id, data.first_name, data.age, data.gender, data.weight_lbs,
              data.height_ft, data.height_in, data.position, data.competition_level,
-             data.sweat_profile, data.allergies, data.dietary_restrictions, data.supplement_use),
+             data.sweat_profile, data.allergies, data.dietary_restrictions, data.supplement_use,
+             normalize_season_phase(data.season_phase)),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE rowid = last_insert_rowid()").fetchone()
@@ -122,17 +125,26 @@ def get_athlete(athlete_id: int):
 def update_athlete(athlete_id: int, data: AthleteCreate):
     conn = get_conn()
     try:
-        if not conn.execute("SELECT id FROM athletes WHERE id = ?", (athlete_id,)).fetchone():
+        existing = conn.execute(
+            "SELECT season_phase FROM athletes WHERE id = ?", (athlete_id,)
+        ).fetchone()
+        if not existing:
             raise HTTPException(404, "Athlete not found.")
+        # Preserve the stored season_phase when the client omits it (older app
+        # builds don't send the field — don't clobber it back to the default).
+        season_phase = normalize_season_phase(
+            data.season_phase if data.season_phase is not None else existing["season_phase"]
+        )
         conn.execute(
             """UPDATE athletes SET
                first_name=?, age=?, gender=?, weight_lbs=?, height_ft=?, height_in=?,
                position=?, competition_level=?, sweat_profile=?, allergies=?,
-               dietary_restrictions=?, supplement_use=?
+               dietary_restrictions=?, supplement_use=?, season_phase=?
                WHERE id=?""",
             (data.first_name, data.age, data.gender, data.weight_lbs, data.height_ft,
              data.height_in, data.position, data.competition_level, data.sweat_profile,
-             data.allergies, data.dietary_restrictions, data.supplement_use, athlete_id),
+             data.allergies, data.dietary_restrictions, data.supplement_use,
+             season_phase, athlete_id),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
