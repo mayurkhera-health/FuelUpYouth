@@ -17,6 +17,7 @@ from api.services.nutrition_calc import calc_daily_targets
 from api.services.today_service import (
     build_today_view,
     record_window_capture,
+    remove_window_capture,
     _ensure_window_logs_table,
 )
 
@@ -387,3 +388,62 @@ def test_rest_day_with_schedule_still_shows_existing_ui_plus_gauges(live_v2, fla
     assert view["has_schedule"] is True
     assert view["day_type"] == "rest"
     assert view["fuel_targets"]["target_source"] == "blueprint"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PHASE 2 — UN-CONFIRM (data model + gauge auto-update)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_remove_window_capture_reverses_both_writes_and_is_idempotent():
+    """Un-confirm must clear BOTH window_logs and meal_plans.logged (capture sets
+    both, and build_today_view derives `logged` from either). Idempotent."""
+    a = _athlete()
+    conn = _today_conn(a, [(TODAY, "game", "medium", "10:00", 1.5)])
+    try:
+        conn.execute("INSERT INTO meal_plans (athlete_id, plan_date, slot_name, logged) "
+                     "VALUES (?,?,?,1)", (a["id"], TODAY, "everyday_breakfast"))
+        conn.commit()
+        record_window_capture(a["id"], "everyday_breakfast", "text", "x", None, None, conn, log_date=TODAY)
+        assert conn.execute(
+            "SELECT COUNT(*) FROM window_logs WHERE athlete_id=? AND window_id='everyday_breakfast' "
+            "AND log_date=?", (a["id"], TODAY)).fetchone()[0] == 1
+
+        assert remove_window_capture(a["id"], "everyday_breakfast", conn, log_date=TODAY) is True
+        assert conn.execute(
+            "SELECT COUNT(*) FROM window_logs WHERE athlete_id=? AND window_id='everyday_breakfast' "
+            "AND log_date=?", (a["id"], TODAY)).fetchone()[0] == 0
+        assert conn.execute(
+            "SELECT logged FROM meal_plans WHERE athlete_id=? AND plan_date=? AND slot_name=?",
+            (a["id"], TODAY, "everyday_breakfast")).fetchone()["logged"] == 0
+        # nothing left to undo
+        assert remove_window_capture(a["id"], "everyday_breakfast", conn, log_date=TODAY) is False
+    finally:
+        conn.close()
+
+
+def test_uncapture_decrements_gauge_back_to_zero(live_v2, flag_on):
+    """Confirm all → daily_met True; un-confirm one → decremented + not met;
+    un-confirm all → confirmed_totals back to 0 (gauge updates automatically)."""
+    a = _athlete()
+    conn = _today_conn(a, [(TODAY, "game", "medium", "10:00", 1.5)])
+    try:
+        windows = build_today_view(a["id"], conn, today=TODAY)["fuel_targets"]["windows"]
+        for w in windows:
+            record_window_capture(a["id"], w["slot_name"], "text", "x", None, None, conn, log_date=TODAY)
+        all_on = build_today_view(a["id"], conn, today=TODAY)["fuel_targets"]
+        assert all_on["daily_met"] is True
+        full_carbs = all_on["confirmed_totals"]["carbs_g"]
+        assert full_carbs > 0
+
+        remove_window_capture(a["id"], windows[0]["slot_name"], conn, log_date=TODAY)
+        one_off = build_today_view(a["id"], conn, today=TODAY)["fuel_targets"]
+        assert one_off["daily_met"] is False
+        assert one_off["confirmed_totals"]["carbs_g"] < full_carbs
+
+        for w in windows:
+            remove_window_capture(a["id"], w["slot_name"], conn, log_date=TODAY)
+        zero = build_today_view(a["id"], conn, today=TODAY)["fuel_targets"]
+        assert zero["confirmed_totals"]["carbs_g"] == 0
+        assert zero["daily_met"] is False
+    finally:
+        conn.close()

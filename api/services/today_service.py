@@ -729,6 +729,34 @@ def record_window_capture(
     return cur.lastrowid
 
 
+def remove_window_capture(
+    athlete_id: int,
+    window_id: str,
+    conn,
+    log_date: str | None = None,
+) -> bool:
+    """Reverse a window confirmation (un-confirm). Athletes mis-tap; don't trap them.
+
+    Capture writes BOTH window_logs and meal_plans.logged (see record_window_capture),
+    and build_today_view derives `logged` from either source — so a full reversal must
+    clear both, else the window stays 'done'. Idempotent: returns True if a confirmation
+    existed and was removed, False if there was nothing to undo. Uses the client's local
+    log_date (same timezone invariant as capture)."""
+    _ensure_window_logs_table(conn)
+    today = log_date or date.today().isoformat()
+    cur = conn.execute(
+        "DELETE FROM window_logs WHERE athlete_id = ? AND window_id = ? AND log_date = ?",
+        (athlete_id, window_id, today),
+    )
+    removed = cur.rowcount > 0
+    conn.execute(
+        "UPDATE meal_plans SET logged = 0 WHERE athlete_id = ? AND plan_date = ? AND slot_name = ?",
+        (athlete_id, today, window_id),
+    )
+    conn.commit()
+    return removed
+
+
 def _build_fuel_targets_block(athlete: dict, events: list, windows: list,
                               tappable: list, template_windows: list) -> dict:
     """Assemble the additive, flag-gated `fuel_targets` block (Fuel Gauge).
