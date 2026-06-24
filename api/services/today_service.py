@@ -758,7 +758,8 @@ def remove_window_capture(
 
 
 def _build_fuel_targets_block(athlete: dict, events: list, windows: list,
-                              tappable: list, template_windows: list) -> dict:
+                              tappable: list, template_windows: list,
+                              confirmed_keys: set) -> dict:
     """Assemble the additive, flag-gated `fuel_targets` block (Fuel Gauge).
 
     Targets are derived LIVE, never stored (no stale-target risk). Path is chosen
@@ -766,8 +767,12 @@ def _build_fuel_targets_block(athlete: dict, events: list, windows: list,
       • no events today → rest-day path, delegates to Blueprint   → target_source "blueprint"
       • >=1 event       → event-day engine (macros + weather/season) → "event_day"
 
-    confirmed_totals and daily_met are PURE derivations from the existing
-    per-window confirm state (window logged flag) — no new persistence.
+    A window counts as confirmed if its slot_name is in `confirmed_keys` (the
+    Today-screen confirm tap → confirmations table) OR it is logged via
+    window_logs/meal_plans (CaptureSheet). This UNION matches streak_service's
+    "fueled" semantic and ensures the live confirm button drives the gauge.
+    confirmed_totals and daily_met are PURE derivations from that combined set —
+    no new persistence.
     """
     from api.services import fuel_gauge, fueling_targets as ft, weather as weather_svc
 
@@ -802,12 +807,16 @@ def _build_fuel_targets_block(athlete: dict, events: list, windows: list,
     split = fuel_gauge.split_targets_across_windows(daily, split_input)
     logged_by_slot = {w["slot_name"]: bool(w.get("logged")) for w in tappable}
 
+    def _is_confirmed(slot: str) -> bool:
+        # Union (matches streak_service): confirm tap → confirmations; capture → window_logs.
+        return slot in confirmed_keys or logged_by_slot.get(slot, False)
+
     fuel_windows = [
         {
             "slot_name":    s["slot_name"],
             "category_key": s["category_key"],
             "contribution": s["contribution"],
-            "confirmed":    logged_by_slot.get(s["slot_name"], False),
+            "confirmed":    _is_confirmed(s["slot_name"]),
         }
         for s in split
     ]
@@ -1028,8 +1037,17 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
     try:
         from api.services import fueling_targets as _ft
         if _ft.fuel_gauge_enabled() and has_schedule:
+            # A window is confirmed via the Today confirm tap (confirmations table)
+            # OR a CaptureSheet log (window_logs, carried on each window's `logged`).
+            # Query the confirm-tap set here; the union happens in the helper.
+            confirmed_keys = {
+                r["window_key"] for r in conn.execute(
+                    "SELECT window_key FROM confirmations WHERE athlete_id = ? AND log_date = ?",
+                    (athlete_id, today_str),
+                ).fetchall()
+            }
             result["fuel_targets"] = _build_fuel_targets_block(
-                athlete, events, windows, tappable, template_windows
+                athlete, events, windows, tappable, template_windows, confirmed_keys
             )
     except Exception:
         log.exception("fuel_targets assembly failed — serving Today without it")
