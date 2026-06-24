@@ -92,12 +92,12 @@ def create_athlete(data: AthleteCreate, background_tasks: BackgroundTasks):
             """INSERT INTO athletes
                (parent_id, first_name, age, gender, weight_lbs, height_ft, height_in,
                 position, competition_level, sweat_profile, allergies, dietary_restrictions, supplement_use,
-                season_phase)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                season_phase, food_preferences)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (data.parent_id, data.first_name, data.age, data.gender, data.weight_lbs,
              data.height_ft, data.height_in, data.position, data.competition_level,
              data.sweat_profile, data.allergies, data.dietary_restrictions, data.supplement_use,
-             normalize_season_phase(data.season_phase)),
+             normalize_season_phase(data.season_phase), data.food_preferences),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE rowid = last_insert_rowid()").fetchone()
@@ -126,7 +126,7 @@ def update_athlete(athlete_id: int, data: AthleteCreate):
     conn = get_conn()
     try:
         existing = conn.execute(
-            "SELECT season_phase FROM athletes WHERE id = ?", (athlete_id,)
+            "SELECT season_phase, food_preferences FROM athletes WHERE id = ?", (athlete_id,)
         ).fetchone()
         if not existing:
             raise HTTPException(404, "Athlete not found.")
@@ -135,16 +135,22 @@ def update_athlete(athlete_id: int, data: AthleteCreate):
         season_phase = normalize_season_phase(
             data.season_phase if data.season_phase is not None else existing["season_phase"]
         )
+        # Same preserve-on-omit rule for food_preferences: an older build (or any
+        # PUT that doesn't carry the field) must not null out an existing value.
+        # A client clearing it sends "" (not None), which overwrites as intended.
+        food_preferences = (
+            data.food_preferences if data.food_preferences is not None else existing["food_preferences"]
+        )
         conn.execute(
             """UPDATE athletes SET
                first_name=?, age=?, gender=?, weight_lbs=?, height_ft=?, height_in=?,
                position=?, competition_level=?, sweat_profile=?, allergies=?,
-               dietary_restrictions=?, supplement_use=?, season_phase=?
+               dietary_restrictions=?, supplement_use=?, season_phase=?, food_preferences=?
                WHERE id=?""",
             (data.first_name, data.age, data.gender, data.weight_lbs, data.height_ft,
              data.height_in, data.position, data.competition_level, data.sweat_profile,
              data.allergies, data.dietary_restrictions, data.supplement_use,
-             season_phase, athlete_id),
+             season_phase, food_preferences, athlete_id),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()

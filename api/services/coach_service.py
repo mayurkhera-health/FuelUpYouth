@@ -80,6 +80,7 @@ def assemble_context(
             "gender": athlete.get("gender"),
             "allergies": athlete.get("allergies", ""),
             "dietary_restrictions": athlete.get("dietary_restrictions", ""),
+            "food_preferences": athlete.get("food_preferences", ""),
             "supplement_use": athlete.get("supplement_use", ""),
             "sweat_profile": athlete.get("sweat_profile", ""),
             "blueprint_summary": blueprint.get("headline", ""),
@@ -119,12 +120,15 @@ def build_system_prompt(context: dict, persona: str) -> str:
     name = bp.get("name", "the athlete")
     allergies = (bp.get("allergies") or "").strip()
     restrictions = (bp.get("dietary_restrictions") or "").strip()
+    preferences = (bp.get("food_preferences") or "").strip()
 
     allergy_block = ""
     if allergies:
         allergy_block += f"\n⚠️  ALLERGY ALERT — NEVER suggest these: {allergies}. Hard stop."
     if restrictions:
         allergy_block += f"\nDietary restrictions (always respect): {restrictions}."
+    if preferences:
+        allergy_block += f"\nFood preferences (personalize toward these when possible): {preferences}."
 
     heat_block = ""
     if weather.get("heat_flag"):
