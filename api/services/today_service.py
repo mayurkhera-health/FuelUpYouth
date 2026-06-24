@@ -940,11 +940,17 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
         wl        = wl_map.get(sn)
         # logged = True if captured via window_logs OR if Meal Plan tab marked it done
         logged    = bool(wl is not None) or bool(plan_info.get("logged", False))
+        od = tw.get("open_dt")
+        cd = tw.get("close_dt")
         tappable.append({
             "id":            plan_info.get("id"),
             "slot_name":     sn,
             "display_label": tw["label"],
             "eat_by_time":   tw["time_display"],
+            # Additive 24h timing fields (eat_by_time display string is unchanged).
+            # Lets the client gate per-window confirm by now vs open/close.
+            "open_time":     od.strftime("%H:%M") if od else "",
+            "close_time":    cd.strftime("%H:%M") if cd else "",
             "macro_focus":   get_macro_focus(sn),
             "logged":        logged,
             "sort_time":     sort_t,

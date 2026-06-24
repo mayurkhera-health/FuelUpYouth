@@ -280,6 +280,31 @@ def test_has_schedule_true_with_one_event():
     conn.close()
 
 
+def test_tappable_windows_carry_open_close_time_24h():
+    """Tappable windows expose open_time/close_time in 24h HH:MM so the client
+    can gate per-window confirm by now vs open/close. eat_by_time unchanged."""
+    import re
+    conn = _make_today_conn()
+    conn.execute("INSERT INTO athletes (id, first_name, sport) VALUES (3, 'Ana', 'soccer')")
+    conn.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours) "
+        "VALUES (3, 'Practice', 'practice', '2026-06-22', '16:00', 1.5)"
+    )
+    conn.commit()
+
+    view = build_today_view(3, conn, today="2026-06-22")
+    tappable = [w for w in view["windows"] if w.get("status") != "nudge"]
+    assert tappable, "expected tappable windows on an event day"
+    hhmm = re.compile(r"^\d{2}:\d{2}$")
+    for w in tappable:
+        assert "open_time" in w and "close_time" in w, w.keys()
+        assert hhmm.match(w["open_time"]), w["open_time"]
+        assert hhmm.match(w["close_time"]), w["close_time"]
+        # display string is untouched
+        assert "–" in w["eat_by_time"] or "AM" in w["eat_by_time"] or "PM" in w["eat_by_time"]
+    conn.close()
+
+
 def test_record_window_capture_uses_log_date():
     """record_window_capture respects client-supplied log_date, not server date."""
     conn = _make_test_conn()
