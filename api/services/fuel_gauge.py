@@ -1,0 +1,193 @@
+"""
+fuel_gauge.py — Fuel Gauge calculation engine (PURE functions, no DB / no I/O).
+
+Two target sources (Phase 0 core architecture decision):
+
+  • REST DAY  → compute_rest_day_targets(): a thin adapter that DELEGATES to the
+                Blueprint calculation (nutrition_calc.calc_daily_targets) so that
+                Today and Blueprint can never disagree for the same athlete
+                (the T6/T7 credibility guarantee).
+
+  • EVENT DAY → compute_event_day_targets(): Blueprint macros (calc_daily_targets,
+                decision D1) + season-phase modifiers + weather-driven fluids and
+                sodium (reusing calc_sweat_output — the sweat model is not
+                reinvented).
+
+Every coefficient comes from fueling_targets.py ONLY. Macro math is NEVER
+reimplemented here — see the explicit calc_daily_targets() calls below (D1).
+Units are canonical here: grams, millilitres, milligrams (oz is display-only, D3).
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Optional
+
+from api.services.nutrition_calc import (
+    calc_daily_targets,
+    normalize_event_type,
+    derive_intensity,
+)
+from api.services.weather import calc_sweat_output
+from api.services import fueling_targets as ft
+
+log = logging.getLogger(__name__)
+
+
+# ── helpers ────────────────────────────────────────────────────────────────
+def _oz_to_ml(oz: Optional[float]) -> Optional[float]:
+    return None if oz is None else oz * ft.OZ_TO_ML
+
+
+def _round_targets(t: dict) -> dict:
+    """Round to display-sensible precision over the 5 canonical keys. Preserves
+    None (a metric the source does not provide, e.g. rest-day sodium — D4)."""
+    def r(key: str, val):
+        if val is None:
+            return None
+        return round(val, 1) if key == "protein_g" else int(round(val))
+    return {k: r(k, t.get(k)) for k in ft.NUTRIENT_KEYS}
+
+
+def _dominant_event(events: list[dict]) -> dict:
+    """The day's highest-load event drives the macro base. Ranking is on the
+    NORMALIZED event_type so it agrees with what calc_daily_targets will see."""
+    def rank(ev: dict) -> int:
+        return ft.EVENT_TYPE_LOAD_RANK.get(normalize_event_type(ev.get("event_type") or ""), 0)
+    return max(events, key=rank)
+
+
+def _resolve_intensity(event: dict, athlete: dict) -> str:
+    """Use the event's explicit intensity if set; otherwise derive it from the
+    athlete's competition level via the existing Blueprint-side helper."""
+    iv = (event.get("intensity") or "").strip().lower()
+    if iv in ("low", "medium", "high"):
+        return iv
+    return derive_intensity(event.get("event_type") or "", athlete.get("competition_level"))
+
+
+# ── rest-day path (delegates to Blueprint) ──────────────────────────────────
+def compute_rest_day_targets(athlete: dict, season_phase: Optional[str] = None) -> dict:
+    """Rest-day daily targets = the Blueprint baseline, each macro band reduced to
+    a single value per D2. NOT a reimplementation — a pure delegate.
+
+    season_phase is accepted for signature symmetry but intentionally NOT applied:
+    the rest-day gauge must equal what Blueprint shows for the same athlete
+    (T6/T7), and Blueprint does not model season phase. Sodium is None — Blueprint
+    computes none (D4); the gauge shows only what Blueprint provides on rest days.
+    """
+    base = calc_daily_targets(athlete, ft.REST_EVENT_TYPE)  # D1: Blueprint is the source
+    return _round_targets({
+        "protein_g":  ft.reduce_range(base["protein_g_min"], base["protein_g_max"]),
+        "carbs_g":    ft.reduce_range(base["carbs_g_min"], base["carbs_g_max"]),
+        "fluids_ml":  _oz_to_ml(ft.reduce_range(base["hydration_oz_min"], base["hydration_oz_max"])),
+        "sodium_mg":  None,
+        "calcium_mg": base["calcium_mg"],
+    })
+
+
+# ── event-day path (Blueprint macros + modifiers + weather) ─────────────────
+def compute_event_day_targets(
+    athlete: dict,
+    todays_events: list[dict],
+    season_phase: Optional[str],
+    weather_data: Optional[dict],
+) -> dict:
+    """Event-day daily targets. Pure: weather is passed in, never fetched here.
+
+    Macros: Blueprint's calc_daily_targets() for the day's dominant event, then a
+    season-phase multiplier (D1 — no parallel macro formula).
+    Fluids:  rest maintenance baseline + sweat replacement (reuses weather engine).
+    Sodium:  baseline + sweat-driven, aggregated across ALL events (load adds up)
+             — the only sodium source, since Blueprint computes none.
+    Calcium: flat 1300mg, load-independent (D5).
+    """
+    if not todays_events:
+        # Defensive only — the caller selects the path by event count.
+        return compute_rest_day_targets(athlete, season_phase)
+
+    sp = ft.normalize_season_phase(season_phase)
+    weather = weather_data or {}
+
+    # Training load → the dominant event drives macros (no double-count across events).
+    dominant = _dominant_event(todays_events)
+    event_type = dominant.get("event_type") or ft.REST_EVENT_TYPE
+    intensity = _resolve_intensity(dominant, athlete)
+
+    # ───────────────────────────────────────────────────────────────────────
+    # D1: macros come from Blueprint's calc_daily_targets — NOT reimplemented.
+    # ───────────────────────────────────────────────────────────────────────
+    base = calc_daily_targets(athlete, event_type, intensity)
+    protein = ft.reduce_range(base["protein_g_min"], base["protein_g_max"]) * ft.SEASON_PHASE_PROTEIN_MULT[sp]
+    carbs = ft.reduce_range(base["carbs_g_min"], base["carbs_g_max"]) * ft.SEASON_PHASE_CARB_MULT[sp]
+
+    # Fluids: rest maintenance baseline (avoids double-counting activity already
+    # baked into the event-type hydration band) + measured sweat replacement.
+    rest_base = calc_daily_targets(athlete, ft.REST_EVENT_TYPE)
+    fluids_ml = _oz_to_ml(ft.reduce_range(rest_base["hydration_oz_min"], rest_base["hydration_oz_max"]))
+
+    # Sodium + sweat fluids: aggregate the sweat model across every event.
+    sodium_mg = ft.SODIUM_BASELINE_MG
+    sweat_oz_total = 0.0
+    for ev in todays_events:
+        sweat = calc_sweat_output(athlete, ev, weather)  # reused, not reinvented
+        sodium_mg += (sweat.get("sweat_loss_liters") or 0.0) * ft.SODIUM_MG_PER_L_SWEAT
+        sweat_oz_total += (sweat.get("hydration_oz_during") or 0.0)
+    fluids_ml = (fluids_ml or 0.0) + _oz_to_ml(sweat_oz_total) * ft.FLUID_REPLACEMENT_FACTOR
+
+    return _round_targets({
+        "protein_g":  protein,
+        "carbs_g":    carbs,
+        "fluids_ml":  fluids_ml * ft.SEASON_PHASE_FLUID_MULT[sp],
+        "sodium_mg":  sodium_mg * ft.SEASON_PHASE_SODIUM_MULT[sp],
+        "calcium_mg": ft.CALCIUM_MG_FLAT,
+    })
+
+
+# ── per-window contribution split ───────────────────────────────────────────
+def split_targets_across_windows(daily_targets: dict, windows: list[dict]) -> list[dict]:
+    """Divide each daily target across the day's CREDITABLE windows by per-category
+    weight (fueling_targets.CONTRIBUTION_WEIGHTS), normalized PER NUTRIENT so the
+    day's windows sum to ~100% of each target (D6, T2).
+
+    • Non-tappable categories (hydrate/fuel_during) are excluded — they can never
+      be confirmed, so they carry no creditable weight.
+    • Unknown creditable categories are logged and contribute 0 — never crash (1.5).
+    • A None daily target (e.g. rest-day sodium) yields None contributions.
+
+    Returns one entry per creditable window: {slot_name, category_key, contribution}.
+    """
+    creditable = []
+    for w in windows:
+        cat = w.get("category_key")
+        if not ft.is_creditable_category(cat):
+            continue
+        if cat not in ft.CONTRIBUTION_WEIGHTS:
+            log.warning("fuel_gauge: unknown creditable category_key %r — contributing 0", cat)
+        creditable.append(w)
+
+    # Per-nutrient sum of weights across the windows actually present today.
+    totals = {
+        n: sum(ft.CONTRIBUTION_WEIGHTS.get(w.get("category_key"), {}).get(n, 0.0) for w in creditable)
+        for n in ft.NUTRIENT_KEYS
+    }
+
+    result = []
+    for w in creditable:
+        weights = ft.CONTRIBUTION_WEIGHTS.get(w.get("category_key"), {})
+        contribution = {}
+        for n in ft.NUTRIENT_KEYS:
+            target = daily_targets.get(n)
+            tw = totals[n]
+            if target is None:
+                contribution[n] = None
+            elif tw <= 0:
+                contribution[n] = 0
+            else:
+                contribution[n] = weights.get(n, 0.0) / tw * target
+        result.append({
+            "slot_name": w.get("slot_name"),
+            "category_key": w.get("category_key"),
+            "contribution": _round_targets(contribution),
+        })
+    return result

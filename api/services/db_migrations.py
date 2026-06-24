@@ -21,6 +21,7 @@ def run_all():
         _add_intensity_to_events(conn)
         _add_venue_location_to_events(conn)
         _add_intensity_to_daily_targets(conn)
+        _add_season_phase_to_athletes(conn)
         _create_problem_reports(conn)
         _create_coach_feedback(conn)
         conn.commit()
@@ -222,6 +223,15 @@ def _add_intensity_to_events(conn):
         for r in rows:
             intensity = derive_intensity(r["event_type"], r["competition_level"])
             conn.execute("UPDATE events SET intensity = ? WHERE id = ?", (intensity, r["id"]))
+
+
+def _add_season_phase_to_athletes(conn):
+    """Fuel Gauge: season phase feeds the daily target formula + intensity
+    derivation (design §2.4). Nullable; existing athletes default to 'in_season'.
+    Idempotent — safe to run on every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
+    if "season_phase" not in cols:
+        conn.execute("ALTER TABLE athletes ADD COLUMN season_phase TEXT DEFAULT 'in_season'")
 
 
 def _add_venue_location_to_events(conn):

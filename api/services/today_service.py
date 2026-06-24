@@ -1,5 +1,8 @@
+import logging
 from datetime import date, datetime, timedelta
 from api.services.meal_timing import compute_meal_slots
+
+log = logging.getLogger(__name__)
 
 
 def compute_logged_totals(meal_logs: list) -> dict:
@@ -726,6 +729,113 @@ def record_window_capture(
     return cur.lastrowid
 
 
+def remove_window_capture(
+    athlete_id: int,
+    window_id: str,
+    conn,
+    log_date: str | None = None,
+) -> bool:
+    """Reverse a window confirmation (un-confirm). Athletes mis-tap; don't trap them.
+
+    Capture writes BOTH window_logs and meal_plans.logged (see record_window_capture),
+    and build_today_view derives `logged` from either source — so a full reversal must
+    clear both, else the window stays 'done'. Idempotent: returns True if a confirmation
+    existed and was removed, False if there was nothing to undo. Uses the client's local
+    log_date (same timezone invariant as capture)."""
+    _ensure_window_logs_table(conn)
+    today = log_date or date.today().isoformat()
+    cur = conn.execute(
+        "DELETE FROM window_logs WHERE athlete_id = ? AND window_id = ? AND log_date = ?",
+        (athlete_id, window_id, today),
+    )
+    removed = cur.rowcount > 0
+    conn.execute(
+        "UPDATE meal_plans SET logged = 0 WHERE athlete_id = ? AND plan_date = ? AND slot_name = ?",
+        (athlete_id, today, window_id),
+    )
+    conn.commit()
+    return removed
+
+
+def _build_fuel_targets_block(athlete: dict, events: list, windows: list,
+                              tappable: list, template_windows: list) -> dict:
+    """Assemble the additive, flag-gated `fuel_targets` block (Fuel Gauge).
+
+    Targets are derived LIVE, never stored (no stale-target risk). Path is chosen
+    by today's event count:
+      • no events today → rest-day path, delegates to Blueprint   → target_source "blueprint"
+      • >=1 event       → event-day engine (macros + weather/season) → "event_day"
+
+    confirmed_totals and daily_met are PURE derivations from the existing
+    per-window confirm state (window logged flag) — no new persistence.
+    """
+    from api.services import fuel_gauge, fueling_targets as ft, weather as weather_svc
+
+    season_phase = athlete.get("season_phase")
+    if events:
+        dom = fuel_gauge._dominant_event(events)
+        weather_data = weather_svc.get_weather(
+            city=dom.get("city"), lat=dom.get("latitude"), lon=dom.get("longitude")
+        )
+        daily = fuel_gauge.compute_event_day_targets(athlete, events, season_phase, weather_data)
+        target_source = "event_day"
+    else:
+        daily = fuel_gauge.compute_rest_day_targets(athlete, season_phase)
+        target_source = "blueprint"
+
+    catkey_by_slot = {tw["key"]: tw.get("category_key") for tw in template_windows}
+
+    # category_key added back to windows[] additively. Only reached when the flag
+    # is ON, so the flag-OFF payload stays byte-identical to production.
+    for w in windows:
+        ck = catkey_by_slot.get(w.get("slot_name"))
+        if ck is not None:
+            w["category_key"] = ck
+
+    # Split across CONFIRMABLE (tappable) windows only. Nudge windows
+    # (hydrate/fuel_during, short between_games) are excluded by construction, so
+    # confirming every gauge-driving window reaches ~100% (D6).
+    split_input = [
+        {"slot_name": w["slot_name"], "category_key": catkey_by_slot.get(w["slot_name"])}
+        for w in tappable
+    ]
+    split = fuel_gauge.split_targets_across_windows(daily, split_input)
+    logged_by_slot = {w["slot_name"]: bool(w.get("logged")) for w in tappable}
+
+    fuel_windows = [
+        {
+            "slot_name":    s["slot_name"],
+            "category_key": s["category_key"],
+            "contribution": s["contribution"],
+            "confirmed":    logged_by_slot.get(s["slot_name"], False),
+        }
+        for s in split
+    ]
+
+    # confirmed_totals = sum of CONFIRMED windows' contributions (derived, not stored).
+    confirmed_totals = {}
+    for n in ft.NUTRIENT_KEYS:
+        if daily.get(n) is None:
+            confirmed_totals[n] = None
+            continue
+        total = sum(
+            fw["contribution"][n] for fw in fuel_windows
+            if fw["confirmed"] and fw["contribution"].get(n) is not None
+        )
+        confirmed_totals[n] = round(total, 1) if n == "protein_g" else int(round(total))
+
+    # Phase-2 streak seam: expose the signal now, build no consumer.
+    daily_met = bool(fuel_windows) and all(fw["confirmed"] for fw in fuel_windows)
+
+    return {
+        "target_source":    target_source,
+        "daily":            daily,
+        "confirmed_totals": confirmed_totals,
+        "windows":          fuel_windows,
+        "daily_met":        daily_met,
+    }
+
+
 def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: bool = False) -> dict | None:
     from api.services.nutrition_analysis import get_week_start, get_week_dates
     from api.services.window_templates import generate_windows_for_day
@@ -898,7 +1008,7 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
 
     from api.services.streak_service import get_streak
 
-    return {
+    result = {
         "athlete":        {"first_name": athlete["first_name"], "sport": athlete.get("sport", "soccer")},
         "today_event":    today_event,
         "today_events":   today_events,
@@ -910,3 +1020,18 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
         "readiness_grid": readiness_grid,
         "streak":         get_streak(athlete_id, conn, today_str),
     }
+
+    # Fuel Gauge — ADDITIVE and flag-gated. When FUEL_GAUGE_ENABLED is off, the
+    # block is never added, so the payload is byte-identical to production. No
+    # gauges without a schedule (T4). Wrapped so a gauge fault can never break the
+    # LIVE Today payload — on any error we omit the block and serve Today as-is.
+    try:
+        from api.services import fueling_targets as _ft
+        if _ft.fuel_gauge_enabled() and has_schedule:
+            result["fuel_targets"] = _build_fuel_targets_block(
+                athlete, events, windows, tappable, template_windows
+            )
+    except Exception:
+        log.exception("fuel_targets assembly failed — serving Today without it")
+
+    return result

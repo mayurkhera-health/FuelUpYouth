@@ -19,6 +19,7 @@ from api.services.today_service import (
     build_mission_items_from_slots,
     build_today_view,
     record_window_capture,
+    remove_window_capture,
 )
 from api.services.nutrient_resolver import queue_nutrient_resolution
 from api.services.meal_timing import compute_meal_slots, generate_day_windows
@@ -151,6 +152,32 @@ async def capture_window(
         )
         queue_nutrient_resolution(log_id, conn)
 
+        data = build_today_view(athlete_id, conn, today=log_date)
+        if data is None:
+            raise HTTPException(404, "Athlete not found.")
+        return data
+    finally:
+        conn.close()
+
+
+@router.delete("/{athlete_id}/windows/{slot_name}/capture")
+def uncapture_window(
+    athlete_id: int,
+    slot_name: str,
+    log_date: str | None = Query(None),
+):
+    """Un-confirm a fuel window (reverse a mis-tap). Mirrors the capture endpoint:
+    removes the confirmation for (athlete, slot, local date) and returns the
+    refreshed Today view so the gauges decrement in one round-trip. Idempotent —
+    un-confirming an already-unconfirmed window is a no-op, not an error."""
+    conn = get_conn()
+    try:
+        remove_window_capture(
+            athlete_id=athlete_id,
+            window_id=slot_name,
+            conn=conn,
+            log_date=log_date,
+        )
         data = build_today_view(athlete_id, conn, today=log_date)
         if data is None:
             raise HTTPException(404, "Athlete not found.")
