@@ -78,3 +78,27 @@ def test_delete_is_idempotent_on_unconfirmed_window(client):
     d = client.delete(f"/api/athletes/{aid}/windows/everyday_breakfast/capture",
                       params={"log_date": TODAY})
     assert d.status_code == 200  # no-op, not an error
+
+
+def test_confirm_tap_drives_gauge_and_delete_decrements(client):
+    """End-to-end: the LIVE confirm endpoint (POST /confirmations) fills the gauge,
+    and the existing DELETE /confirmations decrements it (Option A union)."""
+    aid = _athlete_with_game(client)
+    view = client.get(f"/api/athletes/{aid}/today", params={"date": TODAY}).json()
+    slot = _tappable_slot(view)
+
+    # confirm via the live Today endpoint (the button the app already uses)
+    r = client.post(f"/api/athletes/{aid}/confirmations",
+                    json={"window_key": slot, "window_type": "pre_fuel", "log_date": TODAY})
+    assert r.status_code == 200, r.text
+    after_confirm = client.get(f"/api/athletes/{aid}/today", params={"date": TODAY}).json()
+    assert {w["slot_name"]: w["confirmed"]
+            for w in after_confirm["fuel_targets"]["windows"]}[slot] is True
+
+    # un-confirm via the existing DELETE /confirmations (no new endpoint needed)
+    d = client.delete(f"/api/athletes/{aid}/confirmations",
+                      params={"window_key": slot, "log_date": TODAY})
+    assert d.status_code == 200
+    after_delete = client.get(f"/api/athletes/{aid}/today", params={"date": TODAY}).json()
+    assert {w["slot_name"]: w["confirmed"]
+            for w in after_delete["fuel_targets"]["windows"]}[slot] is False

@@ -67,7 +67,13 @@ def _today_conn(athlete: dict, events: list[tuple] = ()):
             event_name TEXT, event_type TEXT, event_date TEXT, start_time TEXT,
             duration_hours REAL, intensity TEXT, city TEXT, latitude REAL, longitude REAL)
     """)
-    conn.execute("CREATE TABLE confirmations (athlete_id INTEGER, log_date TEXT)")
+    conn.execute("""
+        CREATE TABLE confirmations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, athlete_id INTEGER NOT NULL,
+            log_date TEXT NOT NULL, window_key TEXT NOT NULL, window_type TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(athlete_id, window_key, log_date))
+    """)
     conn.execute("CREATE TABLE report_config (key TEXT, value TEXT)")
     cols = ",".join(athlete.keys())
     conn.execute(f"INSERT INTO athletes ({cols}) VALUES ({','.join('?' * len(athlete))})",
@@ -417,6 +423,49 @@ def test_remove_window_capture_reverses_both_writes_and_is_idempotent():
             (a["id"], TODAY, "everyday_breakfast")).fetchone()["logged"] == 0
         # nothing left to undo
         assert remove_window_capture(a["id"], "everyday_breakfast", conn, log_date=TODAY) is False
+    finally:
+        conn.close()
+
+
+def _confirm_via_table(conn, aid, slot, log_date=TODAY):
+    conn.execute("INSERT INTO confirmations (athlete_id, log_date, window_key, window_type) "
+                 "VALUES (?,?,?, 'pre_fuel')", (aid, log_date, slot))
+    conn.commit()
+
+
+def _unconfirm_via_table(conn, aid, slot, log_date=TODAY):
+    conn.execute("DELETE FROM confirmations WHERE athlete_id=? AND window_key=? AND log_date=?",
+                 (aid, slot, log_date))
+    conn.commit()
+
+
+def test_gauge_confirmed_via_confirmations_table_union(live_v2, flag_on):
+    """The live confirm tap writes the confirmations table — the gauge must reflect
+    it (∪ window_logs). Confirming fills, DELETE decrements, daily_met flips."""
+    a = _athlete()
+    conn = _today_conn(a, [(TODAY, "game", "medium", "10:00", 1.5)])
+    try:
+        windows = build_today_view(a["id"], conn, today=TODAY)["fuel_targets"]["windows"]
+        slots = [w["slot_name"] for w in windows]
+        assert slots, "expected creditable windows on a game day"
+
+        # confirm ONE via confirmations → that window confirmed, partial totals, not met
+        _confirm_via_table(conn, a["id"], slots[0])
+        ft1 = build_today_view(a["id"], conn, today=TODAY)["fuel_targets"]
+        assert {w["slot_name"]: w["confirmed"] for w in ft1["windows"]}[slots[0]] is True
+        assert ft1["confirmed_totals"]["carbs_g"] == windows[0]["contribution"]["carbs_g"]
+        assert ft1["daily_met"] is False
+
+        # confirm ALL via confirmations → daily_met True
+        for s in slots[1:]:
+            _confirm_via_table(conn, a["id"], s)
+        assert build_today_view(a["id"], conn, today=TODAY)["fuel_targets"]["daily_met"] is True
+
+        # un-confirm one via DELETE from confirmations → decrement + not met
+        _unconfirm_via_table(conn, a["id"], slots[0])
+        ft3 = build_today_view(a["id"], conn, today=TODAY)["fuel_targets"]
+        assert {w["slot_name"]: w["confirmed"] for w in ft3["windows"]}[slots[0]] is False
+        assert ft3["daily_met"] is False
     finally:
         conn.close()
 
