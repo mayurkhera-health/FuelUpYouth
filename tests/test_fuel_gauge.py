@@ -18,6 +18,7 @@ from api.services.today_service import (
     build_today_view,
     record_window_capture,
     remove_window_capture,
+    _build_fuel_targets_block,
     _ensure_window_logs_table,
 )
 
@@ -496,3 +497,74 @@ def test_uncapture_decrements_gauge_back_to_zero(live_v2, flag_on):
         assert zero["daily_met"] is False
     finally:
         conn.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# EVENT-DAY NORMALIZATION (exclude everyday windows so confirmable set = 100%)
+# ═══════════════════════════════════════════════════════════════════════════
+def _win(slot, cat, logged=False):
+    return {"slot_name": slot, "logged": logged, "status": "next", "category_key": cat}
+
+
+def _tmpl(rows):
+    return [{"key": w["slot_name"], "category_key": w["category_key"],
+             "open_dt": None, "close_dt": None} for w in rows]
+
+
+def test_event_day_split_excludes_everyday_and_reaches_100():
+    """Event day: everyday_* dropped from the split; the confirmable event windows
+    carry the full daily target (~100%) and daily_met fires on full confirmation."""
+    a = _athlete()
+    tappable = [
+        _win("everyday_breakfast", "balanced"),
+        _win("everyday_lunch", "balanced"),
+        _win("pre_event_meal", "carb"),
+        _win("fuel_after_primary", "recovery"),
+    ]
+    events = [_event("game")]  # non-empty → event day
+    block = _build_fuel_targets_block(a, events, list(tappable), tappable, _tmpl(tappable), set())
+
+    slots = {w["slot_name"] for w in block["windows"]}
+    assert slots == {"pre_event_meal", "fuel_after_primary"}, slots
+    assert not any(s.startswith("everyday_") for s in slots)
+
+    daily = block["daily"]
+    for n in NUTRIENTS:
+        if daily[n] is None:
+            continue
+        s = sum(w["contribution"][n] for w in block["windows"] if w["contribution"][n] is not None)
+        assert 98.0 <= s / daily[n] * 100 <= 102.0, (n, s, daily[n])
+
+    confirmed = _build_fuel_targets_block(
+        a, events, list(tappable), tappable, _tmpl(tappable),
+        {"pre_event_meal", "fuel_after_primary"},
+    )
+    assert confirmed["daily_met"] is True
+
+
+def test_rest_day_split_retains_everyday():
+    """Rest day (no events): everyday windows are kept — they ARE the day's windows.
+    Excluding them would break rest-day gauges entirely."""
+    a = _athlete()
+    tappable = [
+        _win("everyday_breakfast", "balanced"),
+        _win("everyday_lunch", "balanced"),
+        _win("everyday_dinner", "balanced"),
+    ]
+    block = _build_fuel_targets_block(a, [], list(tappable), tappable, _tmpl(tappable), set())
+    slots = [w["slot_name"] for w in block["windows"]]
+    assert len(slots) == 3 and all(s.startswith("everyday_") for s in slots), slots
+    assert block["target_source"] == "blueprint"
+
+
+def test_event_day_only_everyday_falls_back_no_empty_split():
+    """Edge guard: an event day whose only tappable windows are everyday must NOT
+    produce an empty split — fall back to the full list (no crash, no empty gauge)."""
+    a = _athlete()
+    tappable = [
+        _win("everyday_breakfast", "balanced"),
+        _win("everyday_lunch", "balanced"),
+    ]
+    block = _build_fuel_targets_block(a, [_event("game")], list(tappable), tappable, _tmpl(tappable), set())
+    slots = {w["slot_name"] for w in block["windows"]}
+    assert slots == {"everyday_breakfast", "everyday_lunch"}, slots  # fell back, not empty
