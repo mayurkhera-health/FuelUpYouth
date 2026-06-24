@@ -56,6 +56,7 @@ class AthleteCreate(BaseModel):
     dietary_restrictions: Optional[str] = None
     supplement_use: Optional[str] = None
     season_phase: Optional[str] = None  # in_season / off_season / postseason (Fuel Gauge); default applied on write
+    food_preferences: Optional[str] = None  # onboarding wizard: free-text likes/dislikes/textures → coach context
 
 
 class AthleteResponse(BaseModel):
@@ -74,6 +75,7 @@ class AthleteResponse(BaseModel):
     dietary_restrictions: Optional[str]
     supplement_use: Optional[str]
     season_phase: Optional[str] = None  # in_season / off_season / postseason (Fuel Gauge)
+    food_preferences: Optional[str] = None  # onboarding wizard: free-text likes/dislikes/textures
     created_at: str
 
 

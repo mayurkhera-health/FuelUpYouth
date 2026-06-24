@@ -22,6 +22,7 @@ def run_all():
         _add_venue_location_to_events(conn)
         _add_intensity_to_daily_targets(conn)
         _add_season_phase_to_athletes(conn)
+        _add_food_preferences_to_athletes(conn)
         _create_problem_reports(conn)
         _create_coach_feedback(conn)
         conn.commit()
@@ -232,6 +233,16 @@ def _add_season_phase_to_athletes(conn):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
     if "season_phase" not in cols:
         conn.execute("ALTER TABLE athletes ADD COLUMN season_phase TEXT DEFAULT 'in_season'")
+
+
+def _add_food_preferences_to_athletes(conn):
+    """Onboarding wizard: free-text food preferences (textures, likes/dislikes)
+    captured in Step 4 and fed to the AI coach context alongside allergies +
+    dietary_restrictions. Nullable, no default — absence means 'not provided',
+    so the coach omits it cleanly. Idempotent — safe to run on every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
+    if "food_preferences" not in cols:
+        conn.execute("ALTER TABLE athletes ADD COLUMN food_preferences TEXT DEFAULT NULL")
 
 
 def _add_venue_location_to_events(conn):
