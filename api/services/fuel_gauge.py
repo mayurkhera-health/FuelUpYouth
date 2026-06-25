@@ -145,36 +145,73 @@ def compute_event_day_targets(
 
 
 # ── per-window contribution split ───────────────────────────────────────────
-def split_targets_across_windows(daily_targets: dict, windows: list[dict]) -> list[dict]:
-    """Divide each daily target across the day's CREDITABLE windows by per-category
-    weight (fueling_targets.CONTRIBUTION_WEIGHTS), normalized PER NUTRIENT so the
-    day's windows sum to ~100% of each target (D6, T2).
+# ── per-window macro seed resolution (Phase 5 — Purvi per-slot ratios) ────────
+def _slot_for_window(window_key: str) -> Optional[str]:
+    """Map an engine window_key (== split slot_name) to a Purvi macro slot.
+    Suffix-tolerant (pre_event_meal, pre_event_meal_1, …). Tournament/merge windows
+    (between_games_*, refuel_ready_*) return None — OUT OF SCOPE, they keep the
+    category_key distribution (no per-slot reseed)."""
+    wk = window_key or ""
+    if wk.startswith("pre_event_meal"):         return "fuel_before"
+    if wk.startswith("top_up_snack"):           return "top_up"
+    if wk.startswith("fuel_after_primary"):     return "recharge"
+    if wk.startswith("fuel_after_second"):      return "rebuild"
+    if wk.startswith("proper_breakfast_after"): return "proper_breakfast_after"
+    if wk.startswith("quick_morning_snack"):    return "quick_morning_snack"
+    if wk.startswith("everyday_"):              return "everyday"
+    return None
 
-    • Non-tappable categories (hydrate/fuel_during) are excluded — they can never
-      be confirmed, so they carry no creditable weight.
-    • Unknown creditable categories are logged and contribute 0 — never crash (1.5).
+
+def _seed_ratio(w: dict, n: str, n_everyday: int) -> float:
+    """Per-window seed weight for nutrient ``n`` (used by the normalization below).
+
+    • carbs_g / protein_g → Purvi per-slot ratio. The "everyday" TOTAL is divided
+      across the everyday windows actually present that day (not applied per-window).
+      Tournament windows (slot None) fall back to the category_key weight — they are
+      out of scope for the reseed.
+    • fluids_ml / sodium_mg / calcium_mg → UNCHANGED category_key CONTRIBUTION_WEIGHTS
+      distribution; hydration is never driven by these ratios.
+    """
+    cat = w.get("category_key")
+    if n in ft.SLOT_SEEDED_NUTRIENTS:
+        slot = _slot_for_window(w.get("slot_name") or "")
+        if slot == "everyday":
+            base = ft.SLOT_MACRO_RATIOS["everyday"].get(n, 0.0)
+            return (base / n_everyday) if n_everyday else 0.0
+        if slot is not None:
+            return ft.SLOT_MACRO_RATIOS.get(slot, {}).get(n, 0.0)
+        return ft.CONTRIBUTION_WEIGHTS.get(cat, {}).get(n, 0.0)  # tournament / out-of-scope
+    return ft.CONTRIBUTION_WEIGHTS.get(cat, {}).get(n, 0.0)
+
+
+def split_targets_across_windows(daily_targets: dict, windows: list[dict]) -> list[dict]:
+    """Divide each daily target across the day's CREDITABLE windows, normalized PER
+    NUTRIENT so the day's windows sum to ~100% of each target (D6, T2).
+
+    Macro split (carbs_g/protein_g) uses Purvi's PER-SLOT seed ratios resolved from
+    slot_name (fueling_targets.SLOT_MACRO_RATIOS); fluids_ml/sodium_mg/calcium_mg keep
+    the per-category CONTRIBUTION_WEIGHTS distribution (hydration is NOT reseeded).
+
+    • Non-tappable categories (hydrate/fuel_during) are excluded — never confirmable.
     • A None daily target (e.g. rest-day sodium) yields None contributions.
+    • Everyday TOTAL macro share is split across the everyday windows present.
 
     Returns one entry per creditable window: {slot_name, category_key, contribution}.
     """
-    creditable = []
-    for w in windows:
-        cat = w.get("category_key")
-        if not ft.is_creditable_category(cat):
-            continue
-        if cat not in ft.CONTRIBUTION_WEIGHTS:
-            log.warning("fuel_gauge: unknown creditable category_key %r — contributing 0", cat)
-        creditable.append(w)
+    creditable = [w for w in windows if ft.is_creditable_category(w.get("category_key"))]
 
-    # Per-nutrient sum of weights across the windows actually present today.
+    n_everyday = sum(
+        1 for w in creditable if _slot_for_window(w.get("slot_name") or "") == "everyday"
+    )
+
+    # Per-nutrient sum of SEED weights across the windows actually present today.
     totals = {
-        n: sum(ft.CONTRIBUTION_WEIGHTS.get(w.get("category_key"), {}).get(n, 0.0) for w in creditable)
+        n: sum(_seed_ratio(w, n, n_everyday) for w in creditable)
         for n in ft.NUTRIENT_KEYS
     }
 
     result = []
     for w in creditable:
-        weights = ft.CONTRIBUTION_WEIGHTS.get(w.get("category_key"), {})
         contribution = {}
         for n in ft.NUTRIENT_KEYS:
             target = daily_targets.get(n)
@@ -184,7 +221,7 @@ def split_targets_across_windows(daily_targets: dict, windows: list[dict]) -> li
             elif tw <= 0:
                 contribution[n] = 0
             else:
-                contribution[n] = weights.get(n, 0.0) / tw * target
+                contribution[n] = _seed_ratio(w, n, n_everyday) / tw * target
         result.append({
             "slot_name": w.get("slot_name"),
             "category_key": w.get("category_key"),

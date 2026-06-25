@@ -831,16 +831,13 @@ def _build_fuel_targets_block(athlete: dict, events: list, windows: list,
     # Split across CONFIRMABLE (tappable) windows only. Nudge windows
     # (hydrate/fuel_during, short between_games) are excluded by construction (D6).
     #
-    # On EVENT days the Today timeline hides everyday meals (index.tsx filters
-    # everyday_* when isEventDay), so the athlete can't confirm them — exclude them
-    # from the split so the confirmable event windows carry the FULL daily target
-    # (confirming all visible windows reaches ~100% and daily_met fires). REST days
-    # keep everyday windows — they ARE the day's windows. Edge guard: never pass an
-    # empty split (fall back to the full tappable list).
-    event_day = bool(events)
-    split_source = [w for w in tappable if not (event_day and w["slot_name"].startswith("everyday_"))]
-    if not split_source:
-        split_source = tappable
+    # Phase 5: everyday windows now SHARE the daily target on event days too (paired
+    # with un-hiding them on Today, index.tsx). They join the split whenever the engine
+    # emits them — the engine-level _everyday_windows suppression still gates which
+    # everyday windows actually appear on an event day. Per-slot Purvi ratios live in
+    # split_targets_across_windows; the everyday TOTAL (7% CHO / 10% protein) is split
+    # across the everyday windows present.
+    split_source = tappable
     split_input = [
         {"slot_name": w["slot_name"], "category_key": catkey_by_slot.get(w["slot_name"])}
         for w in split_source
