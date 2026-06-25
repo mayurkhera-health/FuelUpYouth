@@ -190,6 +190,12 @@ def calc_daily_targets(
     carbs_g = round(wt_kg * cho_fac * SEASON_CHO.get(season, 1.0))
 
     # ── Spec-formula protein target ───────────────────────────────────────────
+    # Sport is EVENT-DERIVED by design (soccer-only app): _sport_type_from_event
+    # returns "strength" for strength sessions (1.8) and "soccer" (1.6) otherwise.
+    # RDN-signed-off 2026-06-24: strength days = 1.8 g/kg (NOT flat 1.6) is intended.
+    # The nullable sport_type PROFILE field is intentionally DEFERRED, not missing —
+    # revisit only if a second sport is added. Do not "fix" this by adding a field.
+    # See docs/decisions/ADR-protein-soccer-only.md.
     sport_type = _sport_type_from_event(norm)
     prot_fac = SPORT_PROT.get(sport_type, 1.6)
     protein_g = round(wt_kg * prot_fac * SEASON_PROT.get(season, 1.0), 1)
@@ -197,6 +203,9 @@ def calc_daily_targets(
     # ── Spec-formula hydration target (oz) ───────────────────────────────────
     during_oz = round((13 * wt_kg * (duration_min / 60)) / 29.6) if duration_min > 0 else 0
     post_oz   = round((4 * wt_kg) / 29.6)
+    # The +27 (pre) and +36 (meals) oz are a DELIBERATE deviation from the dietician
+    # spec's 500/1000 mL (~12 oz/day higher). RDN-signed-off 2026-06-24: keep 109 oz —
+    # do not "correct" to the mL values. See docs/decisions/ADR-protein-soccer-only.md.
     hydration_oz = during_oz + 27 + post_oz + 36
 
     # ── Legacy range fields (kept for DB schema & other callers) ─────────────
