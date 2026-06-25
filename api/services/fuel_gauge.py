@@ -127,21 +127,31 @@ def compute_event_day_targets(
     fluids_ml = _oz_to_ml(ft.reduce_range(rest_base["hydration_oz_min"], rest_base["hydration_oz_max"]))
 
     # Sodium + sweat fluids: aggregate the sweat model across every event.
+    # Also capture the child-safe DECISION boolean (electrolytes_needed) — already
+    # computed by calc_sweat_output. We deliberately do NOT capture electrolyte_reason
+    # or recommendations (they embed numbers / a researcher name — unsafe for athlete
+    # display). The sodium_mg math below is unchanged.
     sodium_mg = ft.SODIUM_BASELINE_MG
     sweat_oz_total = 0.0
+    electrolytes_needed = False
     for ev in todays_events:
         sweat = calc_sweat_output(athlete, ev, weather)  # reused, not reinvented
         sodium_mg += (sweat.get("sweat_loss_liters") or 0.0) * ft.SODIUM_MG_PER_L_SWEAT
         sweat_oz_total += (sweat.get("hydration_oz_during") or 0.0)
+        if sweat.get("electrolytes_needed"):
+            electrolytes_needed = True
     fluids_ml = (fluids_ml or 0.0) + _oz_to_ml(sweat_oz_total) * ft.FLUID_REPLACEMENT_FACTOR
 
-    return _round_targets({
+    targets = _round_targets({
         "protein_g":  protein,
         "carbs_g":    carbs,
         "fluids_ml":  fluids_ml * ft.SEASON_PHASE_FLUID_MULT[sp],
         "sodium_mg":  sodium_mg * ft.SEASON_PHASE_SODIUM_MULT[sp],
         "calcium_mg": ft.CALCIUM_MG_FLAT,
     })
+    # Additive: day-level decision flag only (no mg / text / reason leaves the engine here).
+    targets["electrolytes_needed"] = electrolytes_needed
+    return targets
 
 
 # ── per-window contribution split ───────────────────────────────────────────

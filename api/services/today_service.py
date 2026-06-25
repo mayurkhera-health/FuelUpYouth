@@ -874,12 +874,19 @@ def _build_fuel_targets_block(athlete: dict, events: list, windows: list,
     # Phase-2 streak seam: expose the signal now, build no consumer.
     daily_met = bool(fuel_windows) and all(fw["confirmed"] for fw in fuel_windows)
 
+    # Day-level child-safe electrolyte DECISION (boolean only). Pop the engine flag off
+    # `daily` so the FuelMetrics daily object stays the 5 canonical keys. Rest days never
+    # set it → defaults False → no chip. NO mg / reason / number is emitted to mobile here;
+    # the chip's text is a mobile placeholder pending RDN copy.
+    electrolyte_needed = bool(daily.pop("electrolytes_needed", False))
+
     return {
         "target_source":    target_source,
         "daily":            daily,
         "confirmed_totals": confirmed_totals,
         "windows":          fuel_windows,
         "daily_met":        daily_met,
+        "electrolyte":      {"needed": electrolyte_needed},
     }
 
 
