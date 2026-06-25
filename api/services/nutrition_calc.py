@@ -49,13 +49,30 @@ PROTEIN_TARGETS = {  # g/kg
     "tournament": (1.8, 2.0),
 }
 
-HYDRATION_TARGETS = {  # oz/day
+HYDRATION_TARGETS = {  # oz/day — legacy fallback only
     "rest": (64, 72),
     "practice": (72, 80),
     "training": (72, 80),
     "strength": (72, 80),
     "game": (80, 88),
     "tournament": (88, 96),
+}
+
+# ── Spec-formula tables (getDashboardTargets) ─────────────────────────────────
+CHO_FACTOR = {
+    "rest":       {"any": 4.0},
+    "low":        {"any": 3.5},
+    "moderate":   {"lt60": 4.5, "bt6090": 6.0, "gt90": 7.0},
+    "hard":       {"lt60": 5.5, "bt6090": 8.0, "gt90": 9.0},
+    "tournament": {"any": 10.0},
+}
+
+SEASON_CHO  = {"in_season": 1.0, "off_season": 0.90, "post_season": 0.85}
+SEASON_PROT = {"in_season": 1.0, "off_season": 1.05, "post_season": 0.95}
+
+SPORT_PROT  = {
+    "soccer": 1.6, "basketball": 1.6, "volleyball": 1.6,
+    "running": 1.4, "swimming": 1.4, "strength": 1.8,
 }
 
 
@@ -113,29 +130,86 @@ def calc_rmr(weight_lbs: float, height_ft: int, height_in: float, gender: str) -
     return 11.1 * wt_kg + 8.4 * ht_cm - 340
 
 
-def calc_daily_targets(athlete: dict, event_type: str = "rest", intensity: Optional[str] = None) -> dict:
+def _cho_intensity_key(norm: str, intensity: Optional[str]) -> str:
+    """Map event_type + raw intensity to a CHO_FACTOR key."""
+    if norm == "tournament":
+        return "tournament"
+    if norm == "rest":
+        return "rest"
+    if intensity == "high":
+        return "hard"
+    if intensity == "medium":
+        return "moderate"
+    if intensity == "low":
+        return "low"
+    return "moderate"
+
+
+def _duration_bucket(duration_min: float) -> str:
+    if duration_min < 60:
+        return "lt60"
+    if duration_min <= 90:
+        return "bt6090"
+    return "gt90"
+
+
+def _sport_type_from_event(norm: str) -> str:
+    if norm == "strength":
+        return "strength"
+    return "soccer"
+
+
+def _normalize_season(season_phase: Optional[str]) -> str:
+    if not season_phase:
+        return "in_season"
+    s = season_phase.lower().strip()
+    if s in ("postseason", "post_season"):
+        return "post_season"
+    if s == "off_season":
+        return "off_season"
+    return "in_season"
+
+
+def calc_daily_targets(
+    athlete: dict,
+    event_type: str = "rest",
+    intensity: Optional[str] = None,
+    duration_min: float = 0,
+) -> dict:
     wt_kg = lbs_to_kg(athlete["weight_lbs"])
     rmr = calc_rmr(athlete["weight_lbs"], athlete["height_ft"], athlete["height_in"], athlete["gender"])
     norm = normalize_event_type(event_type)
 
     total_calories = int(rmr * PAL_MULTIPLIERS.get(norm, 1.55))
 
+    # ── Spec-formula CHO target ───────────────────────────────────────────────
+    season = _normalize_season(athlete.get("season_phase"))
+    cho_key = _cho_intensity_key(norm, intensity)
+    factors = CHO_FACTOR[cho_key]
+    cho_fac = factors.get("any") or factors.get(_duration_bucket(duration_min), 6.0)
+    carbs_g = round(wt_kg * cho_fac * SEASON_CHO.get(season, 1.0))
+
+    # ── Spec-formula protein target ───────────────────────────────────────────
+    sport_type = _sport_type_from_event(norm)
+    prot_fac = SPORT_PROT.get(sport_type, 1.6)
+    protein_g = round(wt_kg * prot_fac * SEASON_PROT.get(season, 1.0), 1)
+
+    # ── Spec-formula hydration target (oz) ───────────────────────────────────
+    during_oz = round((13 * wt_kg * (duration_min / 60)) / 29.6) if duration_min > 0 else 0
+    post_oz   = round((4 * wt_kg) / 29.6)
+    hydration_oz = during_oz + 27 + post_oz + 36
+
+    # ── Legacy range fields (kept for DB schema & other callers) ─────────────
     carb_lo, carb_hi = CARB_TARGETS[norm]
     prot_lo, prot_hi = PROTEIN_TARGETS[norm]
     if intensity:
         carb_lo, carb_hi = _reposition(carb_lo, carb_hi, intensity)
         prot_lo, prot_hi = _reposition(prot_lo, prot_hi, intensity)
-    carb_min = int(carb_lo * wt_kg)
-    carb_max = int(carb_hi * wt_kg)
-    protein_min = round(prot_lo * wt_kg, 1)
-    protein_max = round(prot_hi * wt_kg, 1)
     fat_min = int(total_calories * 0.20 / 9)
     fat_max = int(total_calories * 0.35 / 9)
 
     iron_mg = 15 if athlete["gender"].lower() in ("girl", "female", "f") else 11
-    calcium_mg = 1300  # AAP — peak bone mass window
-
-    hydration = HYDRATION_TARGETS.get(norm, (64, 72))
+    calcium_mg = 1300
 
     ffm_kg = wt_kg * 0.85
     lea_alert = total_calories < (30 * ffm_kg)
@@ -144,15 +218,20 @@ def calc_daily_targets(athlete: dict, event_type: str = "rest", intensity: Optio
         "event_type": norm,
         "intensity": intensity,
         "total_calories": total_calories,
-        "carbs_g_min": carb_min,
-        "carbs_g_max": carb_max,
-        "protein_g_min": protein_min,
-        "protein_g_max": protein_max,
+        # Spec single-value targets (used by Today dashboard)
+        "carbs_g": carbs_g,
+        "protein_g": protein_g,
+        "hydration_oz": hydration_oz,
+        # Legacy range fields (DB storage, reports)
+        "carbs_g_min": carbs_g,
+        "carbs_g_max": carbs_g,
+        "protein_g_min": protein_g,
+        "protein_g_max": protein_g,
         "fat_g_min": fat_min,
         "fat_g_max": fat_max,
         "iron_mg": iron_mg,
         "calcium_mg": calcium_mg,
-        "hydration_oz_min": hydration[0],
-        "hydration_oz_max": hydration[1],
+        "hydration_oz_min": hydration_oz,
+        "hydration_oz_max": hydration_oz,
         "lea_alert": lea_alert,
     }

@@ -25,8 +25,10 @@ def get_targets(athlete_id: int, date: str = None, event_type: str = None):
         if not event_type:
             event_type = dict(events[0])["event_type"] if events else "rest"
         intensity = dict(events[0]).get("intensity") if events else None
+        duration_hours = dict(events[0]).get("duration_hours") if events else None
+        duration_min = (duration_hours or 0) * 60
 
-        targets = nutrition_calc.calc_daily_targets(athlete, event_type, intensity)
+        targets = nutrition_calc.calc_daily_targets(athlete, event_type, intensity, duration_min)
         targets["athlete_id"] = athlete_id
         targets["target_date"] = target_date
 

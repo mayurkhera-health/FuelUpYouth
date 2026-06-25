@@ -29,7 +29,13 @@ export default function MissionItem({ item, isDone, cameraAvailable, onPhoto, on
         <div style={s.topRow}>
           <div style={s.labelCol}>
             <div style={{ ...s.label, ...(isDone ? s.labelDone : {}) }}>{item.label}</div>
-            {item.sub && <div style={s.sub}>{item.sub}</div>}
+            {(item.carbs_g != null || item.protein_g != null)
+              ? <div style={s.sub}>
+                  {item.carbs_g  != null && <span style={s.macroChip("#16a34a", "#e6f4ec")}>{item.carbs_g}g carbs</span>}
+                  {item.protein_g != null && <span style={s.macroChip("#d97706", "#fef3c7")}>{item.protein_g}g protein</span>}
+                </div>
+              : item.sub && <div style={s.sub}>{item.sub}</div>
+            }
           </div>
           <div style={s.timeTagCol}>
             <span style={s.time}>{item.time}</span>
@@ -62,7 +68,8 @@ const s = {
   labelCol:   { flex: 1, minWidth: 0 },
   label:      { fontSize: "16px", fontWeight: "600", color: "#1b3a2a", lineHeight: "1.3", marginBottom: "3px" },
   labelDone:  { textDecoration: "line-through", color: "#4a6358" },
-  sub:        { fontSize: "14px", color: "#4a6358", fontWeight: "400", lineHeight: "1.4" },
+  sub:        { fontSize: "14px", color: "#4a6358", fontWeight: "400", lineHeight: "1.4", display: "flex", flexWrap: "wrap", gap: "4px" },
+  macroChip:  (color, bg) => ({ fontSize: "12px", fontWeight: "700", color, background: bg, borderRadius: "99px", padding: "2px 7px", display: "inline-block" }),
   timeTagCol: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", flexShrink: 0 },
   time:       { fontSize: "14px", color: "#4a6358", fontWeight: "400", whiteSpace: "nowrap" },
   tag:        { fontSize: "12px", fontWeight: "600", letterSpacing: ".04em", padding: "3px 8px", borderRadius: "3px", whiteSpace: "nowrap" },

@@ -1,6 +1,7 @@
 import logging
 from datetime import date, datetime, timedelta
 from api.services.meal_timing import compute_meal_slots
+from api.services.nutrition_calc import calc_daily_targets
 
 log = logging.getLogger(__name__)
 
@@ -514,6 +515,26 @@ MACRO_FOCUS_MAP = {
 }
 
 
+# carb_pct and protein_pct of daily targets allocated to each macro_focus label
+_FOCUS_MACRO_PCT = {
+    "Balanced Fuel":        {"carbs_pct": 0.22, "protein_pct": 0.20},
+    "High Carbs":           {"carbs_pct": 0.35, "protein_pct": 0.15},
+    "High Carbs + Protein": {"carbs_pct": 0.30, "protein_pct": 0.25},
+    "High Protein + Carbs": {"carbs_pct": 0.20, "protein_pct": 0.30},
+    "High Protein":         {"carbs_pct": 0.10, "protein_pct": 0.30},
+    "Recovery Focus":       {"carbs_pct": 0.15, "protein_pct": 0.25},
+    "Recovery Fuel":        {"carbs_pct": 0.18, "protein_pct": 0.22},
+    "Protein Focus":        {"carbs_pct": 0.08, "protein_pct": 0.25},
+    "Fast Carbs":           {"carbs_pct": 0.12, "protein_pct": 0.05},
+    "Quick Fuel":           {"carbs_pct": 0.10, "protein_pct": 0.08},
+    "Max Carb Load":        {"carbs_pct": 0.40, "protein_pct": 0.18},
+    "Electrolytes + Carbs": {"carbs_pct": 0.18, "protein_pct": 0.10},
+    "Light Fuel":           {"carbs_pct": 0.12, "protein_pct": 0.12},
+    "Anti-Inflammatory":    {"carbs_pct": 0.18, "protein_pct": 0.22},
+    "Fuel Window":          {"carbs_pct": 0.15, "protein_pct": 0.15},
+}
+
+
 def get_macro_focus(meal_type: str) -> str:
     """Returns the macro focus label for a given slot/meal_type. Never returns None."""
     if not meal_type:
@@ -536,26 +557,36 @@ def get_macro_focus(meal_type: str) -> str:
     return MACRO_FOCUS_MAP.get(key, "Fuel Window")
 
 
-def build_mission_items_from_slots(slot_defs: list, logged_slots: dict) -> list:
+def build_mission_items_from_slots(slot_defs: list, logged_slots: dict, targets: dict = None) -> list:
     """
     Converts compute_meal_slots output into Today's Mission items.
     Skips hydration-only slots and double-day alert banners.
     logged_slots: {slot_name: bool} from the meal_plans table.
+    targets: daily nutrition targets dict; when provided, adds per-slot carbs_g/protein_g.
     """
+    daily_carbs   = (targets or {}).get("carbs_g")   or (targets or {}).get("carbs_g_max")
+    daily_protein = (targets or {}).get("protein_g") or (targets or {}).get("protein_g_max")
+
     missions = []
     i = 0
     for slot in slot_defs:
         if slot.get("is_hydration") or slot.get("double_day_alert"):
             continue
-        slot_name = slot["slot_name"]
-        missions.append({
+        slot_name  = slot["slot_name"]
+        focus      = get_macro_focus(slot_name)
+        pcts       = _FOCUS_MACRO_PCT.get(focus, {"carbs_pct": 0.15, "protein_pct": 0.15})
+        item = {
             "id":          f"mission_{i}",
             "time":        slot.get("eat_by_time", ""),
             "label":       slot.get("display_label", slot_name),
-            "macro_focus": get_macro_focus(slot_name),
+            "macro_focus": focus,
             "logged":      logged_slots.get(slot_name, False),
             "meal_type":   slot_name,
-        })
+        }
+        if daily_carbs and daily_protein:
+            item["carbs_g"]   = round(daily_carbs   * pcts["carbs_pct"])
+            item["protein_g"] = round(daily_protein * pcts["protein_pct"])
+        missions.append(item)
         i += 1
     return missions
 
@@ -917,6 +948,15 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
     ).fetchall()
     wl_map = {r["window_id"]: dict(r) for r in wl_rows}
 
+    # Compute daily macro targets once for per-window breakdown
+    event_type_for_targets = event_type
+    _ev0 = events[0] if events else {}
+    _dur_min = (_ev0.get("duration_hours") or 0) * 60
+    _intensity = _ev0.get("intensity")
+    _daily_targets = calc_daily_targets(athlete, event_type_for_targets, _intensity, _dur_min)
+    _daily_carbs   = _daily_targets.get("carbs_g") or _daily_targets.get("carbs_g_max")
+    _daily_protein = _daily_targets.get("protein_g") or _daily_targets.get("protein_g_max")
+
     tappable: list[dict] = []
     nudges:   list[dict] = []
     for tw in template_windows:
@@ -962,6 +1002,8 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
             "open_time":     od.strftime("%H:%M") if od else "",
             "close_time":    cd.strftime("%H:%M") if cd else "",
             "macro_focus":   get_macro_focus(sn),
+            "carbs_g":       round(_daily_carbs   * _FOCUS_MACRO_PCT.get(get_macro_focus(sn), {"carbs_pct": 0.15})["carbs_pct"])   if _daily_carbs   else None,
+            "protein_g":     round(_daily_protein * _FOCUS_MACRO_PCT.get(get_macro_focus(sn), {"protein_pct": 0.15})["protein_pct"]) if _daily_protein else None,
             "logged":        logged,
             "sort_time":     sort_t,
             "log": {
