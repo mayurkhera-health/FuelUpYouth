@@ -176,14 +176,14 @@ def _athlete_copy(
 
     if window_key.startswith("pre_event_meal"):
         if is_game:
-            return "Pre-Game Meal", f"Your fuel window is open. Eat now — {en} starts at {st}."
-        return "Pre-Training Meal", "Fuel up before your session — energy for a strong one."
+            return "Fuel Before", f"Your fuel window is open. Eat now — {en} starts at {st}."
+        return "Fuel Before", "Fuel up before your session — energy for a strong one."
 
     if window_key.startswith("quick_morning_snack"):
         return "Early Start", "Light snack time before your early game. Keep it simple."
 
     if window_key.startswith("fuel_after_primary"):
-        return "Recovery Window", "Eat in the next 30 min. Your muscles are ready to recover."
+        return "Recharge Snack", "Eat in the next 30 min. Your muscles are ready to recover."
 
     if window_key.startswith("refuel_ready"):
         return "Recover & Refuel", "Recovery + fuel for your next session — both in one window."
@@ -205,11 +205,11 @@ def _parent_copy(
     if window_key.startswith("pre_event_meal"):
         if is_game:
             return (
-                f"{first_name}'s Pre-Game Meal",
+                f"{first_name}'s Fuel Before",
                 f"This is the fuel window before {en}. A meal now sets them up for the game.",
             )
         return (
-            f"{first_name}'s Pre-Training Meal",
+            f"{first_name}'s Fuel Before",
             f"Fuel window is open before {first_name}'s session.",
         )
 
@@ -221,7 +221,7 @@ def _parent_copy(
 
     if window_key.startswith("fuel_after_primary"):
         return (
-            f"{first_name}'s Recovery Window",
+            f"{first_name}'s Recharge Snack",
             "First 30 min after activity is the key recovery window — protein + carbs when ready.",
         )
 
