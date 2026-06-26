@@ -24,6 +24,7 @@ from api.services.today_service import (
 from api.services.nutrient_resolver import queue_nutrient_resolution
 from api.services.meal_timing import compute_meal_slots, generate_day_windows
 from api.services.idea_catalog import IDEAS
+from api.services.activity_engine import get_activity_profile
 
 router = APIRouter()
 
@@ -244,7 +245,11 @@ def get_daily_summary(athlete_id: int, date: str = None):
         logged_slots = {r["slot_name"]: bool(r["logged"]) for r in plan_rows}
 
         wt_kg     = nutrition_calc.lbs_to_kg(athlete["weight_lbs"]) if athlete.get("weight_lbs") else None
-        is_sc_day = (event_type or "").lower() in ("strength", "conditioning")
+        # Derive is_sc_day via the same normalization chain calc_daily_targets uses,
+        # so the window-distribution protein floor matches the computed targets.
+        # (Raw string match misses the "strength/conditioning" alias → wrong floor.)
+        _sc_norm = nutrition_calc.normalize_event_type(event_type) if event_type else "rest"
+        is_sc_day = get_activity_profile(nutrition_calc._to_activity_type(_sc_norm), None, 0)["is_sc_day"]
         duration_min = round((duration_hours or 0) * 60)
         mission_items = build_mission_items_from_slots(
             slot_defs, logged_slots, targets,

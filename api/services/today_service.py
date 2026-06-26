@@ -602,7 +602,7 @@ def build_mission_items_from_slots(slot_defs: list, logged_slots: dict, targets:
             d = distributed[slot_name]
             item["carbs_g"]   = d["cho_g"]
             item["protein_g"] = d["prot_g"]
-            item["ratio_flag"] = d["flag"]   # parent-only: WD-4 strips this from the athlete response
+            item["ratio_flag"] = d["flag"]   # parent-only: exposed via response.window_ratio_flags; athlete MissionItem type ignores this field
         elif daily_carbs and daily_protein:
             pcts = _FOCUS_MACRO_PCT.get(focus, {"carbs_pct": 0.15, "protein_pct": 0.15})
             item["carbs_g"]   = round(daily_carbs   * pcts["carbs_pct"])
