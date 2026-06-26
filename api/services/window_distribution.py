@@ -215,7 +215,7 @@ def distribute_to_slots(slot_defs: list, daily_cho_g: int, daily_prot_g: int,
     """Map a variable engine slot list onto per-slot gram targets.
 
     Calls validate_windows() once, then divides each window's gram target evenly
-    across every slot mapping to that window (preserves the daily total). Hydration
+    across every slot mapping to that window (approximately preserves the daily total — within per-slot rounding). Hydration
     -only and unknown slots are skipped. keep_going slots get no grams here (they
     are oz/packets — see keep_going_window); they are skipped so they don't dilute
     a macro window.
@@ -245,10 +245,13 @@ def distribute_to_slots(slot_defs: list, daily_cho_g: int, daily_prot_g: int,
     for name, key in slot_keys.items():
         w = windows[key]
         n = counts[key]
+        cho_g  = round(w["cho_g"]  / n)
+        prot_g = round(w["prot_g"] / n)
+        slot_ratio = round(cho_g / prot_g, 2) if prot_g > 0 else 0
         out[name] = {
-            "cho_g":     round(w["cho_g"]  / n),
-            "prot_g":    round(w["prot_g"] / n),
-            "ratio":     w["ratio"],
+            "cho_g":     cho_g,
+            "prot_g":    prot_g,
+            "ratio":     slot_ratio,
             "flag":      w["flag"],
             "split_key": key,
         }

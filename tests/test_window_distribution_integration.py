@@ -1,4 +1,9 @@
-from api.services.window_distribution import SLOT_TO_SPLIT, split_key_for_slot
+from api.services.window_distribution import (
+    SLOT_TO_SPLIT,
+    split_key_for_slot,
+    distribute_to_slots,
+    validate_windows,
+)
 
 
 def test_hyphen_taxonomy_maps_to_splits():
@@ -42,9 +47,6 @@ def test_v2_underscore_and_suffixed_variants():
     assert split_key_for_slot("fuel_after_second_2") == "rebuild"
     # refuel_ready is prefix-only (not an exact SLOT_TO_SPLIT key)
     assert split_key_for_slot("refuel_ready_1_2") == "recharge"
-
-
-from api.services.window_distribution import distribute_to_slots, validate_windows
 
 
 def _slots(*names):
@@ -91,3 +93,14 @@ def test_distribute_sc_day_shifts_recharge_protein():
     base = distribute_to_slots(slots, 326, 60, wt_kg=54.4, is_sc_day=False)
     sc   = distribute_to_slots(slots, 326, 60, wt_kg=54.4, is_sc_day=True)
     assert sc["recovery-fuel"]["prot_g"] > base["recovery-fuel"]["prot_g"]
+
+
+def test_distribute_recomputes_per_slot_ratio_after_division():
+    # When N slots share a window, each slot's ratio must reflect its own
+    # rounded grams, not the window total's ratio.
+    slots = _slots("breakfast", "mid-morning-snack", "lunch")  # 3 everyday_meal
+    out = distribute_to_slots(slots, daily_cho_g=320, daily_prot_g=100, wt_kg=55)
+    for n in ("breakfast", "mid-morning-snack", "lunch"):
+        cho_g, prot_g = out[n]["cho_g"], out[n]["prot_g"]
+        expected = round(cho_g / prot_g, 2) if prot_g > 0 else 0
+        assert out[n]["ratio"] == expected
