@@ -81,9 +81,21 @@ CHO_FACTOR = {
 SEASON_CHO  = {"in_season": 1.0, "off_season": 0.90, "post_season": 0.85}
 SEASON_PROT = {"in_season": 1.0, "off_season": 1.05, "post_season": 0.95}
 
-SPORT_PROT  = {
-    "soccer": 1.6, "basketball": 1.6, "volleyball": 1.6,
-    "running": 1.4, "swimming": 1.4, "strength": 1.8,
+SPORT_PROT = {
+    "soccer": 1.85, "basketball": 1.85, "volleyball": 1.85,
+    "tennis": 1.85, "other": 1.85,
+    "running": 1.40, "swimming": 1.40,
+    "strength": 1.80,
+}
+
+# +0.20 g/kg on S&C days — ISSN resistance training standard
+SC_PROT_BUMP = 0.20
+
+# +10 / +15 % for plant-based athletes (lower leucine bioavailability — ISSN Position Stand)
+DIET_PROT_MULT = {
+    "omnivore":   1.00,
+    "vegetarian": 1.10,
+    "vegan":      1.15,
 }
 
 
@@ -255,6 +267,30 @@ def calc_daily_cho(
     return round(base * activity_cho_modifier)
 
 
+def calc_daily_protein(
+    wt_kg: float,
+    sport_type: str,
+    season: str,
+    sex: str,
+    diet_pref: str = "omnivore",
+    is_sc_day: bool = False,
+    phv_extra_g_per_kg: float = 0.0,
+) -> int:
+    """Daily protein target in grams — flat 7 days/week; S&C and PHV add on top.
+
+    Sources: ISSN Position Stand on Protein (2017); ISSN resistance training standard.
+    diet_pref multiplier (+10 % vegetarian / +15 % vegan) corrects for lower leucine
+    bioavailability in plant-based diets.
+    sex is reserved for future sex-specific adjustments — not applied yet.
+    """
+    base   = SPORT_PROT.get(sport_type, SPORT_PROT["other"]) * SEASON_PROT.get(season, 1.0)
+    sc_add = SC_PROT_BUMP if is_sc_day else 0.0
+    return round(
+        wt_kg * (base + sc_add + phv_extra_g_per_kg)
+        * DIET_PROT_MULT.get(diet_pref, 1.0)
+    )
+
+
 def _sport_type_from_event(norm: str) -> str:
     if norm == "strength":
         return "strength"
@@ -303,18 +339,16 @@ def calc_daily_targets(
     carbs_g = calc_daily_cho(wt_kg, cho_intensity, duration_min, season, act["cho_modifier"])
 
     # ── Spec-formula protein target ───────────────────────────────────────────
-    # Sport is EVENT-DERIVED by design (soccer-only app): _sport_type_from_event
-    # returns "strength" for strength sessions (1.8) and "soccer" (1.6) otherwise.
-    # RDN-signed-off 2026-06-24: strength days = 1.8 g/kg (NOT flat 1.6) is intended.
-    # The nullable sport_type PROFILE field is intentionally DEFERRED, not missing —
-    # revisit only if a second sport is added. Do not "fix" this by adding a field.
-    # See docs/decisions/ADR-protein-soccer-only.md.
+    diet_pref  = athlete.get("diet_pref") or "omnivore"
     sport_type = _sport_type_from_event(norm)
-    prot_fac = SPORT_PROT.get(sport_type, 1.6)
-    protein_g = round(
-        wt_kg * prot_fac * SEASON_PROT.get(season, 1.0)
-        + phv["extra_prot_g_per_kg"] * wt_kg,
-        1,
+    protein_g  = calc_daily_protein(
+        wt_kg,
+        sport_type,
+        season,
+        sex,
+        diet_pref=diet_pref,
+        is_sc_day=act["is_sc_day"],
+        phv_extra_g_per_kg=phv["extra_prot_g_per_kg"],
     )
 
     # ── Spec-formula hydration target (oz) ───────────────────────────────────

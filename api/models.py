@@ -60,6 +60,7 @@ class AthleteCreate(BaseModel):
     food_preferences: Optional[str] = None  # onboarding wizard: free-text likes/dislikes/textures → coach context
     date_of_birth: Optional[str] = None  # ISO YYYY-MM-DD; used by calc_age() for precision targets
     lifestyle_activity: str = "light"    # sedentary / light / moderate — drives lifestyle PAL in calc_tdee
+    diet_pref: str = "omnivore"          # omnivore / vegetarian / vegan — drives DIET_PROT_MULT
 
 
 class AthleteResponse(BaseModel):
@@ -81,6 +82,7 @@ class AthleteResponse(BaseModel):
     food_preferences: Optional[str] = None  # onboarding wizard: free-text likes/dislikes/textures
     date_of_birth: Optional[str] = None
     lifestyle_activity: str = "light"       # sedentary / light / moderate
+    diet_pref: str = "omnivore"             # omnivore / vegetarian / vegan
     schedule_reminder_dismissed: bool = False
     created_at: str
 

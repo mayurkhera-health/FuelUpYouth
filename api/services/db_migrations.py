@@ -25,6 +25,7 @@ def run_all():
         _add_food_preferences_to_athletes(conn)
         _add_date_of_birth_to_athletes(conn)
         _add_lifestyle_activity_to_athletes(conn)
+        _add_diet_pref_to_athletes(conn)
         _create_problem_reports(conn)
         _create_coach_feedback(conn)
         conn.commit()
@@ -255,6 +256,15 @@ def _add_date_of_birth_to_athletes(conn):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
     if "date_of_birth" not in cols:
         conn.execute("ALTER TABLE athletes ADD COLUMN date_of_birth TEXT NULL")
+
+
+def _add_diet_pref_to_athletes(conn):
+    """Dietary pattern for protein multiplier (ISSN leucine bioavailability).
+    Values: omnivore / vegetarian / vegan. Defaults to 'omnivore'.
+    Drives DIET_PROT_MULT in calc_daily_protein(). Idempotent."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
+    if "diet_pref" not in cols:
+        conn.execute("ALTER TABLE athletes ADD COLUMN diet_pref TEXT DEFAULT 'omnivore'")
 
 
 def _add_lifestyle_activity_to_athletes(conn):
