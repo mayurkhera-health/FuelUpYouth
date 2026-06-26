@@ -142,6 +142,72 @@ def keep_going_window(wt_kg: float, duration_min: float) -> Optional[dict]:
     }
 
 
+# ── Engine-slot → SPLITS-key mapping ──────────────────────────────────────────
+# Maps the variable slot taxonomies produced by meal_timing.compute_meal_slots
+# (hyphen keys) and window_engine_v2 (underscore keys) onto Purvi's 6 windows.
+# None = no macro split (hydration-only slots, or unknown — caller skips).
+# night-fuel / evening-recovery → rebuild is the v1 default (open decision #2).
+SLOT_TO_SPLIT = {
+    # ── compute_meal_slots hyphen taxonomy (LIVE Today Mission) ───────────────
+    "breakfast":                  "everyday_meal",
+    "mid-morning-snack":          "everyday_meal",
+    "lunch":                      "everyday_meal",
+    "afternoon-snack":            "everyday_meal",
+    "dinner":                     "everyday_meal",
+    "pre-game-fuel":              "fuel_before",
+    "pre-training":               "fuel_before",
+    "power-snack":                "top_up",
+    "halftime-fueling":           "keep_going",
+    "recovery-fuel":              "recharge",
+    "recovery-dinner":            "rebuild",
+    "night-fuel":                 "rebuild",        # bedtime casein — v1 default
+    "evening-recovery":           "rebuild",        # bedtime casein — v1 default
+    "between-games":              "recharge",
+    # hydration-only — no macro split
+    "during-game-hydration":      None,
+    "during-practice-hydration":  None,
+    "daily-hydration":            None,
+    # ── window_engine_v2 underscore taxonomy (forward-compat) ─────────────────
+    "everyday_breakfast":         "everyday_meal",
+    "everyday_lunch":             "everyday_meal",
+    "everyday_snack":             "everyday_meal",
+    "everyday_dinner":            "everyday_meal",
+    "pre_event_meal":             "fuel_before",
+    "top_up_snack":               "top_up",
+    "quick_morning_snack":        "top_up",
+    "fuel_during":                "keep_going",
+    "fuel_after_primary":         "recharge",
+    "fuel_after_second":          "rebuild",
+    "proper_breakfast_after":     "rebuild",
+}
+
+# Tournament/double-day variants carry an event-index suffix (e.g.
+# "fuel_after_primary_1", "between_games_1_2"). Match by prefix after exact miss.
+_SLOT_PREFIX_TO_SPLIT = {
+    "pre_event_meal":          "fuel_before",
+    "top_up_snack":            "top_up",
+    "quick_morning_snack":     "top_up",
+    "fuel_during":             "keep_going",
+    "fuel_after_primary":      "recharge",
+    "fuel_after_second":       "rebuild",
+    "proper_breakfast_after":  "rebuild",
+    "between_games":           "recharge",
+    "refuel_ready":            "recharge",
+}
+
+
+def split_key_for_slot(slot_name: str):
+    """Return the SPLITS key for an engine slot_name, or None if it has no
+    macro split (hydration-only or unknown). Exact match first, then prefix
+    match for event-index-suffixed v2 keys."""
+    if slot_name in SLOT_TO_SPLIT:
+        return SLOT_TO_SPLIT[slot_name]
+    for prefix, key in _SLOT_PREFIX_TO_SPLIT.items():
+        if slot_name.startswith(prefix):
+            return key
+    return None
+
+
 def on_fueled_press(window_key: str, current: dict, daily: dict,
                     wt_kg: float, duration_min: float, is_sc_day: bool) -> dict:
     """Reference handler for the mobile "Fueled" button.
