@@ -210,6 +210,51 @@ def split_key_for_slot(slot_name: str) -> Optional[str]:
     return None
 
 
+def distribute_to_slots(slot_defs: list, daily_cho_g: int, daily_prot_g: int,
+                        wt_kg: float, is_sc_day: bool = False) -> dict:
+    """Map a variable engine slot list onto per-slot gram targets.
+
+    Calls validate_windows() once, then divides each window's gram target evenly
+    across every slot mapping to that window (preserves the daily total). Hydration
+    -only and unknown slots are skipped. keep_going slots get no grams here (they
+    are oz/packets — see keep_going_window); they are skipped so they don't dilute
+    a macro window.
+
+    Returns {slot_name: {cho_g, prot_g, ratio, flag, split_key}} for allocatable
+    slots only.
+    """
+    windows = validate_windows(wt_kg, daily_cho_g, daily_prot_g, is_sc_day)
+
+    # Resolve each slot to a split key, skipping hydration / keep_going / unknown.
+    slot_keys = {}
+    for slot in slot_defs:
+        if slot.get("is_hydration"):
+            continue
+        name = slot["slot_name"]
+        key  = split_key_for_slot(name)
+        if key is None or key == "keep_going":
+            continue
+        slot_keys[name] = key
+
+    # Count slots per window for even division.
+    counts = {}
+    for key in slot_keys.values():
+        counts[key] = counts.get(key, 0) + 1
+
+    out = {}
+    for name, key in slot_keys.items():
+        w = windows[key]
+        n = counts[key]
+        out[name] = {
+            "cho_g":     round(w["cho_g"]  / n),
+            "prot_g":    round(w["prot_g"] / n),
+            "ratio":     w["ratio"],
+            "flag":      w["flag"],
+            "split_key": key,
+        }
+    return out
+
+
 def on_fueled_press(window_key: str, current: dict, daily: dict,
                     wt_kg: float, duration_min: float, is_sc_day: bool) -> dict:
     """Reference handler for the mobile "Fueled" button.
