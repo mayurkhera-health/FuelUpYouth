@@ -126,7 +126,7 @@ def get_athlete(athlete_id: int):
 
 
 @router.put("/{athlete_id}", response_model=AthleteResponse)
-def update_athlete(athlete_id: int, data: AthleteCreate):
+def update_athlete(athlete_id: int, data: AthleteCreate, background_tasks: BackgroundTasks):
     conn = get_conn()
     try:
         existing = conn.execute(
@@ -149,7 +149,8 @@ def update_athlete(athlete_id: int, data: AthleteCreate):
             """UPDATE athletes SET
                first_name=?, age=?, gender=?, weight_lbs=?, height_ft=?, height_in=?,
                position=?, competition_level=?, sweat_profile=?, allergies=?,
-               dietary_restrictions=?, supplement_use=?, season_phase=?, food_preferences=?
+               dietary_restrictions=?, supplement_use=?, season_phase=?, food_preferences=?,
+               blueprint_json=NULL
                WHERE id=?""",
             (data.first_name, data.age, data.gender, data.weight_lbs, data.height_ft,
              data.height_in, data.position, data.competition_level, data.sweat_profile,
@@ -158,6 +159,9 @@ def update_athlete(athlete_id: int, data: AthleteCreate):
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
+        # Kick off blueprint regeneration in the background so it's ready by
+        # the time the user navigates to the Blueprint screen.
+        background_tasks.add_task(generate_blueprint_bg, athlete_id)
         return dict(row)
     finally:
         conn.close()
