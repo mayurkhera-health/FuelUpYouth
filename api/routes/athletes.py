@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from api.models import AthleteCreate, AthleteResponse
 from api.database import get_conn
-from api.services.nutrition_calc import calc_daily_targets
+from api.services.nutrition_calc import calc_daily_targets, calc_age
 from api.services.fueling_targets import normalize_season_phase
 from api.services import claude_ai
 
@@ -19,6 +19,10 @@ def _computed_calculated(athlete: dict) -> dict:
     """Derive the _calculated block from athlete physical stats. No LLM needed."""
     gender = athlete.get("gender", "").lower()
     is_girl = gender in ("girl", "female", "f")
+    age = int(calc_age(
+        dob_str=athlete.get("date_of_birth"),
+        age_fallback=athlete["age"],
+    ))
     calculated = {
         "rmr": round(
             11.1 * athlete["weight_lbs"] * 0.453592
@@ -27,7 +31,7 @@ def _computed_calculated(athlete: dict) -> dict:
         ),
         "iron_mg": 15 if is_girl else 11,
         "calcium_mg": 1300,
-        "magnesium_mg": (360 if is_girl else 410) if athlete["age"] >= 14 else 240,
+        "magnesium_mg": (360 if is_girl else 410) if age >= 14 else 240,
         "vitamin_d_iu": 1000,
         "ffm_kg": round(athlete["weight_lbs"] * 0.453592 * 0.85, 1),
         "targets": {et: calc_daily_targets(athlete, et) for et in _EVENT_TYPES},
@@ -247,5 +251,22 @@ def regenerate_blueprint(athlete_id: int, background_tasks: BackgroundTasks):
             raise HTTPException(404, "Athlete not found.")
         background_tasks.add_task(generate_blueprint_bg, athlete_id)
         return {"status": "pending", "message": "Blueprint generation started."}
+    finally:
+        conn.close()
+
+
+@router.patch("/{athlete_id}/dismiss-schedule-reminder")
+def dismiss_schedule_reminder_athlete(athlete_id: int):
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT id FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Athlete not found.")
+        conn.execute(
+            "UPDATE athletes SET schedule_reminder_dismissed = 1 WHERE id = ?",
+            (athlete_id,),
+        )
+        conn.commit()
+        return {"schedule_reminder_dismissed": True}
     finally:
         conn.close()

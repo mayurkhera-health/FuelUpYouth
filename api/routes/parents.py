@@ -153,6 +153,23 @@ def test_reset(email: str):
         conn.close()
 
 
+@router.patch("/{parent_id}/dismiss-schedule-reminder")
+def dismiss_schedule_reminder(parent_id: int):
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT id FROM parents WHERE id = ?", (parent_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Parent not found.")
+        conn.execute(
+            "UPDATE parents SET schedule_reminder_dismissed = 1 WHERE id = ?",
+            (parent_id,),
+        )
+        conn.commit()
+        return {"schedule_reminder_dismissed": True}
+    finally:
+        conn.close()
+
+
 @router.get("/{parent_id}", response_model=ParentResponse)
 def get_parent(parent_id: int):
     conn = get_conn()
