@@ -291,6 +291,32 @@ def calc_daily_protein(
     )
 
 
+def calc_daily_fat(total_kcal: int, daily_cho_g: int, daily_prot_g: int, sex: str) -> dict:
+    """Fat by residual — silent, never shown to athlete (hard rule).
+
+    fat_g    = (TDEE − CHO×4 − Protein×4) ÷ 9
+    min_fat  = 25 % of TDEE for females (hormonal health floor), 20 % for males
+    max_fat  = 35 % of TDEE for all
+
+    FAT_LOW triggers a parent-dashboard message only — never exposed in athlete UI.
+    FAT_HIGH is informational for the parent dashboard; not an error.
+    """
+    fat_kcal = total_kcal - (daily_cho_g * 4) - (daily_prot_g * 4)
+    fat_g    = round(fat_kcal / 9)
+    min_pct  = 0.25 if sex == "female" else 0.20
+    min_fat  = round((total_kcal * min_pct) / 9)
+    max_fat  = round((total_kcal * 0.35) / 9)
+    flag = ("FAT_LOW"  if fat_g < min_fat else
+            "FAT_HIGH" if fat_g > max_fat else None)
+    return {
+        "fat_g":          fat_g,
+        "fat_g_min":      min_fat,
+        "fat_g_max":      max_fat,
+        "fat_flag":       flag,
+        "show_to_athlete": False,  # HARD RULE — never expose to teen UI
+    }
+
+
 def _sport_type_from_event(norm: str) -> str:
     if norm == "strength":
         return "strength"
@@ -365,8 +391,7 @@ def calc_daily_targets(
     if intensity:
         carb_lo, carb_hi = _reposition(carb_lo, carb_hi, intensity)
         prot_lo, prot_hi = _reposition(prot_lo, prot_hi, intensity)
-    fat_min = int(total_calories * 0.20 / 9)
-    fat_max = int(total_calories * 0.35 / 9)
+    fat     = calc_daily_fat(total_calories, carbs_g, protein_g, sex)
 
     iron_mg = 15 if sex == "female" else 11
     calcium_mg = 1300
@@ -382,15 +407,20 @@ def calc_daily_targets(
         "carbs_g": carbs_g,
         "protein_g": protein_g,
         "hydration_oz": hydration_oz,
+        # Fat — residual; silent (show_to_athlete always False)
+        "fat_g":          fat["fat_g"],
+        "fat_g_min":      fat["fat_g_min"],
+        "fat_g_max":      fat["fat_g_max"],
+        "fat_flag":       fat["fat_flag"],
+        "show_to_athlete": False,
+        # Micronutrients
+        "iron_mg": iron_mg,
+        "calcium_mg": calcium_mg,
         # Legacy range fields (DB storage, reports)
         "carbs_g_min": carbs_g,
         "carbs_g_max": carbs_g,
         "protein_g_min": protein_g,
         "protein_g_max": protein_g,
-        "fat_g_min": fat_min,
-        "fat_g_max": fat_max,
-        "iron_mg": iron_mg,
-        "calcium_mg": calcium_mg,
         "hydration_oz_min": hydration_oz,
         "hydration_oz_max": hydration_oz,
         "lea_alert": lea_alert,
