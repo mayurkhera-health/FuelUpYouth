@@ -103,6 +103,9 @@ EA_FLOOR   = {"female": 30, "male": 25}   # kcal/kg FFM — sex-specific RED/YEL
 EA_OPTIMAL = 45                             # kcal/kg FFM — GREEN threshold (all sexes)
 
 _ENDURANCE_SPORTS = {"running", "cross_country", "swimming", "cycling"}
+# Iron endurance set is a superset — gymnastics added for iron-depletion risk
+# but NOT merged into _ENDURANCE_SPORTS (FFM% for gymnasts differs from runners/swimmers)
+_IRON_ENDURANCE = _ENDURANCE_SPORTS | {"gymnastics"}
 
 # Absolute calorie floor — conservative early-warning, below true clinical minimum.
 # Flag is a signal, not a diagnosis. Parent dashboard only; never shown to athlete.
@@ -451,6 +454,23 @@ def calc_hydration(
     }
 
 
+def get_iron_flag(sex: str, sport_type: str, diet_pref: str) -> bool:
+    """True = trigger iron-rich food suggestions in the Recharge window.
+
+    All female athletes, all vegan athletes, and endurance-sport males all face
+    elevated iron-depletion risk. Source: GSSI Female Athlete (2020), IOC REDs (2023).
+
+    POST-MVP: amplify during menstruation days 1–5 when cycle tracking is added.
+    """
+    if sex == "female":
+        return True
+    if diet_pref == "vegan":
+        return True
+    if sport_type in _IRON_ENDURANCE:
+        return True
+    return False
+
+
 def _sport_type_from_event(norm: str) -> str:
     if norm == "strength":
         return "strength"
@@ -527,7 +547,8 @@ def calc_daily_targets(
         prot_lo, prot_hi = _reposition(prot_lo, prot_hi, intensity)
     fat     = calc_daily_fat(total_calories, carbs_g, protein_g, sex)
 
-    iron_mg = 15 if sex == "female" else 11
+    iron_mg   = 15 if sex == "female" else 11
+    iron_flag = get_iron_flag(sex, sport_type, diet_pref)
     calcium_mg = 1300
 
     ea_check   = check_energy_availability(
@@ -556,7 +577,8 @@ def calc_daily_targets(
         "fat_flag":       fat["fat_flag"],
         "show_to_athlete": False,
         # Micronutrients
-        "iron_mg": iron_mg,
+        "iron_mg":   iron_mg,
+        "iron_flag": iron_flag,
         "calcium_mg": calcium_mg,
         # Legacy range fields (DB storage, reports)
         "carbs_g_min": carbs_g,
