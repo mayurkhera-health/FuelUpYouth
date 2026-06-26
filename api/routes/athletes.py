@@ -3,7 +3,10 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from api.models import AthleteCreate, AthleteResponse
 from api.database import get_conn
-from api.services.nutrition_calc import calc_daily_targets, calc_age
+from api.services.nutrition_calc import (
+    calc_daily_targets, calc_age, calc_rmr,
+    lbs_to_kg, ft_in_to_cm, _normalize_sex,
+)
 from api.services.fueling_targets import normalize_season_phase
 from api.services import claude_ai
 
@@ -17,19 +20,14 @@ _STALE_GENERATING_SECONDS = 120
 
 def _computed_calculated(athlete: dict) -> dict:
     """Derive the _calculated block from athlete physical stats. No LLM needed."""
-    gender = athlete.get("gender", "").lower()
-    is_girl = gender in ("girl", "female", "f")
-    age = int(calc_age(
-        dob_str=athlete.get("date_of_birth"),
-        age_fallback=athlete["age"],
-    ))
+    sex    = _normalize_sex(athlete.get("gender", ""))
+    age_yr = calc_age(dob_str=athlete.get("date_of_birth"), age_fallback=athlete["age"])
+    age    = int(age_yr)
+    wt_kg  = lbs_to_kg(athlete["weight_lbs"])
+    ht_cm  = ft_in_to_cm(athlete["height_ft"], athlete["height_in"])
     calculated = {
-        "rmr": round(
-            11.1 * athlete["weight_lbs"] * 0.453592
-            + 8.4 * (athlete["height_ft"] * 12 + athlete["height_in"]) * 2.54
-            - (537 if is_girl else 340)
-        ),
-        "iron_mg": 15 if is_girl else 11,
+        "rmr": calc_rmr(wt_kg, ht_cm, sex, age_yr),
+        "iron_mg": 15 if sex == "female" else 11,
         "calcium_mg": 1300,
         "magnesium_mg": (360 if is_girl else 410) if age >= 14 else 240,
         "vitamin_d_iu": 1000,
@@ -96,12 +94,13 @@ def create_athlete(data: AthleteCreate, background_tasks: BackgroundTasks):
             """INSERT INTO athletes
                (parent_id, first_name, age, gender, weight_lbs, height_ft, height_in,
                 position, competition_level, sweat_profile, allergies, dietary_restrictions, supplement_use,
-                season_phase, food_preferences, date_of_birth)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                season_phase, food_preferences, date_of_birth, lifestyle_activity)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (data.parent_id, data.first_name, data.age, data.gender, data.weight_lbs,
              data.height_ft, data.height_in, data.position, data.competition_level,
              data.sweat_profile, data.allergies, data.dietary_restrictions, data.supplement_use,
-             normalize_season_phase(data.season_phase), data.food_preferences, data.date_of_birth),
+             normalize_season_phase(data.season_phase), data.food_preferences, data.date_of_birth,
+             data.lifestyle_activity),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE rowid = last_insert_rowid()").fetchone()
@@ -150,12 +149,13 @@ def update_athlete(athlete_id: int, data: AthleteCreate, background_tasks: Backg
                first_name=?, age=?, gender=?, weight_lbs=?, height_ft=?, height_in=?,
                position=?, competition_level=?, sweat_profile=?, allergies=?,
                dietary_restrictions=?, supplement_use=?, season_phase=?, food_preferences=?,
-               date_of_birth=?, blueprint_json=NULL
+               date_of_birth=?, lifestyle_activity=?, blueprint_json=NULL
                WHERE id=?""",
             (data.first_name, data.age, data.gender, data.weight_lbs, data.height_ft,
              data.height_in, data.position, data.competition_level, data.sweat_profile,
              data.allergies, data.dietary_restrictions, data.supplement_use,
-             season_phase, food_preferences, data.date_of_birth, athlete_id),
+             season_phase, food_preferences, data.date_of_birth, data.lifestyle_activity,
+             athlete_id),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()

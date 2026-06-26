@@ -23,6 +23,8 @@ def run_all():
         _add_intensity_to_daily_targets(conn)
         _add_season_phase_to_athletes(conn)
         _add_food_preferences_to_athletes(conn)
+        _add_date_of_birth_to_athletes(conn)
+        _add_lifestyle_activity_to_athletes(conn)
         _create_problem_reports(conn)
         _create_coach_feedback(conn)
         conn.commit()
@@ -243,6 +245,25 @@ def _add_food_preferences_to_athletes(conn):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
     if "food_preferences" not in cols:
         conn.execute("ALTER TABLE athletes ADD COLUMN food_preferences TEXT DEFAULT NULL")
+
+
+def _add_date_of_birth_to_athletes(conn):
+    """Capture true date of birth (ISO 'YYYY-MM-DD') so age can be derived live
+    via nutrition_calc.calc_age() instead of stored as a static integer. Nullable:
+    existing athletes have no DOB and fall back to the stored `age` column until
+    they re-enter it. Idempotent — safe to run on every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
+    if "date_of_birth" not in cols:
+        conn.execute("ALTER TABLE athletes ADD COLUMN date_of_birth TEXT NULL")
+
+
+def _add_lifestyle_activity_to_athletes(conn):
+    """Onboarding field 7: athlete's daily non-training lifestyle activity level.
+    Drives the lifestyle PAL in calc_tdee(). Defaults to 'light' (PAL 1.4) for all
+    existing athletes. Values: sedentary / light / moderate. Idempotent."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
+    if "lifestyle_activity" not in cols:
+        conn.execute("ALTER TABLE athletes ADD COLUMN lifestyle_activity TEXT DEFAULT 'light'")
 
 
 def _add_venue_location_to_events(conn):

@@ -1,6 +1,8 @@
 from datetime import date
 from typing import Optional
 
+from api.services.activity_engine import get_activity_profile
+
 EVENT_TYPE_MAP = {
     "soccer game": "game",
     "game": "game",
@@ -23,13 +25,21 @@ EVENT_TYPE_MAP = {
     "double training day": "tournament",
 }
 
-PAL_MULTIPLIERS = {
-    "rest": 1.55,
-    "practice": 1.85,
-    "training": 1.85,
-    "strength": 1.85,
-    "game": 2.00,
-    "tournament": 2.05,
+# Lifestyle PAL — non-training daily activity level (onboarding field; default "light")
+PAL = {
+    "sedentary": 1.3,   # mostly sitting — school desk, homework, screens
+    "light":     1.4,   # mix of sitting and moving (DEFAULT)
+    "moderate":  1.5,   # on feet most of the day
+}
+
+# Maps nutrition_calc normalized event types → activity_engine activity types (Option A)
+NORM_TO_ACTIVITY_TYPE = {
+    "rest":       "active_recovery",
+    "practice":   "practice",
+    "training":   "practice",      # speed/agility also maps to practice (Option A)
+    "strength":   "strength_cond",
+    "game":       "game",
+    "tournament": "tournament",
 }
 
 CARB_TARGETS = {  # g/kg
@@ -141,6 +151,20 @@ def _reposition(lo: float, hi: float, intensity: str):
     return lo + 0.25 * span, hi - 0.25 * span
 
 
+def _to_activity_type(norm: str) -> str:
+    return NORM_TO_ACTIVITY_TYPE.get(norm, "practice")
+
+
+def calc_tdee(rmr: float, pal: float, activity_aee: float, phv_extra_kcal: float = 0) -> int:
+    """TDEE = (RMR × lifestyle PAL) + Activity Energy Expenditure + PHV bonus.
+
+    pal             — from PAL dict, keyed by athlete.lifestyle_activity.
+    activity_aee    — from get_activity_profile() in activity_engine.py.
+    phv_extra_kcal  — from check_growth_phase(); 0 outside PHV window.
+    """
+    return round(rmr * pal + activity_aee + phv_extra_kcal)
+
+
 def _normalize_sex(gender: str) -> str:
     """Map app gender strings to binary 'female'/'male' for RMR formulas.
     'Prefer not to say' defaults to 'male' (higher RMR = avoids underestimating needs)."""
@@ -244,14 +268,19 @@ def calc_daily_targets(
     phv  = check_growth_phase(age_yr, sex)
     norm = normalize_event_type(event_type)
 
-    total_calories = int(rmr * PAL_MULTIPLIERS.get(norm, 1.55)) + phv["extra_kcal"]
+    pal = PAL.get(athlete.get("lifestyle_activity", "light"), 1.4)
+    act = get_activity_profile(_to_activity_type(norm), intensity, duration_min, wt_kg)
+
+    total_calories = calc_tdee(rmr, pal, act["aee_kcal"], phv["extra_kcal"])
 
     # ── Spec-formula CHO target ───────────────────────────────────────────────
     season = _normalize_season(athlete.get("season_phase"))
-    cho_key = _cho_intensity_key(norm, intensity)
+    # intensity_override from activity engine takes precedence over caller-supplied intensity
+    cho_key = (act["intensity_override"] if act["intensity_override"] in CHO_FACTOR
+               else _cho_intensity_key(norm, intensity))
     factors = CHO_FACTOR[cho_key]
     cho_fac = factors.get("any") or factors.get(_duration_bucket(duration_min), 6.0)
-    carbs_g = round(wt_kg * cho_fac * SEASON_CHO.get(season, 1.0))
+    carbs_g = round(wt_kg * cho_fac * SEASON_CHO.get(season, 1.0) * act["cho_modifier"])
 
     # ── Spec-formula protein target ───────────────────────────────────────────
     # Sport is EVENT-DERIVED by design (soccer-only app): _sport_type_from_event

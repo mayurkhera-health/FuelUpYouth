@@ -59,6 +59,7 @@ class AthleteCreate(BaseModel):
     season_phase: Optional[str] = None  # in_season / off_season / postseason (Fuel Gauge); default applied on write
     food_preferences: Optional[str] = None  # onboarding wizard: free-text likes/dislikes/textures → coach context
     date_of_birth: Optional[str] = None  # ISO YYYY-MM-DD; used by calc_age() for precision targets
+    lifestyle_activity: str = "light"    # sedentary / light / moderate — drives lifestyle PAL in calc_tdee
 
 
 class AthleteResponse(BaseModel):
@@ -79,6 +80,7 @@ class AthleteResponse(BaseModel):
     season_phase: Optional[str] = None  # in_season / off_season / postseason (Fuel Gauge)
     food_preferences: Optional[str] = None  # onboarding wizard: free-text likes/dislikes/textures
     date_of_birth: Optional[str] = None
+    lifestyle_activity: str = "light"       # sedentary / light / moderate
     schedule_reminder_dismissed: bool = False
     created_at: str
 
