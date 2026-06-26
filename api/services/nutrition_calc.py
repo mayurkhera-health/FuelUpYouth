@@ -596,3 +596,98 @@ def calc_daily_targets(
         "kcal_floor_flag":   kcal_check["flag"],
         "kcal_floor_action": kcal_check.get("action"),
     }
+
+
+def calculate_daily_targets(athlete: dict, session: dict, weather: dict) -> dict:
+    """Master function — call once per day when calendar events are loaded.
+
+    Returns complete daily targets for the Today dashboard, fueling windows,
+    and parent dashboard. Uses clean pre-processed input dicts rather than
+    a raw DB row (see calc_daily_targets() for the DB-row adapter).
+
+    athlete = {
+        'dob': 'YYYY-MM-DD', 'sex': 'female'|'male',
+        'wt_kg': float, 'ht_cm': float,
+        'sport_type': str,            # e.g. 'soccer', 'running', 'strength'
+        'season': str,                # in_season|off_season|postseason
+        'pal_key': 'sedentary'|'light'|'moderate',  # default 'light'
+        'diet_pref': str,             # omnivore|vegetarian|vegan
+        'allergies': list,            # informational; not used in calculations
+    }
+    session = {
+        'activity_type': str,   # from activity_engine MET_VALUES keys
+        'intensity': str,       # rest|low|moderate|hard|tournament
+        'duration_min': int,
+        'is_outdoor': bool,
+    }
+    weather = {'temp_f': float, 'humidity_pct': float}
+    """
+    age = calc_age(dob_str=athlete["dob"])
+    phv = check_growth_phase(age, athlete["sex"])
+    rmr = calc_rmr(athlete["wt_kg"], athlete["ht_cm"], athlete["sex"], age)
+    pal = PAL.get(athlete.get("pal_key", "light"), 1.4)
+
+    act  = get_activity_profile(
+        session["activity_type"],
+        session["intensity"],
+        session["duration_min"],
+        wt_kg=athlete["wt_kg"],   # required for AEE — omitted in spec but needed
+    )
+
+    tdee = calc_tdee(rmr, pal, act["aee_kcal"], phv["extra_kcal"])
+
+    cho_intensity = act["intensity_override"] or session["intensity"]
+    cho  = calc_daily_cho(
+        athlete["wt_kg"], cho_intensity, session["duration_min"],
+        athlete["season"], act["cho_modifier"],
+    )
+
+    prot = calc_daily_protein(
+        athlete["wt_kg"], athlete["sport_type"], athlete["season"], athlete["sex"],
+        diet_pref=athlete["diet_pref"],
+        is_sc_day=act["is_sc_day"],
+        phv_extra_g_per_kg=phv["extra_prot_g_per_kg"],
+    )
+
+    fat  = calc_daily_fat(tdee, cho, prot, athlete["sex"])
+
+    ea   = check_energy_availability(
+        athlete["wt_kg"], athlete["sex"], age, athlete["sport_type"],
+        cho, prot, fat["fat_g"], act["aee_kcal"],
+    )
+
+    kcal_flag = check_calorie_floor(tdee, athlete["sex"], age, athlete["sport_type"])
+
+    hyd  = calc_hydration(
+        athlete["wt_kg"], athlete["sport_type"], session["duration_min"], athlete["sex"],
+        is_outdoor=session["is_outdoor"],
+        temp_f=weather["temp_f"],
+        humidity_pct=weather["humidity_pct"],
+    )
+
+    iron = get_iron_flag(athlete["sex"], athlete["sport_type"], athlete["diet_pref"])
+
+    return {
+        "daily": {
+            "cho_g":   cho,
+            "prot_g":  prot,
+            "fat_g":   fat["fat_g"],
+            "hyd_oz":  hyd["total_daily_oz"],
+            "kcal":    tdee,
+        },
+        "meta": {
+            "age":      age,
+            "rmr":      rmr,
+            "pal":      pal,
+            "phv":      phv["phv"],
+            "act_type": session["activity_type"],
+        },
+        "flags": {
+            "ea":   ea,
+            "kcal": kcal_flag,
+            "fat":  fat["fat_flag"],   # spec uses fat['flag']; our key is fat_flag
+            "iron": iron,
+        },
+        "hyd_detail":          hyd,
+        "fat_show_to_athlete": False,  # hard rule
+    }
