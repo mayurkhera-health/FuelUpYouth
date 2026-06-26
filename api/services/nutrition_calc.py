@@ -109,6 +109,18 @@ _ENDURANCE_SPORTS = {"running", "cross_country", "swimming", "cycling"}
 KCAL_FLOOR   = {"female": 1800, "male": 2000}
 _HIGH_DEMAND = {"soccer", "basketball", "cross_country", "swimming", "running", "football"}
 
+# Hydration — ACSM (2017), GSSI Desbrow 2020
+SWEAT_RATE = {
+    "soccer": 1.50, "lacrosse": 1.40, "basketball": 1.25, "running": 1.80,
+    "cross_country": 1.80, "swimming": 0.50, "volleyball": 0.85, "tennis": 1.20,
+    "football": 1.60, "wrestling": 1.30, "gymnastics": 0.70, "golf": 0.45,
+    "baseball": 0.50, "diving": 0.40, "cycling": 1.40, "strength": 1.00, "other": 1.00,
+}
+HEAT_MULT        = 1.30   # outdoor + temp ≥ 80°F
+HUMID_MULT       = 1.15   # humidity > 70%
+COLD_MULT        = 0.85   # temp < 50°F
+FEMALE_HYD_ADD_OZ = 8     # luteal phase baseline add — always-on (no cycle tracking yet); GSSI (2020)
+
 
 def lbs_to_kg(lbs: float) -> float:
     return lbs * 0.453592
@@ -391,6 +403,54 @@ def check_calorie_floor(total_kcal: int, sex: str, age_yr: float, sport_type: st
     return {"flag": False}
 
 
+def calc_hydration(
+    wt_kg: float,
+    sport_type: str,
+    duration_min: float,
+    sex: str,
+    is_outdoor: bool = False,
+    temp_f: float = 70,
+    humidity_pct: float = 50,
+) -> dict:
+    """Sport/environment/sex-adjusted daily hydration target.
+
+    baseline_oz = post-exercise (4 mL/kg → oz) + 27 oz pre-exercise floor
+    during_oz   = 80% of sweat loss (sweat_rate × env_mult × hours × 33.8 oz/L)
+    female_add  = +8 oz/day luteal-phase baseline (always-on; GSSI 2020)
+    total_daily_oz = baseline_oz + during_oz + female_add
+
+    Environmental multipliers stack: heat × humid; cold applies independently.
+    """
+    baseline_oz = round(4 * wt_kg / 29.6) + 27
+    sweat_rate  = SWEAT_RATE.get(sport_type, 1.00)
+    env = 1.0
+    if is_outdoor:
+        if temp_f >= 80:
+            env *= HEAT_MULT
+        if humidity_pct > 70:
+            env *= HUMID_MULT
+    if temp_f < 50:
+        env *= COLD_MULT
+    hours        = duration_min / 60
+    loss_oz      = round(sweat_rate * env * hours * 33.8)
+    during_oz    = round(loss_oz * 0.80)
+    per_30min_oz = round(during_oz / max(hours * 2, 1))
+    female_add   = FEMALE_HYD_ADD_OZ if sex == "female" else 0
+    total_oz     = baseline_oz + during_oz + female_add
+    swimming_note = (
+        "Even though you are in the water, your body is still sweating. "
+        "Drink before and after practice even if you do not feel thirsty."
+        if sport_type == "swimming" else None
+    )
+    return {
+        "total_daily_oz":  total_oz,
+        "baseline_oz":     baseline_oz,
+        "during_oz":       during_oz,
+        "per_30min_oz":    per_30min_oz,
+        "swimming_note":   swimming_note,
+    }
+
+
 def _sport_type_from_event(norm: str) -> str:
     if norm == "strength":
         return "strength"
@@ -413,6 +473,9 @@ def calc_daily_targets(
     event_type: str = "rest",
     intensity: Optional[str] = None,
     duration_min: float = 0,
+    is_outdoor: bool = False,
+    temp_f: float = 70,
+    humidity_pct: float = 50,
 ) -> dict:
     wt_kg  = lbs_to_kg(athlete["weight_lbs"])
     ht_cm  = ft_in_to_cm(athlete["height_ft"], athlete["height_in"])
@@ -452,12 +515,9 @@ def calc_daily_targets(
     )
 
     # ── Spec-formula hydration target (oz) ───────────────────────────────────
-    during_oz = round((13 * wt_kg * (duration_min / 60)) / 29.6) if duration_min > 0 else 0
-    post_oz   = round((4 * wt_kg) / 29.6)
-    # The +27 (pre) and +36 (meals) oz are a DELIBERATE deviation from the dietician
-    # spec's 500/1000 mL (~12 oz/day higher). RDN-signed-off 2026-06-24: keep 109 oz —
-    # do not "correct" to the mL values. See docs/decisions/ADR-protein-soccer-only.md.
-    hydration_oz = during_oz + 27 + post_oz + 36
+    hyd = calc_hydration(wt_kg, sport_type, duration_min, sex,
+                         is_outdoor=is_outdoor, temp_f=temp_f, humidity_pct=humidity_pct)
+    hydration_oz = hyd["total_daily_oz"]
 
     # ── Legacy range fields (kept for DB schema & other callers) ─────────────
     carb_lo, carb_hi = CARB_TARGETS[norm]
@@ -484,7 +544,11 @@ def calc_daily_targets(
         # Spec single-value targets (used by Today dashboard)
         "carbs_g": carbs_g,
         "protein_g": protein_g,
-        "hydration_oz": hydration_oz,
+        "hydration_oz":         hydration_oz,
+        "hydration_baseline_oz": hyd["baseline_oz"],
+        "hydration_during_oz":   hyd["during_oz"],
+        "hydration_per_30min_oz": hyd["per_30min_oz"],
+        "hydration_swimming_note": hyd["swimming_note"],
         # Fat — residual; silent (show_to_athlete always False)
         "fat_g":          fat["fat_g"],
         "fat_g_min":      fat["fat_g_min"],
