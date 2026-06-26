@@ -233,6 +233,28 @@ def _duration_bucket(duration_min: float) -> str:
     return "gt90"
 
 
+def calc_daily_cho(
+    wt_kg: float,
+    intensity: str,
+    duration_min: float,
+    season: str,
+    activity_cho_modifier: float = 1.0,
+) -> int:
+    """Daily carbohydrate target in grams.
+
+    Sources: ACSM/AND Joint Position Statement (Thomas et al. 2016),
+             ISSN Nutrient Timing Position Stand (2017).
+
+    activity_cho_modifier from activity_engine.get_activity_profile():
+      S&C ×0.85 · speed/game ×1.10 · double-session ×1.25 · others ×1.0
+    Two-step rounding matches the dietician spec — base rounded before modifier applied.
+    """
+    f      = CHO_FACTOR.get(intensity, CHO_FACTOR["moderate"])
+    factor = f.get("any") or f.get(_duration_bucket(duration_min), 6.0)
+    base   = round(wt_kg * factor * SEASON_CHO.get(season, 1.0))
+    return round(base * activity_cho_modifier)
+
+
 def _sport_type_from_event(norm: str) -> str:
     if norm == "strength":
         return "strength"
@@ -276,11 +298,9 @@ def calc_daily_targets(
     # ── Spec-formula CHO target ───────────────────────────────────────────────
     season = _normalize_season(athlete.get("season_phase"))
     # intensity_override from activity engine takes precedence over caller-supplied intensity
-    cho_key = (act["intensity_override"] if act["intensity_override"] in CHO_FACTOR
-               else _cho_intensity_key(norm, intensity))
-    factors = CHO_FACTOR[cho_key]
-    cho_fac = factors.get("any") or factors.get(_duration_bucket(duration_min), 6.0)
-    carbs_g = round(wt_kg * cho_fac * SEASON_CHO.get(season, 1.0) * act["cho_modifier"])
+    cho_intensity = (act["intensity_override"] if act["intensity_override"] in CHO_FACTOR
+                     else _cho_intensity_key(norm, intensity))
+    carbs_g = calc_daily_cho(wt_kg, cho_intensity, duration_min, season, act["cho_modifier"])
 
     # ── Spec-formula protein target ───────────────────────────────────────────
     # Sport is EVENT-DERIVED by design (soccer-only app): _sport_type_from_event
