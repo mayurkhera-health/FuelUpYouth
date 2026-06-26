@@ -242,7 +242,21 @@ def get_daily_summary(athlete_id: int, date: str = None):
             (athlete_id, target_date),
         ).fetchall()
         logged_slots = {r["slot_name"]: bool(r["logged"]) for r in plan_rows}
-        mission_items = build_mission_items_from_slots(slot_defs, logged_slots, targets)
+
+        wt_kg     = nutrition_calc.lbs_to_kg(athlete["weight_lbs"]) if athlete.get("weight_lbs") else None
+        is_sc_day = (event_type or "").lower() in ("strength", "conditioning")
+        duration_min = round((duration_hours or 0) * 60)
+        mission_items = build_mission_items_from_slots(
+            slot_defs, logged_slots, targets,
+            wt_kg=wt_kg, is_sc_day=is_sc_day, duration_min=duration_min,
+        )
+
+        # Parent-only: collect any per-window ratio flags (never shown to athlete UI)
+        window_ratio_flags = [
+            {"slot": m["meal_type"], "flag": m["ratio_flag"]}
+            for m in mission_items
+            if m.get("ratio_flag")
+        ]
 
         return {
             "athlete": {
@@ -273,6 +287,7 @@ def get_daily_summary(athlete_id: int, date: str = None):
             "lea_alert": targets.get("lea_alert", False),
             "performance_forecast": calculate_performance_forecast(tl),
             "mission_items": mission_items,
+            "window_ratio_flags": window_ratio_flags,
         }
     finally:
         conn.close()
