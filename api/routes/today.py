@@ -242,7 +242,7 @@ def get_daily_summary(athlete_id: int, date: str = None):
             (athlete_id, target_date),
         ).fetchall()
         logged_slots = {r["slot_name"]: bool(r["logged"]) for r in plan_rows}
-        mission_items = build_mission_items_from_slots(slot_defs, logged_slots)
+        mission_items = build_mission_items_from_slots(slot_defs, logged_slots, targets)
 
         return {
             "athlete": {

@@ -215,9 +215,9 @@ function FuelScoreCard({ fuelScore, consumed, targets, accentColor }) {
   const fill = score != null ? circ - (score / 100) * circ : circ;
 
   const bars = [
-    { label: "Calories",  val: Math.round(consumed.calories),  target: targets.total_calories, unit: "kcal", color: accentColor },
-    { label: "Protein",   val: Math.round(consumed.protein_g), target: Math.round((targets.protein_g_min + targets.protein_g_max) / 2), unit: "g", color: "#d97706" },
-    { label: "Hydration", val: Math.round(consumed.water_oz),  target: targets.hydration_oz_max, unit: "oz", color: "#0ea5e9" },
+    { label: "Carbs",     val: Math.round(consumed.carbs_g ?? 0), target: targets.carbs_g ?? targets.carbs_g_max, unit: "g",    color: "#16a34a" },
+    { label: "Protein",   val: Math.round(consumed.protein_g),    target: targets.protein_g ?? Math.round((targets.protein_g_min + targets.protein_g_max) / 2), unit: "g", color: "#d97706" },
+    { label: "Hydration", val: Math.round(consumed.water_oz),     target: targets.hydration_oz ?? targets.hydration_oz_max, unit: "oz", color: "#0ea5e9" },
   ];
 
   return (
@@ -350,16 +350,16 @@ function TimelineRow({ item, status, accentColor, accentLight, onLog, logging, l
               style={{ ...tr.logBtn, background: accentColor, opacity: logging ? 0.6 : 1 }}
               onClick={() => onLog(item)} disabled={logging}
             >
-              {logging ? "Logging…" : "✓ Log This Meal"}
+              {logging ? "Logging…" : "I Ate This"}
             </button>
           </div>
         ) : (
           // ── Regular row (logged, past-unlogged, or upcoming) ──
           <div style={tr.normalRow}>
             <div style={tr.normalMain}>
-              <div style={tr.normalLabel}>
-                {isPast && <span style={{ color: "#4a6358" }}>✓ </span>}
-                {item.icon} {item.label}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "1px" }}>
+                <div style={tr.normalLabel}>{item.icon} {item.label}</div>
+                {isPast && <span style={tr.fueledPill}>✓ Fueled</span>}
               </div>
               <div style={tr.normalMeal}>{item.meal}{item.kcal ? ` · ${item.kcal} kcal` : ""}</div>
               {isPastUnlogged && (
@@ -367,7 +367,7 @@ function TimelineRow({ item, status, accentColor, accentLight, onLog, logging, l
                   style={{ ...tr.lateLogBtn, borderColor: accentColor, color: accentColor, opacity: logging ? 0.5 : 1 }}
                   onClick={() => onLog(item)} disabled={logging}
                 >
-                  {logging ? "Logging…" : "Log meal"}
+                  {logging ? "Logging…" : "I Ate This"}
                 </button>
               )}
               {!isPast && !isPastUnlogged && item.tip && item.urgent && (
@@ -410,7 +410,8 @@ const tr = {
   // normal row
   normalRow:  { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", paddingBottom: "2px" },
   normalMain: { flex: 1, minWidth: 0 },
-  normalLabel:{ fontSize: "18px", fontWeight: "700", color: "#4a6358", marginBottom: "1px" },
+  normalLabel:{ fontSize: "18px", fontWeight: "700", color: "#4a6358" },
+  fueledPill: { fontSize: "13px", fontWeight: "700", color: "#2d6a4f", background: "#e6f4ec", border: "1px solid #b0e8c8", borderRadius: "99px", padding: "2px 8px", flexShrink: 0 },
   normalMeal: { fontSize: "17px", color: "#4a6358" },
   lateLogBtn: { marginTop: "6px", padding: "5px 12px", background: "transparent", border: "1.5px solid", borderRadius: "8px", fontSize: "17px", fontWeight: "700", fontFamily: "'Nunito', sans-serif", cursor: "pointer", display: "inline-block" },
   urgentTip:  { fontSize: "16px", color: "#b45309", marginTop: "2px", fontWeight: "600" },
@@ -609,8 +610,8 @@ export default function HomeScreen({ athlete, onNavigate }) {
   useEffect(() => { fetchHome(); }, [fetchHome, reloadKey]);
 
   const consumed = meals.reduce(
-    (a, m) => ({ calories: a.calories + (m.calories||0), protein_g: a.protein_g + (m.protein_g||0), water_oz: a.water_oz + (m.water_oz||0) }),
-    { calories: 0, protein_g: 0, water_oz: 0 }
+    (a, m) => ({ calories: a.calories + (m.calories||0), carbs_g: a.carbs_g + (m.carbs_g||0), protein_g: a.protein_g + (m.protein_g||0), water_oz: a.water_oz + (m.water_oz||0) }),
+    { calories: 0, carbs_g: 0, protein_g: 0, water_oz: 0 }
   );
 
   const dayType  = todayEvent?.event_type || targets?.event_type || "rest";
