@@ -147,3 +147,44 @@ def test_mission_falls_back_when_wt_kg_missing(monkeypatch):
     # No wt_kg → cannot run validate_windows → legacy path
     items = build_mission_items_from_slots(slots, {}, targets)
     assert items[0]["carbs_g"] == round(326 * 0.15)
+    assert items[0]["protein_g"] == round(101 * 0.25)
+
+
+# ── End-to-end tests: compute_meal_slots → build_mission_items_from_slots ─────
+
+from api.services.meal_timing import compute_meal_slots
+
+
+def test_e2e_event_day_totals_stay_within_daily(monkeypatch):
+    """Per-slot grams summed across an event day must not exceed the daily total."""
+    monkeypatch.setenv("EVENT_RELATIVE_WINDOWS", "true")
+    slots = compute_meal_slots("practice", "16:00", 1.5)
+    targets = {"carbs_g": 326, "protein_g": 101}
+    items = build_mission_items_from_slots(
+        slots, {}, targets, wt_kg=54.4, is_sc_day=False, duration_min=90,
+    )
+    total_cho  = sum(it.get("carbs_g", 0)   for it in items)
+    total_prot = sum(it.get("protein_g", 0) for it in items)
+    # Even-division preserves totals; allow small rounding drift (±1 per window).
+    assert total_cho  <= 326 + 6
+    assert total_prot <= 101 + 6
+    # And it should allocate a meaningful share (not near-zero)
+    assert total_cho  >= 326 * 0.8
+
+
+def test_e2e_rest_day_everyday_meals_only(monkeypatch):
+    monkeypatch.setenv("EVENT_RELATIVE_WINDOWS", "true")
+    slots = compute_meal_slots("rest", None, None)
+    targets = {"carbs_g": 250, "protein_g": 90}
+    items = build_mission_items_from_slots(
+        slots, {}, targets, wt_kg=50, is_sc_day=False, duration_min=0,
+    )
+    # evening-recovery maps to "rebuild" (not everyday_meal) per SLOT_TO_SPLIT;
+    # daily-hydration is skipped. So only the 5 everyday_meal slots share one value
+    # and evening-recovery (rebuild) may differ -- filter to everyday_meal only.
+    everyday_cho = {
+        it["carbs_g"] for it in items
+        if "carbs_g" in it and split_key_for_slot(it["meal_type"]) == "everyday_meal"
+    }
+    assert len(everyday_cho) == 1  # all everyday_meal slots share one even-divided value
+    assert everyday_cho.pop() > 0
