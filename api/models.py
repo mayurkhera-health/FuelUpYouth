@@ -38,6 +38,7 @@ class ParentResponse(BaseModel):
     email: str
     consent_timestamp: str
     consent_confirmed: bool
+    schedule_reminder_dismissed: bool = False
     created_at: str
 
 
@@ -76,6 +77,7 @@ class AthleteResponse(BaseModel):
     supplement_use: Optional[str]
     season_phase: Optional[str] = None  # in_season / off_season / postseason (Fuel Gauge)
     food_preferences: Optional[str] = None  # onboarding wizard: free-text likes/dislikes/textures
+    schedule_reminder_dismissed: bool = False
     created_at: str
 
 
