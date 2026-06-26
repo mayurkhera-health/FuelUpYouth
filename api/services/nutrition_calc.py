@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Optional
 
 EVENT_TYPE_MAP = {
@@ -84,6 +85,25 @@ def ft_in_to_cm(ft: int, inches: float) -> float:
     return (ft * 12 + inches) * 2.54
 
 
+def calc_age(dob_str=None, age_fallback=None):
+    """
+    Returns decimal age as float.
+    Prefers dob_str (ISO format 'YYYY-MM-DD') when available.
+    Falls back to age_fallback integer for existing athletes with no DOB.
+    # MIGRATION BRIDGE — remove fallback path once DOB capture rate >95%
+    """
+    if dob_str:
+        dob = date.fromisoformat(dob_str)
+        today = date.today()
+        return float(
+            today.year - dob.year -
+            ((today.month, today.day) < (dob.month, dob.day))
+        )
+    if age_fallback is not None:
+        return float(age_fallback)  # MIGRATION BRIDGE
+    raise ValueError("calc_age requires either dob_str or age_fallback")
+
+
 def normalize_event_type(event_type: str) -> str:
     return EVENT_TYPE_MAP.get(event_type.lower().strip(), "rest")
 
@@ -121,13 +141,49 @@ def _reposition(lo: float, hi: float, intensity: str):
     return lo + 0.25 * span, hi - 0.25 * span
 
 
-def calc_rmr(weight_lbs: float, height_ft: int, height_in: float, gender: str) -> float:
-    """Everett MD 2025 RMR formula — NEVER use Harris-Benedict for youth."""
-    wt_kg = lbs_to_kg(weight_lbs)
-    ht_cm = ft_in_to_cm(height_ft, height_in)
-    if gender.lower() in ("girl", "female", "f"):
-        return 11.1 * wt_kg + 8.4 * ht_cm - 537
-    return 11.1 * wt_kg + 8.4 * ht_cm - 340
+def _normalize_sex(gender: str) -> str:
+    """Map app gender strings to binary 'female'/'male' for RMR formulas.
+    'Prefer not to say' defaults to 'male' (higher RMR = avoids underestimating needs)."""
+    g = gender.lower().strip()
+    if g in ("girl", "female", "f"):
+        return "female"
+    return "male"
+
+
+def calc_rmr(wt_kg: float, ht_cm: float, sex: str, age_yr: float) -> float:
+    """Age-stratified RMR — dietician-approved (Purvi, 2026-06-26).
+
+    13–19  Reale (2020) — validated for competitive youth athletes.
+    <  13  Schofield (1985) — pediatric reference.
+    >= 20  Mifflin-St Jeor — adult fallback (edge case only for this app).
+
+    sex must be 'female' or 'male' (use _normalize_sex before calling).
+    NEVER use Harris-Benedict for athletes under 18.
+    """
+    if 13 <= age_yr <= 19:
+        return round(11.1 * wt_kg + 8.4 * ht_cm - (537 if sex == "female" else 340))
+    if age_yr < 13:
+        # Schofield (1985) pediatric
+        if sex == "female":
+            return round(16.97 * wt_kg + 1.618 * ht_cm + 371)
+        return round(19.59 * wt_kg + 1.303 * ht_cm + 414)
+    # Mifflin-St Jeor for age 20+
+    base = 10 * wt_kg + 6.25 * ht_cm - 5 * age_yr
+    return round(base - 161 if sex == "female" else base + 5)
+
+
+def check_growth_phase(age_yr: float, sex: str) -> dict:
+    """Peak Height Velocity window — calories and protein needs elevated.
+
+    Female PHV: ~11–13 yrs.  Male PHV: ~13–15 yrs.
+    Source: Domaradzki et al. (2022), ACSM adolescent growth guidelines.
+    Returns extra_kcal and extra_prot_g_per_kg to add on top of base RMR targets.
+    """
+    if sex == "female" and 11 <= age_yr <= 13:
+        return {"phv": True, "extra_kcal": 150, "extra_prot_g_per_kg": 0.10}
+    if sex == "male" and 13 <= age_yr <= 15:
+        return {"phv": True, "extra_kcal": 150, "extra_prot_g_per_kg": 0.10}
+    return {"phv": False, "extra_kcal": 0, "extra_prot_g_per_kg": 0.0}
 
 
 def _cho_intensity_key(norm: str, intensity: Optional[str]) -> str:
@@ -176,11 +232,19 @@ def calc_daily_targets(
     intensity: Optional[str] = None,
     duration_min: float = 0,
 ) -> dict:
-    wt_kg = lbs_to_kg(athlete["weight_lbs"])
-    rmr = calc_rmr(athlete["weight_lbs"], athlete["height_ft"], athlete["height_in"], athlete["gender"])
+    wt_kg  = lbs_to_kg(athlete["weight_lbs"])
+    ht_cm  = ft_in_to_cm(athlete["height_ft"], athlete["height_in"])
+    sex    = _normalize_sex(athlete["gender"])
+    age_yr = calc_age(
+        dob_str=athlete.get("date_of_birth"),
+        age_fallback=athlete.get("age"),
+    )
+
+    rmr  = calc_rmr(wt_kg, ht_cm, sex, age_yr)
+    phv  = check_growth_phase(age_yr, sex)
     norm = normalize_event_type(event_type)
 
-    total_calories = int(rmr * PAL_MULTIPLIERS.get(norm, 1.55))
+    total_calories = int(rmr * PAL_MULTIPLIERS.get(norm, 1.55)) + phv["extra_kcal"]
 
     # ── Spec-formula CHO target ───────────────────────────────────────────────
     season = _normalize_season(athlete.get("season_phase"))
@@ -198,7 +262,11 @@ def calc_daily_targets(
     # See docs/decisions/ADR-protein-soccer-only.md.
     sport_type = _sport_type_from_event(norm)
     prot_fac = SPORT_PROT.get(sport_type, 1.6)
-    protein_g = round(wt_kg * prot_fac * SEASON_PROT.get(season, 1.0), 1)
+    protein_g = round(
+        wt_kg * prot_fac * SEASON_PROT.get(season, 1.0)
+        + phv["extra_prot_g_per_kg"] * wt_kg,
+        1,
+    )
 
     # ── Spec-formula hydration target (oz) ───────────────────────────────────
     during_oz = round((13 * wt_kg * (duration_min / 60)) / 29.6) if duration_min > 0 else 0
@@ -217,7 +285,7 @@ def calc_daily_targets(
     fat_min = int(total_calories * 0.20 / 9)
     fat_max = int(total_calories * 0.35 / 9)
 
-    iron_mg = 15 if athlete["gender"].lower() in ("girl", "female", "f") else 11
+    iron_mg = 15 if sex == "female" else 11
     calcium_mg = 1300
 
     ffm_kg = wt_kg * 0.85
