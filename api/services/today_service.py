@@ -561,7 +561,7 @@ def get_macro_focus(meal_type: str) -> str:
 
 def build_mission_items_from_slots(slot_defs: list, logged_slots: dict, targets: dict = None,
                                    wt_kg: float = None, is_sc_day: bool = False,
-                                   duration_min: float = 0) -> list:
+                                   duration_min: float = 0) -> list:  # duration_min reserved for keep_going_window() in WD-4
     """
     Converts compute_meal_slots output into Today's Mission items.
     Skips hydration-only slots and double-day alert banners.
@@ -602,7 +602,7 @@ def build_mission_items_from_slots(slot_defs: list, logged_slots: dict, targets:
             d = distributed[slot_name]
             item["carbs_g"]   = d["cho_g"]
             item["protein_g"] = d["prot_g"]
-            item["ratio_flag"] = d["flag"]   # parent-only; surfaced by route
+            item["ratio_flag"] = d["flag"]   # parent-only: WD-4 strips this from the athlete response
         elif daily_carbs and daily_protein:
             pcts = _FOCUS_MACRO_PCT.get(focus, {"carbs_pct": 0.15, "protein_pct": 0.15})
             item["carbs_g"]   = round(daily_carbs   * pcts["carbs_pct"])
