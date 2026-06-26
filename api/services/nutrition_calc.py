@@ -104,6 +104,11 @@ EA_OPTIMAL = 45                             # kcal/kg FFM — GREEN threshold (a
 
 _ENDURANCE_SPORTS = {"running", "cross_country", "swimming", "cycling"}
 
+# Absolute calorie floor — conservative early-warning, below true clinical minimum.
+# Flag is a signal, not a diagnosis. Parent dashboard only; never shown to athlete.
+KCAL_FLOOR   = {"female": 1800, "male": 2000}
+_HIGH_DEMAND = {"soccer", "basketball", "cross_country", "swimming", "running", "football"}
+
 
 def lbs_to_kg(lbs: float) -> float:
     return lbs * 0.453592
@@ -369,6 +374,23 @@ def check_energy_availability(
     return     {"zone": "GREEN",  "flag": False, "action": None,             "athlete_msg": None}
 
 
+def check_calorie_floor(total_kcal: int, sex: str, age_yr: float, sport_type: str) -> dict:
+    """Absolute calorie floor check — silent, parent-only. Not a diagnosis; early-warning signal.
+
+    Base floor: female 1800, male 2000 kcal
+    +200 for high-demand sports (soccer, basketball, cross_country, swimming, running, football)
+    +100 for age < 14 (higher growth energy cost)
+    """
+    floor = KCAL_FLOOR.get(sex, 1800)
+    if sport_type in _HIGH_DEMAND:
+        floor += 200
+    if age_yr < 14:
+        floor += 100
+    if total_kcal < floor:
+        return {"flag": True, "action": "log_and_notify_parent", "athlete_msg": None}
+    return {"flag": False}
+
+
 def _sport_type_from_event(norm: str) -> str:
     if norm == "strength":
         return "strength"
@@ -448,11 +470,12 @@ def calc_daily_targets(
     iron_mg = 15 if sex == "female" else 11
     calcium_mg = 1300
 
-    ea_check = check_energy_availability(
+    ea_check   = check_energy_availability(
         wt_kg, sex, age_yr, sport_type,
         carbs_g, protein_g, fat["fat_g"],
         exercise_kcal=act["aee_kcal"],
     )
+    kcal_check = check_calorie_floor(total_calories, sex, age_yr, sport_type)
 
     return {
         "event_type": norm,
@@ -483,4 +506,7 @@ def calc_daily_targets(
         "ea_flag":   ea_check["flag"],
         "ea_action": ea_check["action"],
         "lea_alert": ea_check["flag"],   # backward compat — Blueprint LEAWarning component
+        # Absolute calorie floor — conservative early-warning, parent-only
+        "kcal_floor_flag":   kcal_check["flag"],
+        "kcal_floor_action": kcal_check.get("action"),
     }
