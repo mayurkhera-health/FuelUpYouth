@@ -104,3 +104,46 @@ def test_distribute_recomputes_per_slot_ratio_after_division():
         cho_g, prot_g = out[n]["cho_g"], out[n]["prot_g"]
         expected = round(cho_g / prot_g, 2) if prot_g > 0 else 0
         assert out[n]["ratio"] == expected
+
+
+import os
+from api.services.today_service import build_mission_items_from_slots
+
+
+def _mission_slots(*names):
+    return [{"slot_name": n, "display_label": n.title(), "eat_by_time": "8:00 AM",
+             "is_hydration": n.endswith("hydration")} for n in names]
+
+
+def test_mission_uses_distribution_when_flag_on(monkeypatch):
+    monkeypatch.setenv("EVENT_RELATIVE_WINDOWS", "true")
+    slots = _mission_slots("recovery-fuel")
+    targets = {"carbs_g": 326, "protein_g": 101}
+    items = build_mission_items_from_slots(
+        slots, {}, targets, wt_kg=54.4, is_sc_day=False, duration_min=75,
+    )
+    from api.services.window_distribution import validate_windows
+    w = validate_windows(54.4, 326, 101, is_sc_day=False)
+    assert items[0]["carbs_g"] == w["recharge"]["cho_g"]
+    assert items[0]["protein_g"] == w["recharge"]["prot_g"]
+
+
+def test_mission_falls_back_to_focus_pct_when_flag_off(monkeypatch):
+    monkeypatch.delenv("EVENT_RELATIVE_WINDOWS", raising=False)
+    slots = _mission_slots("recovery-fuel")
+    targets = {"carbs_g": 326, "protein_g": 101}
+    items = build_mission_items_from_slots(
+        slots, {}, targets, wt_kg=54.4, is_sc_day=False, duration_min=75,
+    )
+    # Legacy path: recovery-fuel → "Recovery Focus" → carbs_pct 0.15
+    assert items[0]["carbs_g"] == round(326 * 0.15)
+    assert items[0]["protein_g"] == round(101 * 0.25)
+
+
+def test_mission_falls_back_when_wt_kg_missing(monkeypatch):
+    monkeypatch.setenv("EVENT_RELATIVE_WINDOWS", "true")
+    slots = _mission_slots("recovery-fuel")
+    targets = {"carbs_g": 326, "protein_g": 101}
+    # No wt_kg → cannot run validate_windows → legacy path
+    items = build_mission_items_from_slots(slots, {}, targets)
+    assert items[0]["carbs_g"] == round(326 * 0.15)

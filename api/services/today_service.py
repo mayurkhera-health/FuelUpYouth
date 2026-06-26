@@ -2,6 +2,8 @@ import logging
 from datetime import date, datetime, timedelta
 from api.services.meal_timing import compute_meal_slots
 from api.services.nutrition_calc import calc_daily_targets
+from api.services.window_distribution import distribute_to_slots
+from api.services.window_engine_v2 import event_relative_windows_enabled
 
 log = logging.getLogger(__name__)
 
@@ -557,15 +559,29 @@ def get_macro_focus(meal_type: str) -> str:
     return MACRO_FOCUS_MAP.get(key, "Fuel Window")
 
 
-def build_mission_items_from_slots(slot_defs: list, logged_slots: dict, targets: dict = None) -> list:
+def build_mission_items_from_slots(slot_defs: list, logged_slots: dict, targets: dict = None,
+                                   wt_kg: float = None, is_sc_day: bool = False,
+                                   duration_min: float = 0) -> list:
     """
     Converts compute_meal_slots output into Today's Mission items.
     Skips hydration-only slots and double-day alert banners.
     logged_slots: {slot_name: bool} from the meal_plans table.
     targets: daily nutrition targets dict; when provided, adds per-slot carbs_g/protein_g.
+
+    Macro allocation:
+      - When EVENT_RELATIVE_WINDOWS is set AND wt_kg is provided, per-slot grams
+        come from window_distribution.distribute_to_slots() (Purvi's SPLITS).
+      - Otherwise falls back to the legacy _FOCUS_MACRO_PCT table.
     """
     daily_carbs   = (targets or {}).get("carbs_g")   or (targets or {}).get("carbs_g_max")
     daily_protein = (targets or {}).get("protein_g") or (targets or {}).get("protein_g_max")
+
+    # Try the distribution path; fall back to legacy on any precondition miss.
+    distributed = None
+    if (event_relative_windows_enabled() and wt_kg and daily_carbs and daily_protein):
+        distributed = distribute_to_slots(
+            slot_defs, round(daily_carbs), round(daily_protein), wt_kg, is_sc_day,
+        )
 
     missions = []
     i = 0
@@ -574,7 +590,6 @@ def build_mission_items_from_slots(slot_defs: list, logged_slots: dict, targets:
             continue
         slot_name  = slot["slot_name"]
         focus      = get_macro_focus(slot_name)
-        pcts       = _FOCUS_MACRO_PCT.get(focus, {"carbs_pct": 0.15, "protein_pct": 0.15})
         item = {
             "id":          f"mission_{i}",
             "time":        slot.get("eat_by_time", ""),
@@ -583,7 +598,13 @@ def build_mission_items_from_slots(slot_defs: list, logged_slots: dict, targets:
             "logged":      logged_slots.get(slot_name, False),
             "meal_type":   slot_name,
         }
-        if daily_carbs and daily_protein:
+        if distributed is not None and slot_name in distributed:
+            d = distributed[slot_name]
+            item["carbs_g"]   = d["cho_g"]
+            item["protein_g"] = d["prot_g"]
+            item["ratio_flag"] = d["flag"]   # parent-only; surfaced by route
+        elif daily_carbs and daily_protein:
+            pcts = _FOCUS_MACRO_PCT.get(focus, {"carbs_pct": 0.15, "protein_pct": 0.15})
             item["carbs_g"]   = round(daily_carbs   * pcts["carbs_pct"])
             item["protein_g"] = round(daily_protein * pcts["protein_pct"])
         missions.append(item)
