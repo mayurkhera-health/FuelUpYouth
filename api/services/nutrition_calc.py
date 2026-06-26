@@ -98,6 +98,12 @@ DIET_PROT_MULT = {
     "vegan":      1.15,
 }
 
+# Energy Availability thresholds — IOC Mountjoy et al. 2023
+EA_FLOOR   = {"female": 30, "male": 25}   # kcal/kg FFM — sex-specific RED/YELLOW boundary
+EA_OPTIMAL = 45                             # kcal/kg FFM — GREEN threshold (all sexes)
+
+_ENDURANCE_SPORTS = {"running", "cross_country", "swimming", "cycling"}
+
 
 def lbs_to_kg(lbs: float) -> float:
     return lbs * 0.453592
@@ -317,6 +323,52 @@ def calc_daily_fat(total_kcal: int, daily_cho_g: int, daily_prot_g: int, sex: st
     }
 
 
+def estimate_ffm(wt_kg: float, sex: str, age_yr: float, sport_type: str) -> float:
+    """Sport/sex/age-stratified fat-free mass estimate (no body comp scan required).
+
+    Endurance sports carry a higher FFM% due to lower body-fat norms for aerobic athletes.
+    Age < 14 adjustment: younger athletes have physiologically lower FFM%.
+    """
+    if sex == "female":
+        pct = 0.78 if sport_type in _ENDURANCE_SPORTS else 0.76
+    else:
+        pct = 0.84 if sport_type in _ENDURANCE_SPORTS else 0.82
+    if age_yr < 14:
+        pct -= 0.02
+    return round(wt_kg * pct, 1)
+
+
+def check_energy_availability(
+    wt_kg: float,
+    sex: str,
+    age_yr: float,
+    sport_type: str,
+    daily_cho_g: int,
+    daily_prot_g: int,
+    daily_fat_g: int,
+    exercise_kcal: int,
+) -> dict:
+    """Energy Availability check — silent, parent-only (athlete_msg always None).
+
+    EA = (dietary kcal − exercise kcal) / FFM kg
+    Source: IOC Mountjoy et al. 2023 consensus on Relative Energy Deficiency in Sport.
+
+    Zones:
+      RED    — ea < EA_FLOOR[sex]  → notify_parent
+      YELLOW — EA_FLOOR ≤ ea < 45  → log_only
+      GREEN  — ea ≥ 45             → no action
+    """
+    ffm    = estimate_ffm(wt_kg, sex, age_yr, sport_type)
+    d_kcal = daily_cho_g * 4 + daily_prot_g * 4 + daily_fat_g * 9
+    ea     = (d_kcal - exercise_kcal) / ffm
+    floor  = EA_FLOOR.get(sex, 30)
+    if ea < floor:
+        return {"zone": "RED",    "flag": True,  "action": "notify_parent", "athlete_msg": None}
+    if ea < EA_OPTIMAL:
+        return {"zone": "YELLOW", "flag": True,  "action": "log_only",      "athlete_msg": None}
+    return     {"zone": "GREEN",  "flag": False, "action": None,             "athlete_msg": None}
+
+
 def _sport_type_from_event(norm: str) -> str:
     if norm == "strength":
         return "strength"
@@ -396,8 +448,11 @@ def calc_daily_targets(
     iron_mg = 15 if sex == "female" else 11
     calcium_mg = 1300
 
-    ffm_kg = wt_kg * 0.85
-    lea_alert = total_calories < (30 * ffm_kg)
+    ea_check = check_energy_availability(
+        wt_kg, sex, age_yr, sport_type,
+        carbs_g, protein_g, fat["fat_g"],
+        exercise_kcal=act["aee_kcal"],
+    )
 
     return {
         "event_type": norm,
@@ -423,5 +478,9 @@ def calc_daily_targets(
         "protein_g_max": protein_g,
         "hydration_oz_min": hydration_oz,
         "hydration_oz_max": hydration_oz,
-        "lea_alert": lea_alert,
+        # Energy availability — parent-only, athlete_msg always None
+        "ea_zone":   ea_check["zone"],
+        "ea_flag":   ea_check["flag"],
+        "ea_action": ea_check["action"],
+        "lea_alert": ea_check["flag"],   # backward compat — Blueprint LEAWarning component
     }
