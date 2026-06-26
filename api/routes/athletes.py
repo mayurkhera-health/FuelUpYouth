@@ -96,12 +96,12 @@ def create_athlete(data: AthleteCreate, background_tasks: BackgroundTasks):
             """INSERT INTO athletes
                (parent_id, first_name, age, gender, weight_lbs, height_ft, height_in,
                 position, competition_level, sweat_profile, allergies, dietary_restrictions, supplement_use,
-                season_phase, food_preferences)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                season_phase, food_preferences, date_of_birth)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (data.parent_id, data.first_name, data.age, data.gender, data.weight_lbs,
              data.height_ft, data.height_in, data.position, data.competition_level,
              data.sweat_profile, data.allergies, data.dietary_restrictions, data.supplement_use,
-             normalize_season_phase(data.season_phase), data.food_preferences),
+             normalize_season_phase(data.season_phase), data.food_preferences, data.date_of_birth),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE rowid = last_insert_rowid()").fetchone()
@@ -150,12 +150,12 @@ def update_athlete(athlete_id: int, data: AthleteCreate, background_tasks: Backg
                first_name=?, age=?, gender=?, weight_lbs=?, height_ft=?, height_in=?,
                position=?, competition_level=?, sweat_profile=?, allergies=?,
                dietary_restrictions=?, supplement_use=?, season_phase=?, food_preferences=?,
-               blueprint_json=NULL
+               date_of_birth=?, blueprint_json=NULL
                WHERE id=?""",
             (data.first_name, data.age, data.gender, data.weight_lbs, data.height_ft,
              data.height_in, data.position, data.competition_level, data.sweat_profile,
              data.allergies, data.dietary_restrictions, data.supplement_use,
-             season_phase, food_preferences, athlete_id),
+             season_phase, food_preferences, data.date_of_birth, athlete_id),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
