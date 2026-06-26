@@ -18,14 +18,26 @@ DB_PATH   = Path(__file__).resolve().parent.parent / "fuelup.db"
 TEST_PATH = Path("/tmp/fuelup_phase1_test.db")
 
 
-def _cols(conn, table: str) -> list[str]:
+def _table_cols(conn, table: str) -> list[str]:
     return [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+
+
+def snapshot(conn, label: str) -> dict:
+    counts = {}
+    for t in ["parents", "athletes"]:
+        counts[t] = conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+    print(f"\n{'='*50}")
+    print(f"  {label}")
+    print(f"{'='*50}")
+    for k, v in counts.items():
+        print(f"  {k:<28} {v}")
+    return counts
 
 
 def run_schema(conn):
     print("\n── Schema changes ──")
 
-    if "schedule_reminder_dismissed" not in _cols(conn, "parents"):
+    if "schedule_reminder_dismissed" not in _table_cols(conn, "parents"):
         conn.execute(
             "ALTER TABLE parents ADD COLUMN schedule_reminder_dismissed INTEGER DEFAULT 0"
         )
@@ -33,7 +45,7 @@ def run_schema(conn):
     else:
         print("  · parents.schedule_reminder_dismissed  (already exists)")
 
-    if "schedule_reminder_dismissed" not in _cols(conn, "athletes"):
+    if "schedule_reminder_dismissed" not in _table_cols(conn, "athletes"):
         conn.execute(
             "ALTER TABLE athletes ADD COLUMN schedule_reminder_dismissed INTEGER DEFAULT 0"
         )
@@ -50,7 +62,7 @@ def verify(conn) -> bool:
     issues = []
 
     for table in ("parents", "athletes"):
-        cols = _cols(conn, table)
+        cols = _table_cols(conn, table)
         if "schedule_reminder_dismissed" in cols:
             print(f"  ✓ {table}.schedule_reminder_dismissed present")
         else:
@@ -72,10 +84,19 @@ def verify(conn) -> bool:
     return len(issues) == 0
 
 
+def run_reverse(conn):
+    print("\n── Rollback ──")
+    conn.execute("UPDATE parents SET schedule_reminder_dismissed = NULL")
+    conn.execute("UPDATE athletes SET schedule_reminder_dismissed = NULL")
+    conn.commit()
+    print("  Done. Columns remain in schema but are NULL (SQLite limitation).")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Phase 1 migration: schedule_reminder_dismissed")
-    parser.add_argument("--apply", action="store_true", help="Apply to production DB")
-    parser.add_argument("--db",    type=str,            help="Target a specific DB file")
+    parser.add_argument("--apply",   action="store_true", help="Apply to production DB")
+    parser.add_argument("--reverse", action="store_true", help="Logical rollback")
+    parser.add_argument("--db",      type=str,            help="Target a specific DB file")
     args = parser.parse_args()
 
     if args.db:
@@ -93,15 +114,22 @@ def main():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
 
-    run_schema(conn)
-    ok = verify(conn)
+    before = snapshot(conn, "BEFORE migration")
+
+    if args.reverse:
+        run_reverse(conn)
+    else:
+        run_schema(conn)
+        ok = verify(conn)
+        if not ok:
+            print("\nAborting — verification failed.")
+            conn.close()
+            return
+
+    snapshot(conn, "AFTER migration")
     conn.close()
 
-    if not ok:
-        print("\nAborting — verification failed.")
-        return
-
-    if not args.apply and not args.db:
+    if not args.apply and not args.db and not args.reverse:
         print(f"\nDRY-RUN complete. Re-run with --apply to apply to production DB.")
 
 
