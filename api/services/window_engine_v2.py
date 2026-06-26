@@ -239,10 +239,10 @@ def _event_cycle(
                 pre_close = pre_open + timedelta(minutes=30)
             cards.append(WindowCard(
                 window_key     = f"pre_event_meal{s}",
-                label          = "Pre-Game Meal" if is_game else "Pre-Training Meal",
+                label          = "Fuel Before",
                 category       = "fuel_before",
                 category_key   = "carb",
-                category_label = "Fuel Before",
+                category_label = "PRE-EVENT",
                 open_time      = _hhmm(pre_open),
                 close_time     = _hhmm(pre_close),
                 time_display   = _range(pre_open, pre_close),
@@ -267,7 +267,7 @@ def _event_cycle(
                 label          = "Top-Up Snack",
                 category       = "quick_snack",
                 category_key   = "carb",
-                category_label = "Fuel Before",
+                category_label = "PRE-EVENT",
                 open_time      = _hhmm(topup_open),
                 close_time     = _hhmm(topup_close),
                 time_display   = _range(topup_open, topup_close),
@@ -318,10 +318,10 @@ def _event_cycle(
         # Primary recovery snack — always shown, no cutoff (priority=True)
         cards.append(WindowCard(
             window_key     = f"fuel_after_primary{s}",
-            label          = "Recovery Snack",
+            label          = "Recharge Snack",
             category       = "fuel_after",
             category_key   = "recovery",
-            category_label = "Fuel After",
+            category_label = "POST-EVENT",
             open_time      = _hhmm(end),
             close_time     = _hhmm(end + timedelta(minutes=30)),
             time_display   = _range(end, end + timedelta(minutes=30)),
@@ -343,10 +343,10 @@ def _event_cycle(
             # has_recovery_meal stays False (preserves dinner on single early-game days).
             cards.append(WindowCard(
                 window_key     = f"proper_breakfast_after{s}",
-                label          = "Recovery Breakfast",
+                label          = "Rebuild Breakfast",
                 category       = "fuel_after",
                 category_key   = "recovery",
-                category_label = "Fuel After",
+                category_label = "POST-EVENT",
                 open_time      = _hhmm(end + timedelta(minutes=30)),
                 close_time     = _hhmm(end + timedelta(minutes=90)),
                 time_display   = _range(end + timedelta(minutes=30), end + timedelta(minutes=90)),
@@ -371,10 +371,10 @@ def _event_cycle(
             if second_open.time() < SECOND_RECOVERY_CUTOFF:
                 cards.append(WindowCard(
                     window_key     = f"fuel_after_second{s}",
-                    label          = "Recovery Meal",
+                    label          = "Rebuild Meal",
                     category       = "fuel_after",
                     category_key   = "recovery",
-                    category_label = "Fuel After",
+                    category_label = "POST-EVENT",
                     open_time      = _hhmm(second_open),
                     close_time     = _hhmm(second_close),
                     time_display   = _range(second_open, second_close),
