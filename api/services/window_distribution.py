@@ -183,6 +183,8 @@ SLOT_TO_SPLIT = {
 
 # Tournament/double-day variants carry an event-index suffix (e.g.
 # "fuel_after_primary_1", "between_games_1_2"). Match by prefix after exact miss.
+# NOTE: entries duplicating an exact SLOT_TO_SPLIT key only ever fire for suffixed
+# variants (exact names are caught above); keep their values in sync with SLOT_TO_SPLIT.
 _SLOT_PREFIX_TO_SPLIT = {
     "pre_event_meal":          "fuel_before",
     "top_up_snack":            "top_up",
@@ -196,7 +198,7 @@ _SLOT_PREFIX_TO_SPLIT = {
 }
 
 
-def split_key_for_slot(slot_name: str):
+def split_key_for_slot(slot_name: str) -> Optional[str]:
     """Return the SPLITS key for an engine slot_name, or None if it has no
     macro split (hydration-only or unknown). Exact match first, then prefix
     match for event-index-suffixed v2 keys."""

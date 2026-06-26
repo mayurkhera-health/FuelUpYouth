@@ -30,3 +30,15 @@ def test_hydration_only_slots_map_to_none():
 
 def test_unknown_slot_maps_to_none():
     assert split_key_for_slot("totally-unknown-slot") is None
+
+
+def test_v2_underscore_and_suffixed_variants():
+    # v2 underscore exact-match keys
+    assert split_key_for_slot("everyday_breakfast") == "everyday_meal"
+    assert split_key_for_slot("fuel_after_primary") == "recharge"
+    # suffixed tournament/double-day variants resolve via prefix match
+    assert split_key_for_slot("fuel_after_primary_1") == "recharge"
+    assert split_key_for_slot("between_games_1_2") == "recharge"
+    assert split_key_for_slot("fuel_after_second_2") == "rebuild"
+    # refuel_ready is prefix-only (not an exact SLOT_TO_SPLIT key)
+    assert split_key_for_slot("refuel_ready_1_2") == "recharge"
