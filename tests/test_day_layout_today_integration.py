@@ -166,3 +166,20 @@ def test_build_today_view_uses_client_now_for_2h_resolver(monkeypatch):
     assert captured_nows[1] == late_now, (
         f"build_day_layout received wrong now on second call: {captured_nows[1]!r}"
     )
+
+
+def test_keep_going_renders_as_oz_packets_nudge():
+    from api.services.day_layout import build_day_layout, cards_to_template_windows
+    from datetime import datetime
+    ev = {"id": 1, "event_type": "game", "activity_type": "game",
+          "event_date": "2026-06-27", "start_time": "15:00", "duration_hours": 1.5}  # 90 min → keep_going
+    res = build_day_layout([ev], {"id": 1, "weight_lbs": 120, "height_ft": 5,
+                                  "height_in": 4, "gender": "boy", "age": 14},
+                           now=datetime(2026, 6, 27, 6, 0))
+    kg = next(c for c in res["cards"] if c["card"] == "keep_going")
+    assert kg.get("athlete_label") and "oz" in kg["athlete_label"].lower()
+
+    tw = cards_to_template_windows(res["cards"])
+    kg_win = next(w for w in tw if w["category"] == "keep_going")
+    assert kg_win["is_nudge_only"] is True
+    assert "oz" in kg_win["macro_focus"].lower()

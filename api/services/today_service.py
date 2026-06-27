@@ -1037,6 +1037,22 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
                     "log":           {"logged": False, "method": None,
                                       "photo_thumb_url": None, "nutrient_status": "none"},
                 })
+            elif tw.get("category") == "keep_going":
+                nudges.append({
+                    "id":            None,
+                    "slot_name":     sn,
+                    "display_label": tw["label"],
+                    "eat_by_time":   tw.get("time_display", ""),
+                    "open_time":     "",
+                    "close_time":    "",
+                    "macro_focus":   tw.get("macro_focus", ""),
+                    "logged":        False,
+                    "window_type":   "keep_going",
+                    "sort_time":     sort_t,
+                    "status":        "nudge",
+                    "log":           {"logged": False, "method": None,
+                                      "photo_thumb_url": None, "nutrient_status": "none"},
+                })
             continue
         plan_info = logged_map.get(sn, {})
         wl        = wl_map.get(sn)

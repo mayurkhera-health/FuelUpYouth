@@ -14,6 +14,7 @@ from datetime import datetime, time, timedelta
 from api.services.activity_type_resolver import resolve_activity_type
 from api.services.tournament_template import get_tournament_template
 from api.services import window_engine_v2 as wev2
+from api.services.window_distribution import keep_going_window
 
 REST_MEAL_TIMES = {"breakfast": "07:30", "lunch": "12:30", "dinner": "18:30"}
 EVENING_WIND_DOWN_AFTER = time(20, 0)  # event end past 8:00 PM -> optional wind-down card
@@ -120,6 +121,16 @@ def _apply_guardrails(cards: list, cap: bool = True) -> list:
     return kept
 
 
+def _attach_keep_going_labels(cards: list, wt_kg: float) -> list:
+    """Attach the athlete-facing oz/packets label to keep_going cards (never grams)."""
+    for c in cards:
+        if c["card"] == "keep_going" and c.get("duration_min"):
+            kg = keep_going_window(wt_kg, c["duration_min"])
+            if kg:
+                c["athlete_label"] = kg["athlete_label"]
+    return cards
+
+
 def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
     """Return {"day_type": str, "cards": [card, ...]} for the athlete's day.
 
@@ -132,13 +143,15 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
         at = resolve_activity_type(ev, now)
         resolved.append((ev, at))
 
+    wt_kg_for_labels = athlete["weight_lbs"] * 0.453592 if athlete.get("weight_lbs") else 0
+
     # Rest day — no events at all.
     if not resolved:
-        return {"day_type": "rest", "cards": _apply_guardrails(_rest_meal_cards(), cap=False)}
+        return {"day_type": "rest", "cards": _attach_keep_going_labels(_apply_guardrails(_rest_meal_cards(), cap=False), wt_kg_for_labels)}
 
     # Active Recovery / Yoga -> rest-style 3 meals regardless of time.
     if any(at == "active_recovery" for _, at in resolved):
-        return {"day_type": "active_recovery", "cards": _apply_guardrails(_rest_meal_cards(), cap=False)}
+        return {"day_type": "active_recovery", "cards": _attach_keep_going_labels(_apply_guardrails(_rest_meal_cards(), cap=False), wt_kg_for_labels)}
 
     # Tournament: explicit tournament tag, OR >= 2 game/tournament events same day.
     game_like = [(ev, at) for ev, at in resolved
@@ -160,7 +173,7 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
         cards = get_tournament_template(schedule, wt_kg)
         # No cap on tournaments — the template's many cards (incl. post-tournament
         # Recharge/Rebuild) are all deliberate and must survive.
-        return {"day_type": "tournament", "cards": _apply_guardrails(cards, cap=False)}
+        return {"day_type": "tournament", "cards": _attach_keep_going_labels(_apply_guardrails(cards, cap=False), wt_kg_for_labels)}
 
     # Single non-tournament event -> standard layout.
     primary_ev, _ = resolved[0]
@@ -176,7 +189,7 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
             "sort_time": wev2._hhmm(end_dt + timedelta(minutes=90)), "time_display": "",
             "game_num": None, "duration_min": None,
         })
-    return {"day_type": "standard", "cards": _apply_guardrails(cards)}
+    return {"day_type": "standard", "cards": _attach_keep_going_labels(_apply_guardrails(cards), wt_kg_for_labels)}
 
 
 def day_layout_v2_enabled() -> bool:
@@ -189,7 +202,7 @@ def day_layout_v2_enabled() -> bool:
 _CARD_TO_CATEGORY = {
     "everyday_meal": "everyday", "breakfast": "everyday", "lunch": "everyday", "dinner": "everyday",
     "fuel_before": "fuel_before", "top_up": "quick_snack",
-    "keep_going": "quick_snack", "event": "event",
+    "keep_going": "keep_going", "event": "event",
     "recharge": "fuel_after", "rebuild": "fuel_after", "wind_down": "everyday",
 }
 
@@ -208,16 +221,19 @@ def cards_to_template_windows(cards: list) -> list:
     out = []
     for c in cards:
         category = _CARD_TO_CATEGORY.get(c["card"], "everyday")
+        is_nudge = bool(c["is_event"]) or c["card"] == "keep_going"
+        macro_focus = (c.get("athlete_label") or "") if c["card"] == "keep_going" \
+                      else _CARD_TO_MACRO_FOCUS.get(c["card"], "")
         out.append({
             "key": c["key"],
             "label": c["label"],
             "category": category,
             "category_key": category,
-            "macro_focus": _CARD_TO_MACRO_FOCUS.get(c["card"], ""),
+            "macro_focus": macro_focus,
             "sort_time": c["sort_time"],
             "time_display": c.get("time_display", ""),
             "open_dt": None,
             "close_dt": None,
-            "is_nudge_only": bool(c["is_event"]),   # event marker = visible, non-tappable
+            "is_nudge_only": is_nudge,
         })
     return out
