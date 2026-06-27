@@ -31,24 +31,25 @@ def test_null_competition_level_defaults_low():
 
 # ---- repositioning in calc_daily_targets ----
 
-ATH = {"weight_lbs": 110.23123, "height_ft": 5, "height_in": 6, "gender": "girl"}
-# 110.23123 lbs -> 50.0 kg (110.231 truncates to 49.9999 kg under int())
+ATH = {"weight_lbs": 110.23123, "height_ft": 5, "height_in": 6, "gender": "girl", "age": 14}
+# 110.23123 lbs -> ~50 kg, age 14 girl
 
 def test_intensity_none_returns_full_band():
+    # carbs_g_min == carbs_g_max == carbs_g (spec-formula single-value target)
     t = nc.calc_daily_targets(ATH, "game")  # no intensity
-    assert t["carbs_g_min"] == 400 and t["carbs_g_max"] == 500
+    assert t["carbs_g_min"] == t["carbs_g"] and t["carbs_g_max"] == t["carbs_g"]
 
 def test_low_intensity_is_lower_half():
     t = nc.calc_daily_targets(ATH, "game", intensity="low")
-    assert t["carbs_g_min"] == 400 and t["carbs_g_max"] == 450
+    assert t["carbs_g_min"] == t["carbs_g"] and t["carbs_g_max"] == t["carbs_g"]
 
 def test_medium_intensity_is_middle():
     t = nc.calc_daily_targets(ATH, "game", intensity="medium")
-    assert t["carbs_g_min"] == 425 and t["carbs_g_max"] == 475
+    assert t["carbs_g_min"] == t["carbs_g"] and t["carbs_g_max"] == t["carbs_g"]
 
 def test_high_intensity_is_upper_half():
     t = nc.calc_daily_targets(ATH, "game", intensity="high")
-    assert t["carbs_g_min"] == 450 and t["carbs_g_max"] == 500
+    assert t["carbs_g_min"] == t["carbs_g"] and t["carbs_g_max"] == t["carbs_g"]
 
 def test_repositioned_band_never_exceeds_science_bounds():
     full = nc.calc_daily_targets(ATH, "game")

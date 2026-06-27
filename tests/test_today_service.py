@@ -234,7 +234,9 @@ def _make_today_conn():
     conn = _make_test_conn()  # window_logs + meal_plans
     conn.execute("""
         CREATE TABLE athletes (
-            id INTEGER PRIMARY KEY, first_name TEXT, sport TEXT, gender TEXT
+            id INTEGER PRIMARY KEY, first_name TEXT, sport TEXT, gender TEXT,
+            weight_lbs REAL, height_ft INTEGER, height_in REAL, age INTEGER,
+            date_of_birth TEXT
         )
     """)
     conn.execute("""
@@ -255,7 +257,7 @@ def test_has_schedule_false_with_zero_events():
     """A newly-claimed athlete with no events ever → has_schedule = False
     (distinguishes 'no schedule set up' from a genuine rest day)."""
     conn = _make_today_conn()
-    conn.execute("INSERT INTO athletes (id, first_name, sport) VALUES (1, 'Ryan', 'soccer')")
+    conn.execute("INSERT INTO athletes (id, first_name, sport, gender, weight_lbs, height_ft, height_in, age) VALUES (1, 'Ryan', 'soccer', 'boy', 120, 5, 4, 14)")
     conn.commit()
 
     view = build_today_view(1, conn, today="2026-06-22")
@@ -267,7 +269,7 @@ def test_has_schedule_false_with_zero_events():
 def test_has_schedule_true_with_one_event():
     """An athlete with at least one event (any date, any type) → has_schedule = True."""
     conn = _make_today_conn()
-    conn.execute("INSERT INTO athletes (id, first_name, sport) VALUES (2, 'Ryan', 'soccer')")
+    conn.execute("INSERT INTO athletes (id, first_name, sport, gender, weight_lbs, height_ft, height_in, age) VALUES (2, 'Ryan', 'soccer', 'boy', 120, 5, 4, 14)")
     conn.execute(
         "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours) "
         "VALUES (2, 'Practice', 'practice', '2026-07-01', '16:00', 1.5)"
@@ -285,7 +287,7 @@ def test_tappable_windows_carry_open_close_time_24h():
     can gate per-window confirm by now vs open/close. eat_by_time unchanged."""
     import re
     conn = _make_today_conn()
-    conn.execute("INSERT INTO athletes (id, first_name, sport) VALUES (3, 'Ana', 'soccer')")
+    conn.execute("INSERT INTO athletes (id, first_name, sport, gender, weight_lbs, height_ft, height_in, age) VALUES (3, 'Ana', 'soccer', 'girl', 110, 5, 2, 14)")
     conn.execute(
         "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours) "
         "VALUES (3, 'Practice', 'practice', '2026-06-22', '16:00', 1.5)"
