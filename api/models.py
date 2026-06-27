@@ -3,6 +3,8 @@ from datetime import datetime as _dt
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
 
+from api.services.activity_type_resolver import VALID_ACTIVITY_TYPES
+
 
 def _normalize_start_time(v: Optional[str]) -> Optional[str]:
     """Coerce any time string to 24h HH:MM. Rejects unparseable input."""
@@ -162,7 +164,6 @@ class ActivityTypePatch(BaseModel):
     @field_validator("activity_type")
     @classmethod
     def validate_activity_type(cls, v):
-        from api.services.activity_type_resolver import VALID_ACTIVITY_TYPES
         if v not in VALID_ACTIVITY_TYPES:
             raise ValueError(f"activity_type must be one of {sorted(VALID_ACTIVITY_TYPES)}")
         return v

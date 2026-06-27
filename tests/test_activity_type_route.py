@@ -75,3 +75,9 @@ def test_patch_rejects_invalid_activity_type(client):
     }).json()
     r = client.patch(f"/api/events/{ev['id']}/activity-type", json={"activity_type": "bogus"})
     assert r.status_code == 422
+
+
+def test_patch_unknown_event_returns_404(client):
+    _make_parent_and_athlete(client)
+    r = client.patch("/api/events/99999/activity-type", json={"activity_type": "game"})
+    assert r.status_code == 404
