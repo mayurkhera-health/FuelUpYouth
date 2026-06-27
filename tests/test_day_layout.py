@@ -55,3 +55,28 @@ def test_keep_going_appears_only_over_75min():
     short_ev = {**long_ev, "duration_hours": 1.0}  # 60 min
     res2 = build_day_layout([short_ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
     assert "keep_going" not in [c["card"] for c in res2["cards"]]
+
+
+def test_morning_everyday_sorts_last_by_sort_time():
+    # On a morning event, everyday_meal must ALSO sort last by sort_time (not just list order)
+    ev = {"id": 1, "event_type": "practice", "activity_type": "practice",
+          "event_date": "2026-06-27", "start_time": "09:00", "duration_hours": 1.0}
+    res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
+    by_sort = sorted(res["cards"], key=lambda c: c["sort_time"])
+    assert by_sort[-1]["card"] == "everyday_meal"
+
+
+def test_afternoon_everyday_sorts_first_by_sort_time():
+    ev = {"id": 1, "event_type": "practice", "activity_type": "practice",
+          "event_date": "2026-06-27", "start_time": "15:00", "duration_hours": 1.0}
+    res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
+    by_sort = sorted(res["cards"], key=lambda c: c["sort_time"])
+    assert by_sort[0]["card"] == "everyday_meal"
+
+
+def test_keep_going_boundary_exactly_75_excluded():
+    # 75 min exactly -> no keep_going (condition is strictly > 75)
+    ev = {"id": 1, "event_type": "game", "activity_type": "game",
+          "event_date": "2026-06-27", "start_time": "15:00", "duration_hours": 1.25}  # 75 min
+    res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
+    assert "keep_going" not in [c["card"] for c in res["cards"]]

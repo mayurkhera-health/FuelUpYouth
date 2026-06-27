@@ -51,8 +51,11 @@ def _standard_single_event_cards(ev: dict, start_dt: datetime, end_dt: datetime)
                 "sort_time": wev2._hhmm(sort_dt), "time_display": "",
                 "game_num": None, "duration_min": duration_min}
 
-    everyday = card("everyday_meal", "everyday_meal",
-                    start_dt.replace(hour=7, minute=30), "Everyday Meal")
+    if morning:
+        everyday_sort = end_dt + timedelta(hours=2)          # after rebuild → sorts LAST
+    else:
+        everyday_sort = start_dt.replace(hour=7, minute=30)  # earliest → sorts FIRST
+    everyday = card("everyday_meal", "everyday_meal", everyday_sort, "Everyday Meal")
 
     core = [
         card("fuel_before", "fuel_before", start_dt - timedelta(hours=3), "Fuel Before"),
@@ -97,6 +100,5 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
     primary_ev, _ = resolved[0]
     start_dt = wev2._parse_start(_as_wev2_event(primary_ev))
     end_dt = wev2._event_end(_as_wev2_event(primary_ev), start_dt)
-    day_type = "standard"
     cards = _standard_single_event_cards(primary_ev, start_dt, end_dt)
-    return {"day_type": day_type, "cards": cards}
+    return {"day_type": "standard", "cards": cards}
