@@ -960,9 +960,14 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
     from api.services.day_layout import (
         build_day_layout, cards_to_template_windows, day_layout_v2_enabled,
     )
-    from datetime import datetime as _dt_now
     if day_layout_v2_enabled():
-        _layout = build_day_layout(events, athlete, now=_dt_now.now())
+        # NOTE: datetime.now() is server-local. The 2-hour activity-type default in
+        # resolve_activity_type compares this against event start times (athlete-local).
+        # On a UTC server this skews the untagged->practice default for non-UTC athletes.
+        # BEFORE enabling DAY_LAYOUT_V2 in prod, thread the client's local datetime
+        # through build_today_view (Plan B / mobile sends it), like the existing
+        # `today` (client local date) param does for the Timezone Invariant.
+        _layout = build_day_layout(events, athlete, now=datetime.now())
         event_type       = _layout["day_type"]
         template_windows = cards_to_template_windows(_layout["cards"])
     else:

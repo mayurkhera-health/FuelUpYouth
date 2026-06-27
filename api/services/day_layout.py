@@ -189,8 +189,17 @@ def day_layout_v2_enabled() -> bool:
 _CARD_TO_CATEGORY = {
     "everyday_meal": "everyday", "breakfast": "everyday", "lunch": "everyday", "dinner": "everyday",
     "fuel_before": "fuel_before", "top_up": "quick_snack",
-    "keep_going": "fuel_during", "event": "event",
+    "keep_going": "quick_snack", "event": "event",
     "recharge": "fuel_after", "rebuild": "fuel_after", "wind_down": "everyday",
+}
+
+# Card kind -> macro-focus label. Labels MUST exist in today_service._FOCUS_MACRO_PCT
+# so the downstream per-window gram lookup resolves (empty string for the event marker).
+_CARD_TO_MACRO_FOCUS = {
+    "everyday_meal": "Balanced Fuel", "breakfast": "Balanced Fuel",
+    "lunch": "Balanced Fuel", "dinner": "Balanced Fuel", "wind_down": "Balanced Fuel",
+    "fuel_before": "High Carbs", "top_up": "Fast Carbs", "keep_going": "Fast Carbs",
+    "recharge": "Recovery Focus", "rebuild": "High Protein + Carbs", "event": "",
 }
 
 
@@ -204,7 +213,7 @@ def cards_to_template_windows(cards: list) -> list:
             "label": c["label"],
             "category": category,
             "category_key": category,
-            "macro_focus": "",
+            "macro_focus": _CARD_TO_MACRO_FOCUS.get(c["card"], ""),
             "sort_time": c["sort_time"],
             "time_display": c.get("time_display", ""),
             "open_dt": None,
