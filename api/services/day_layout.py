@@ -97,6 +97,24 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
     if any(at == "active_recovery" for _, at in resolved):
         return {"day_type": "active_recovery", "cards": _rest_meal_cards()}
 
+    # Tournament: explicit tournament tag, OR >= 2 game/tournament events same day.
+    game_like = [(ev, at) for ev, at in resolved
+                 if at in ("game", "tournament") or ev["event_type"] in ("game", "tournament")]
+    is_tournament = (
+        any(at == "tournament" for _, at in resolved)
+        or len(game_like) >= 2
+    )
+    if is_tournament:
+        schedule = sorted(
+            ({"start_time": ev["start_time"],
+              "duration_min": int(round((ev.get("duration_hours") or 1.5) * 60))}
+             for ev, _ in resolved if ev.get("start_time")),
+            key=lambda g: g["start_time"],
+        )
+        wt_kg = athlete["weight_lbs"] * 0.453592 if athlete.get("weight_lbs") else 0
+        cards = get_tournament_template(schedule, wt_kg)
+        return {"day_type": "tournament", "cards": cards}
+
     # Single non-tournament event -> standard layout.
     primary_ev, _ = resolved[0]
     start_dt = wev2._parse_start(_as_wev2_event(primary_ev))

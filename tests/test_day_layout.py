@@ -107,3 +107,26 @@ def test_wind_down_sorts_last_by_sort_time():
     res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
     by_sort = sorted(res["cards"], key=lambda c: c["sort_time"])
     assert by_sort[-1]["card"] == "wind_down"
+
+
+def test_tournament_activity_type_uses_template():
+    ev = {"id": 1, "event_type": "tournament", "activity_type": "tournament",
+          "event_date": "2026-06-27", "start_time": "09:00", "duration_hours": 1.5}
+    res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
+    assert res["day_type"] == "tournament"
+    # tournament template emits final recharge + rebuild
+    labels = [c.get("label", "") for c in res["cards"]]
+    assert any("After Final Game" in l for l in labels)
+
+
+def test_two_games_same_day_is_tournament():
+    g1 = {"id": 1, "event_type": "game", "activity_type": "game",
+          "event_date": "2026-06-27", "start_time": "09:00", "duration_hours": 1.5}
+    g2 = {"id": 2, "event_type": "game", "activity_type": "game",
+          "event_date": "2026-06-27", "start_time": "13:00", "duration_hours": 1.5}
+    res = build_day_layout([g1, g2], _athlete(), now=datetime(2026, 6, 27, 6, 0))
+    assert res["day_type"] == "tournament"
+    # between-games recharge present (gap 13:00 - 10:30 = 150 min >= 90 -> recharge + rebuild)
+    labels = [c.get("label", "") for c in res["cards"]]
+    assert any("Between Games 1 & 2" in l for l in labels)
+    assert any("Pre-Game 2 Meal" in l for l in labels)
