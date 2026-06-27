@@ -955,10 +955,20 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
     today_events = [_build_today_event_info(ev) for ev in events]
     today_event  = events[0] if events else None  # backward compat
 
-    # Window engine — single source of truth
-    engine_result   = generate_windows_for_day(athlete_id, today_str, events, force_v2=force_v2)
-    event_type      = engine_result["day_type"]
-    template_windows = engine_result["windows"]
+    # Window engine — day_layout (DAY_LAYOUT_V2) replaces window_engine_v2 for Today
+    # when enabled; legacy generate_windows_for_day otherwise.
+    from api.services.day_layout import (
+        build_day_layout, cards_to_template_windows, day_layout_v2_enabled,
+    )
+    from datetime import datetime as _dt_now
+    if day_layout_v2_enabled():
+        _layout = build_day_layout(events, athlete, now=_dt_now.now())
+        event_type       = _layout["day_type"]
+        template_windows = cards_to_template_windows(_layout["cards"])
+    else:
+        engine_result    = generate_windows_for_day(athlete_id, today_str, events, force_v2=force_v2)
+        event_type       = engine_result["day_type"]
+        template_windows = engine_result["windows"]
 
     plan_rows = conn.execute(
         "SELECT id, slot_name, logged FROM meal_plans WHERE athlete_id = ? AND plan_date = ?",

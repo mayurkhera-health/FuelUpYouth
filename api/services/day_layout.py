@@ -8,6 +8,7 @@ Replaces window_engine_v2 as the Today-tab window source (behind DAY_LAYOUT_V2).
 Public API: build_day_layout(events, athlete, now) -> {"day_type", "cards"}
 """
 
+import os
 from datetime import datetime, time, timedelta
 
 from api.services.activity_type_resolver import resolve_activity_type
@@ -176,3 +177,38 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
             "game_num": None, "duration_min": None,
         })
     return {"day_type": "standard", "cards": _apply_guardrails(cards)}
+
+
+def day_layout_v2_enabled() -> bool:
+    return os.environ.get("DAY_LAYOUT_V2", "false").lower() == "true"
+
+
+# Map our card "card" kind -> the existing template_windows "category" vocabulary
+# build_today_view + fuel_gauge already understand. Event markers become nudge-only
+# (visible, non-tappable). keep_going is shown as a real card (oz/packets).
+_CARD_TO_CATEGORY = {
+    "everyday_meal": "everyday", "breakfast": "everyday", "lunch": "everyday", "dinner": "everyday",
+    "fuel_before": "fuel_before", "top_up": "quick_snack",
+    "keep_going": "fuel_during", "event": "event",
+    "recharge": "fuel_after", "rebuild": "fuel_after", "wind_down": "everyday",
+}
+
+
+def cards_to_template_windows(cards: list) -> list:
+    """Adapt day_layout cards to the template_windows shape build_today_view consumes."""
+    out = []
+    for c in cards:
+        category = _CARD_TO_CATEGORY.get(c["card"], "everyday")
+        out.append({
+            "key": c["key"],
+            "label": c["label"],
+            "category": category,
+            "category_key": category,
+            "macro_focus": "",
+            "sort_time": c["sort_time"],
+            "time_display": c.get("time_display", ""),
+            "open_dt": None,
+            "close_dt": None,
+            "is_nudge_only": bool(c["is_event"]),   # event marker = visible, non-tappable
+        })
+    return out
