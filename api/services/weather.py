@@ -3,10 +3,15 @@ import time
 
 import requests
 
+from api.services.nutrition_calc import calc_age
+
 
 def derive_sweat_profile(athlete: dict) -> str:
     """Auto-derive sweat profile from age, gender, and competition level."""
-    age = athlete.get("age") or 13
+    age = int(calc_age(
+        dob_str=athlete.get("date_of_birth"),
+        age_fallback=athlete.get("age") or 13,
+    ))
     gender = (athlete.get("gender") or "").lower()
     level = (athlete.get("competition_level") or athlete.get("level") or "").lower()
 

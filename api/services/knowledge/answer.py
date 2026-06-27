@@ -13,6 +13,7 @@ from api.services.knowledge.calculations import (
     iron_rda, calcium_rda, protein_range, hydration_needs,
     pre_training_meal_window, post_training_recovery_window, calorie_estimate,
 )
+from api.services.nutrition_calc import calc_age
 
 logger = logging.getLogger(__name__)
 
@@ -110,13 +111,13 @@ RESPONSE RULES:
 5. Do NOT invent store inventory, menus, or personal data."""
 
 _CALC_KEYWORDS = {
-    "iron": lambda q, a: iron_rda(a.get("age", 14), a.get("gender", "female")),
-    "calcium": lambda q, a: calcium_rda(a.get("age", 14)),
+    "iron": lambda q, a: iron_rda(int(calc_age(dob_str=a.get("date_of_birth"), age_fallback=a.get("age", 14))), a.get("gender", "female")),
+    "calcium": lambda q, a: calcium_rda(int(calc_age(dob_str=a.get("date_of_birth"), age_fallback=a.get("age", 14)))),
     "protein": lambda q, a: protein_range(a.get("weight_lbs", 120), a.get("event_type", "rest")),
     "hydration": lambda q, a: hydration_needs(a.get("weight_lbs", 120), a.get("event_type", "rest")),
     "water": lambda q, a: hydration_needs(a.get("weight_lbs", 120), a.get("event_type", "rest")),
-    "calorie": lambda q, a: calorie_estimate(a.get("weight_lbs", 120), a.get("age", 14), a.get("gender", "female"), a.get("event_type", "rest")),
-    "calories": lambda q, a: calorie_estimate(a.get("weight_lbs", 120), a.get("age", 14), a.get("gender", "female"), a.get("event_type", "rest")),
+    "calorie": lambda q, a: calorie_estimate(a.get("weight_lbs", 120), int(calc_age(dob_str=a.get("date_of_birth"), age_fallback=a.get("age", 14))), a.get("gender", "female"), a.get("event_type", "rest")),
+    "calories": lambda q, a: calorie_estimate(a.get("weight_lbs", 120), int(calc_age(dob_str=a.get("date_of_birth"), age_fallback=a.get("age", 14))), a.get("gender", "female"), a.get("event_type", "rest")),
 }
 
 

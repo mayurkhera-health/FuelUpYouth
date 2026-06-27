@@ -79,6 +79,60 @@ def _standard_single_event_cards(ev: dict, start_dt: datetime, end_dt: datetime)
     return core + [everyday] if morning else [everyday] + core
 
 
+def _double_session_cards(
+    ev1: dict, ev2: dict,
+    start_dt1: datetime, end_dt1: datetime,
+    start_dt2: datetime, end_dt2: datetime,
+) -> list:
+    """Layout for two non-tournament events on the same day (e.g. morning practice +
+    afternoon training). The cap is disabled by the caller — double sessions
+    legitimately need more cards than a single-event day.
+
+    Pattern:
+      Fuel Before → Top-Up → Event 1 → [Keep Going] → Recharge
+      → Everyday Meal (lunch in gap) → Event 2 → [Keep Going] → Rebuild
+    """
+    dur_min1 = int(round((ev1.get("duration_hours") or 1.5) * 60))
+    dur_min2 = int(round((ev2.get("duration_hours") or 1.5) * 60))
+
+    def card(key, kind, sort_dt, label, is_event=False, duration_min=None):
+        return {"key": key, "card": kind, "label": label,
+                "is_event": is_event, "is_tappable": not is_event,
+                "sort_time": wev2._hhmm(sort_dt), "time_display": "",
+                "game_num": None, "duration_min": duration_min}
+
+    cards = [
+        card("fuel_before", "fuel_before", start_dt1 - timedelta(hours=3), "Fuel Before"),
+        card("top_up",      "top_up",      start_dt1 - timedelta(minutes=45), "Top-Up"),
+        card("event_1",     "event",       start_dt1,
+             ev1.get("event_name") or ev1["event_type"].capitalize(),
+             is_event=True, duration_min=dur_min1),
+    ]
+    if dur_min1 > 75:
+        cards.append(card("keep_going_1", "keep_going",
+                          start_dt1 + timedelta(minutes=dur_min1 // 2),
+                          "Keep Going", duration_min=dur_min1))
+
+    cards.append(card("recharge", "recharge", end_dt1, "Recharge"))
+
+    # Everyday meal anchored 1h after session 1 ends — lunch in the gap.
+    cards.append(card("everyday_meal", "everyday_meal",
+                      end_dt1 + timedelta(hours=1), "Everyday Meal"))
+
+    cards += [
+        card("event_2", "event", start_dt2,
+             ev2.get("event_name") or ev2["event_type"].capitalize(),
+             is_event=True, duration_min=dur_min2),
+    ]
+    if dur_min2 > 75:
+        cards.append(card("keep_going_2", "keep_going",
+                          start_dt2 + timedelta(minutes=dur_min2 // 2),
+                          "Keep Going", duration_min=dur_min2))
+
+    cards.append(card("rebuild", "rebuild", end_dt2 + timedelta(hours=1), "Rebuild"))
+    return cards
+
+
 MAX_TAPPABLE = wev2.MAX_TAPPABLE_WINDOWS  # 6
 
 
@@ -174,6 +228,19 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
         # No cap on tournaments — the template's many cards (incl. post-tournament
         # Recharge/Rebuild) are all deliberate and must survive.
         return {"day_type": "tournament", "cards": _attach_keep_going_labels(_apply_guardrails(cards, cap=False), wt_kg_for_labels)}
+
+    # Double session: 2+ events on the same day (not tournament).
+    if len(resolved) >= 2:
+        sorted_sessions = sorted(resolved, key=lambda t: t[0].get("start_time") or "")
+        ev1, _ = sorted_sessions[0]
+        ev2, _ = sorted_sessions[1]
+        start_dt1 = wev2._parse_start(_as_wev2_event(ev1))
+        end_dt1   = wev2._event_end(_as_wev2_event(ev1), start_dt1)
+        start_dt2 = wev2._parse_start(_as_wev2_event(ev2))
+        end_dt2   = wev2._event_end(_as_wev2_event(ev2), start_dt2)
+        cards = _double_session_cards(ev1, ev2, start_dt1, end_dt1, start_dt2, end_dt2)
+        return {"day_type": "double_session",
+                "cards": _attach_keep_going_labels(_apply_guardrails(cards, cap=False), wt_kg_for_labels)}
 
     # Single non-tournament event -> standard layout.
     primary_ev, _ = resolved[0]

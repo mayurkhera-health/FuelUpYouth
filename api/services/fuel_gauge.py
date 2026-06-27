@@ -160,8 +160,20 @@ def _slot_for_window(window_key: str) -> Optional[str]:
     """Map an engine window_key (== split slot_name) to a Purvi macro slot.
     Suffix-tolerant (pre_event_meal, pre_event_meal_1, …). Tournament/merge windows
     (between_games_*, refuel_ready_*) return None — OUT OF SCOPE, they keep the
-    category_key distribution (no per-slot reseed)."""
+    category_key distribution (no per-slot reseed).
+
+    The day-layout engine (DAY_LAYOUT_V2) uses compact slot names that ARE the
+    split key directly (fuel_before, top_up, recharge, rebuild, everyday_meal).
+    These are matched first so the prefix checks below still handle the legacy
+    window_engine_v2 suffixed variants.
+    """
     wk = window_key or ""
+    # Day-layout compact names — exact match (no suffix variants in this engine).
+    if wk == "fuel_before":                      return "fuel_before"
+    if wk == "top_up":                           return "top_up"
+    if wk == "recharge":                         return "recharge"
+    if wk == "rebuild":                          return "rebuild"
+    # Legacy window_engine_v2 prefix variants (suffix-tolerant).
     if wk.startswith("pre_event_meal"):         return "fuel_before"
     if wk.startswith("top_up_snack"):           return "top_up"
     if wk.startswith("fuel_after_primary"):     return "recharge"

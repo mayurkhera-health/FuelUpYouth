@@ -40,6 +40,7 @@ def init_db():
             parent_id INTEGER REFERENCES parents(id),
             first_name TEXT NOT NULL,
             age INTEGER NOT NULL,
+            date_of_birth TEXT NULL,
             gender TEXT NOT NULL,
             weight_lbs REAL NOT NULL,
             height_ft INTEGER NOT NULL,

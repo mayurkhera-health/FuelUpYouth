@@ -120,6 +120,28 @@ def _extract_text(response: dict) -> str:
     return text
 
 
+def _anthropic_converse(
+    *,
+    user: str,
+    system: str | None = None,
+    max_tokens: int = 1024,
+    temperature: float = 0.7,
+) -> str:
+    """Fallback: Anthropic Claude when AWS Bedrock credentials are absent."""
+    import anthropic
+    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    kwargs: dict = {
+        "model": os.getenv("ANTHROPIC_COACH_MODEL", "claude-haiku-4-5-20251001"),
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "messages": [{"role": "user", "content": user}],
+    }
+    if system:
+        kwargs["system"] = system
+    msg = client.messages.create(**kwargs)
+    return msg.content[0].text
+
+
 def converse_text(
     *,
     user: str,
@@ -128,6 +150,8 @@ def converse_text(
     temperature: float = 0.7,
     model: str | None = None,
 ) -> str:
+    if not is_configured():
+        return _anthropic_converse(user=user, system=system, max_tokens=max_tokens, temperature=temperature)
     kwargs: dict = {
         "modelId": model or model_id(),
         "messages": [{"role": "user", "content": [{"text": user}]}],
