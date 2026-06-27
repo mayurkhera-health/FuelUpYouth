@@ -1025,6 +1025,22 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
                     "log":           {"logged": False, "method": None,
                                       "photo_thumb_url": None, "nutrient_status": "none"},
                 })
+            elif tw.get("category") == "event":
+                nudges.append({
+                    "id":            None,
+                    "slot_name":     sn,
+                    "display_label": tw["label"],
+                    "eat_by_time":   tw.get("time_display", ""),
+                    "open_time":     "",
+                    "close_time":    "",
+                    "macro_focus":   "",
+                    "logged":        False,
+                    "window_type":   "event",
+                    "sort_time":     sort_t,
+                    "status":        "event",
+                    "log":           {"logged": False, "method": None,
+                                      "photo_thumb_url": None, "nutrient_status": "none"},
+                })
             continue
         plan_info = logged_map.get(sn, {})
         wl        = wl_map.get(sn)
@@ -1032,6 +1048,10 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
         logged    = bool(wl is not None) or bool(plan_info.get("logged", False))
         od = tw.get("open_dt")
         cd = tw.get("close_dt")
+        # Prefer the window's own macro_focus when it's a recognized split key
+        # (day_layout path); otherwise derive from the slot key (legacy path).
+        _tw_focus = tw.get("macro_focus")
+        focus = _tw_focus if _tw_focus in _FOCUS_MACRO_PCT else get_macro_focus(sn)
         tappable.append({
             "id":            plan_info.get("id"),
             "slot_name":     sn,
@@ -1041,9 +1061,9 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
             # Lets the client gate per-window confirm by now vs open/close.
             "open_time":     od.strftime("%H:%M") if od else "",
             "close_time":    cd.strftime("%H:%M") if cd else "",
-            "macro_focus":   get_macro_focus(sn),
-            "carbs_g":       round(_daily_carbs   * _FOCUS_MACRO_PCT.get(get_macro_focus(sn), {"carbs_pct": 0.15})["carbs_pct"])   if _daily_carbs   else None,
-            "protein_g":     round(_daily_protein * _FOCUS_MACRO_PCT.get(get_macro_focus(sn), {"protein_pct": 0.15})["protein_pct"]) if _daily_protein else None,
+            "macro_focus":   focus,
+            "carbs_g":       round(_daily_carbs   * _FOCUS_MACRO_PCT.get(focus, {"carbs_pct": 0.15})["carbs_pct"])   if _daily_carbs   else None,
+            "protein_g":     round(_daily_protein * _FOCUS_MACRO_PCT.get(focus, {"protein_pct": 0.15})["protein_pct"]) if _daily_protein else None,
             "logged":        logged,
             "sort_time":     sort_t,
             "log": {
