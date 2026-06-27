@@ -34,25 +34,37 @@ def test_null_competition_level_defaults_low():
 ATH = {"weight_lbs": 110.23123, "height_ft": 5, "height_in": 6, "gender": "girl", "age": 14}
 # 110.23123 lbs -> ~50 kg, age 14 girl
 
-def test_intensity_none_returns_full_band():
-    # carbs_g_min == carbs_g_max == carbs_g (spec-formula single-value target)
-    t = nc.calc_daily_targets(ATH, "game")  # no intensity
-    assert t["carbs_g_min"] == t["carbs_g"] and t["carbs_g_max"] == t["carbs_g"]
+def test_cho_target_is_single_value():
+    # Spec-formula CHO is a single value: the legacy band fields collapse to it.
+    t = nc.calc_daily_targets(ATH, "practice")
+    assert t["carbs_g_min"] == t["carbs_g"] == t["carbs_g_max"]
 
-def test_low_intensity_is_lower_half():
-    t = nc.calc_daily_targets(ATH, "game", intensity="low")
-    assert t["carbs_g_min"] == t["carbs_g"] and t["carbs_g_max"] == t["carbs_g"]
+def test_low_intensity_is_lower_than_medium():
+    low = nc.calc_daily_targets(ATH, "practice", intensity="low")
+    med = nc.calc_daily_targets(ATH, "practice", intensity="medium")
+    assert low["carbs_g"] < med["carbs_g"]
 
-def test_medium_intensity_is_middle():
-    t = nc.calc_daily_targets(ATH, "game", intensity="medium")
-    assert t["carbs_g_min"] == t["carbs_g"] and t["carbs_g_max"] == t["carbs_g"]
+def test_medium_intensity_matches_no_intensity_baseline():
+    med  = nc.calc_daily_targets(ATH, "practice", intensity="medium")
+    base = nc.calc_daily_targets(ATH, "practice")  # no intensity
+    assert med["carbs_g"] == base["carbs_g"]
 
-def test_high_intensity_is_upper_half():
-    t = nc.calc_daily_targets(ATH, "game", intensity="high")
-    assert t["carbs_g_min"] == t["carbs_g"] and t["carbs_g_max"] == t["carbs_g"]
+def test_high_intensity_is_higher_than_medium():
+    med  = nc.calc_daily_targets(ATH, "practice", intensity="medium")
+    high = nc.calc_daily_targets(ATH, "practice", intensity="high")
+    assert high["carbs_g"] > med["carbs_g"]
 
-def test_repositioned_band_never_exceeds_science_bounds():
-    full = nc.calc_daily_targets(ATH, "game")
+def test_game_overrides_intensity_to_hard():
+    # Game day forces "hard" CHO intensity via the activity engine, so the
+    # caller-supplied intensity must NOT change the carb target on a game day.
+    low  = nc.calc_daily_targets(ATH, "game", intensity="low")
     high = nc.calc_daily_targets(ATH, "game", intensity="high")
-    assert high["carbs_g_max"] <= full["carbs_g_max"]
-    assert high["carbs_g_min"] >= full["carbs_g_min"]
+    assert low["carbs_g"] == high["carbs_g"]
+
+def test_intensity_carbs_stay_within_science_bounds():
+    # Across all practice intensities the carb target stays in a sane g/kg range.
+    wt_kg = nc.lbs_to_kg(ATH["weight_lbs"])
+    for intensity in ("low", "medium", "high"):
+        t = nc.calc_daily_targets(ATH, "practice", intensity=intensity)
+        g_per_kg = t["carbs_g"] / wt_kg
+        assert 2.0 <= g_per_kg <= 12.0
