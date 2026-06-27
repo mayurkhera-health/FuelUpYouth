@@ -68,3 +68,33 @@ def test_intensity_carbs_stay_within_science_bounds():
         t = nc.calc_daily_targets(ATH, "practice", intensity=intensity)
         g_per_kg = t["carbs_g"] / wt_kg
         assert 2.0 <= g_per_kg <= 12.0
+
+
+def test_activity_type_override_drives_profile():
+    base = nc.calc_daily_targets(ATH, "practice")
+    over = nc.calc_daily_targets(ATH, "practice", activity_type="game")
+    assert over["carbs_g"] > base["carbs_g"]
+
+
+def test_activity_type_active_recovery_gives_rest_cho():
+    wt = nc.lbs_to_kg(ATH["weight_lbs"])
+    t = nc.calc_daily_targets(ATH, "practice", activity_type="active_recovery")
+    assert round(t["carbs_g"] / wt) == 4
+
+
+def test_activity_type_strength_cond_sets_sc_protein_bump():
+    practice = nc.calc_daily_targets(ATH, "practice")
+    sc = nc.calc_daily_targets(ATH, "practice", activity_type="strength_cond")
+    assert sc["protein_g"] >= practice["protein_g"]
+
+
+def test_invalid_activity_type_falls_back_to_event_type():
+    a = nc.calc_daily_targets(ATH, "game", activity_type="bogus")
+    b = nc.calc_daily_targets(ATH, "game")
+    assert a["carbs_g"] == b["carbs_g"]
+
+
+def test_no_activity_type_unchanged():
+    a = nc.calc_daily_targets(ATH, "game")
+    b = nc.calc_daily_targets(ATH, "game", activity_type=None)
+    assert a == b

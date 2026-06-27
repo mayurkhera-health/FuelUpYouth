@@ -2,6 +2,7 @@ from datetime import date
 from typing import Optional
 
 from api.services.activity_engine import get_activity_profile
+from api.services.activity_type_resolver import VALID_ACTIVITY_TYPES
 
 EVENT_TYPE_MAP = {
     "soccer game": "game",
@@ -496,6 +497,7 @@ def calc_daily_targets(
     is_outdoor: bool = False,
     temp_f: float = 70,
     humidity_pct: float = 50,
+    activity_type: Optional[str] = None,
 ) -> dict:
     wt_kg  = lbs_to_kg(athlete["weight_lbs"])
     ht_cm  = ft_in_to_cm(athlete["height_ft"], athlete["height_in"])
@@ -510,7 +512,12 @@ def calc_daily_targets(
     norm = normalize_event_type(event_type)
 
     pal = PAL.get(athlete.get("lifestyle_activity", "light"), 1.4)
-    act = get_activity_profile(_to_activity_type(norm), intensity, duration_min, wt_kg)
+    # An explicit resolved activity_type (the athlete's per-event tag) overrides the
+    # event_type-derived profile, so the per-type modifiers apply: speed_sprint ×1.10,
+    # strength_cond is_sc_day, active_recovery rest-level CHO, double_session ×1.25.
+    # Falls back to the event_type-derived activity type when not supplied/invalid.
+    profile_key = activity_type if activity_type in VALID_ACTIVITY_TYPES else _to_activity_type(norm)
+    act = get_activity_profile(profile_key, intensity, duration_min, wt_kg)
 
     total_calories = calc_tdee(rmr, pal, act["aee_kcal"], phv["extra_kcal"])
 
