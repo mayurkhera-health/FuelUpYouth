@@ -77,6 +77,38 @@ def _standard_single_event_cards(ev: dict, start_dt: datetime, end_dt: datetime)
     return core + [everyday] if morning else [everyday] + core
 
 
+MAX_TAPPABLE = wev2.MAX_TAPPABLE_WINDOWS  # 6
+
+
+def _apply_guardrails(cards: list) -> list:
+    """Port of window_engine_v2 guardrails to the new card list, ORDER-PRESERVING:
+      1. Floor: no card sort_time before 06:30.
+      2. Cap: at most MAX_TAPPABLE tappable cards (drop from the end, keeping the
+         event markers and the earliest windows). Event markers are never dropped.
+    Dedup (15-min) is intentionally NOT applied here because the spec's card order
+    is a deliberate scroll order; collisions are resolved by floor only.
+    """
+    floor = wev2.DISPLAY_FLOOR.strftime("%H:%M")
+    for c in cards:
+        if c["sort_time"] and c["sort_time"] < floor:
+            c["sort_time"] = floor
+
+    # Cards that are structural anchors and must never be dropped by the cap.
+    # is_event=True already covers event markers; wind_down is the mandatory
+    # end-of-day recommendation and is also exempt.
+    _NEVER_DROP = {"wind_down"}
+
+    tappable_seen = 0
+    kept = []
+    for c in cards:
+        if c["is_tappable"] and c["card"] not in _NEVER_DROP:
+            if tappable_seen >= MAX_TAPPABLE:
+                continue
+            tappable_seen += 1
+        kept.append(c)
+    return kept
+
+
 def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
     """Return {"day_type": str, "cards": [card, ...]} for the athlete's day.
 
@@ -91,11 +123,11 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
 
     # Rest day — no events at all.
     if not resolved:
-        return {"day_type": "rest", "cards": _rest_meal_cards()}
+        return {"day_type": "rest", "cards": _apply_guardrails(_rest_meal_cards())}
 
     # Active Recovery / Yoga -> rest-style 3 meals regardless of time.
     if any(at == "active_recovery" for _, at in resolved):
-        return {"day_type": "active_recovery", "cards": _rest_meal_cards()}
+        return {"day_type": "active_recovery", "cards": _apply_guardrails(_rest_meal_cards())}
 
     # Tournament: explicit tournament tag, OR >= 2 game/tournament events same day.
     game_like = [(ev, at) for ev, at in resolved
@@ -115,7 +147,7 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
         )
         wt_kg = athlete["weight_lbs"] * 0.453592 if athlete.get("weight_lbs") else 0
         cards = get_tournament_template(schedule, wt_kg)
-        return {"day_type": "tournament", "cards": cards}
+        return {"day_type": "tournament", "cards": _apply_guardrails(cards)}
 
     # Single non-tournament event -> standard layout.
     primary_ev, _ = resolved[0]
@@ -131,4 +163,4 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
             "sort_time": wev2._hhmm(end_dt + timedelta(minutes=90)), "time_display": "",
             "game_num": None, "duration_min": None,
         })
-    return {"day_type": "standard", "cards": cards}
+    return {"day_type": "standard", "cards": _apply_guardrails(cards)}

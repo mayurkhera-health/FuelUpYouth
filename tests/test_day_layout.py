@@ -153,3 +153,20 @@ def test_single_tournament_event_has_no_between_games():
     res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
     labels = [c.get("label", "") for c in res["cards"]]
     assert not any("Between Games" in l for l in labels)
+
+
+def test_guardrail_floor_no_card_before_0630():
+    # Early game 07:00 -> fuel_before would be 04:00 -> must be floored to 06:30
+    ev = {"id": 1, "event_type": "game", "activity_type": "game",
+          "event_date": "2026-06-27", "start_time": "07:00", "duration_hours": 1.0}
+    res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 5, 0))
+    for c in res["cards"]:
+        assert c["sort_time"] >= "06:30", f"{c['card']} at {c['sort_time']}"
+
+
+def test_guardrail_caps_tappable_windows_at_6():
+    ev = {"id": 1, "event_type": "practice", "activity_type": "practice",
+          "event_date": "2026-06-27", "start_time": "15:00", "duration_hours": 2.0}
+    res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
+    tappable = [c for c in res["cards"] if c["is_tappable"]]
+    assert len(tappable) <= 6
