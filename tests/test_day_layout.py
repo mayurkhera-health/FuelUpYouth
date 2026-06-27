@@ -98,3 +98,12 @@ def test_no_wind_down_when_event_ends_before_8pm():
           "event_date": "2026-06-27", "start_time": "15:00", "duration_hours": 1.0}  # ends 16:00
     res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
     assert "wind_down" not in [c["card"] for c in res["cards"]]
+
+
+def test_wind_down_sorts_last_by_sort_time():
+    # wind_down is appended last AND must sort last (after rebuild at end+1h)
+    ev = {"id": 1, "event_type": "practice", "activity_type": "practice",
+          "event_date": "2026-06-27", "start_time": "19:00", "duration_hours": 2.0}
+    res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
+    by_sort = sorted(res["cards"], key=lambda c: c["sort_time"])
+    assert by_sort[-1]["card"] == "wind_down"

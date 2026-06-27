@@ -106,7 +106,9 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
         cards.append({
             "key": "wind_down", "card": "wind_down", "label": "Evening Wind-Down",
             "is_event": False, "is_tappable": True,
-            "sort_time": wev2._hhmm(end_dt + timedelta(minutes=30)), "time_display": "",
+            # Sorts after rebuild (end + 1h) so it stays last by sort_time, matching
+            # its list position ("appended at the end" per spec).
+            "sort_time": wev2._hhmm(end_dt + timedelta(minutes=90)), "time_display": "",
             "game_num": None, "duration_min": None,
         })
     return {"day_type": "standard", "cards": cards}
