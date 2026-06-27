@@ -100,6 +100,7 @@ class EventCreate(BaseModel):
     latitude: Optional[float] = None   # precise venue coords for weather lookup
     longitude: Optional[float] = None
     intensity: Optional[str] = None  # low / medium / high; derived if omitted
+    activity_type: Optional[str] = None  # 7 engine keys; None = untagged (2h default applies)
 
     @field_validator("start_time", mode="before")
     @classmethod
@@ -124,6 +125,7 @@ class EventUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     intensity: Optional[str] = None  # low / medium / high
+    activity_type: Optional[str] = None  # 7 engine keys; None = untagged
 
     @field_validator("start_time", mode="before")
     @classmethod
@@ -150,7 +152,20 @@ class EventResponse(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     intensity: Optional[str] = None
+    activity_type: Optional[str] = None
     created_at: str
+
+
+class ActivityTypePatch(BaseModel):
+    activity_type: str
+
+    @field_validator("activity_type")
+    @classmethod
+    def validate_activity_type(cls, v):
+        from api.services.activity_type_resolver import VALID_ACTIVITY_TYPES
+        if v not in VALID_ACTIVITY_TYPES:
+            raise ValueError(f"activity_type must be one of {sorted(VALID_ACTIVITY_TYPES)}")
+        return v
 
 
 class MealLogCreate(BaseModel):

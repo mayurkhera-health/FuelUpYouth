@@ -1,7 +1,7 @@
 import urllib.request
 from fastapi import APIRouter, HTTPException
 from typing import List
-from api.models import EventCreate, EventUpdate, EventResponse
+from api.models import EventCreate, EventUpdate, EventResponse, ActivityTypePatch
 from api.database import get_conn
 from api.services.window_templates import on_event_added_or_changed
 from api.services.nutrition_calc import derive_intensity
@@ -35,10 +35,10 @@ def create_event(data: EventCreate):
         intensity = data.intensity or derive_intensity(data.event_type, athlete["competition_level"])
 
         conn.execute(
-            "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours, city, venue_name, address, latitude, longitude, intensity) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours, city, venue_name, address, latitude, longitude, intensity, activity_type) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (data.athlete_id, data.event_name, data.event_type, data.event_date, data.start_time, data.duration_hours,
-             data.city, data.venue_name, data.address, data.latitude, data.longitude, intensity),
+             data.city, data.venue_name, data.address, data.latitude, data.longitude, intensity, data.activity_type),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM events WHERE rowid = last_insert_rowid()").fetchone()
@@ -78,11 +78,13 @@ def update_event(event_id: int, data: EventUpdate):
             level = athlete["competition_level"] if athlete else None
             new_intensity = derive_intensity(new_type, level)
 
+        new_activity_type = data.activity_type if data.activity_type is not None else existing["activity_type"]
+
         conn.execute(
             "UPDATE events SET event_name=?, event_type=?, event_date=?, start_time=?, duration_hours=?, "
-            "city=?, venue_name=?, address=?, latitude=?, longitude=?, intensity=? WHERE id=?",
+            "city=?, venue_name=?, address=?, latitude=?, longitude=?, intensity=?, activity_type=? WHERE id=?",
             (new_name, new_type, new_date, new_start, new_dur,
-             new_city, new_venue, new_address, new_lat, new_lng, new_intensity, event_id),
+             new_city, new_venue, new_address, new_lat, new_lng, new_intensity, new_activity_type, event_id),
         )
         conn.commit()
         updated = dict(conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone())
@@ -91,6 +93,25 @@ def update_event(event_id: int, data: EventUpdate):
         if data.event_date and data.event_date != existing["event_date"]:
             on_event_added_or_changed(existing["athlete_id"], existing["event_date"], conn)
         return updated
+    finally:
+        conn.close()
+
+
+@router.patch("/{event_id}/activity-type", response_model=EventResponse)
+def tag_activity_type(event_id: int, data: ActivityTypePatch):
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Event not found.")
+        conn.execute(
+            "UPDATE events SET activity_type = ? WHERE id = ?",
+            (data.activity_type, event_id),
+        )
+        conn.commit()
+        ev = dict(conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone())
+        on_event_added_or_changed(ev["athlete_id"], ev["event_date"], conn)
+        return ev
     finally:
         conn.close()
 
