@@ -230,12 +230,14 @@ def test_build_today_view_includes_streak(monkeypatch):
     conn = _streak_db_with_state()
     # Minimal athletes/events/meal_plans so build_today_view runs.
     conn.executescript("""
-        CREATE TABLE athletes (id INTEGER PRIMARY KEY, first_name TEXT, sport TEXT);
+        CREATE TABLE athletes (id INTEGER PRIMARY KEY, first_name TEXT, sport TEXT,
+            weight_lbs REAL, height_ft INTEGER, height_in REAL, gender TEXT, age INTEGER);
         CREATE TABLE events (id INTEGER PRIMARY KEY, athlete_id INTEGER, event_type TEXT,
             event_name TEXT, event_date TEXT, start_time TEXT, duration_hours REAL);
         CREATE TABLE meal_plans (id INTEGER PRIMARY KEY, athlete_id INTEGER, plan_date TEXT,
             slot_name TEXT, logged INTEGER DEFAULT 0);
-        INSERT INTO athletes (id, first_name, sport) VALUES (1, 'Alex', 'soccer');
+        INSERT INTO athletes (id, first_name, sport, weight_lbs, height_ft, height_in, gender, age)
+            VALUES (1, 'Alex', 'soccer', 120, 5, 4, 'boy', 14);
     """)
     today = "2026-06-17"
     _confirm(conn, 1, today)
