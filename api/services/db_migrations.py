@@ -20,6 +20,7 @@ def run_all():
         _add_timezone_to_tokens(conn)
         _add_intensity_to_events(conn)
         _add_venue_location_to_events(conn)
+        _add_activity_type_to_events(conn)
         _add_intensity_to_daily_targets(conn)
         _add_season_phase_to_athletes(conn)
         _add_food_preferences_to_athletes(conn)
@@ -289,6 +290,17 @@ def _add_venue_location_to_events(conn):
         conn.execute("ALTER TABLE events ADD COLUMN latitude REAL")
     if "longitude" not in cols:
         conn.execute("ALTER TABLE events ADD COLUMN longitude REAL")
+
+
+def _add_activity_type_to_events(conn):
+    """Per-event activity type tagged by the athlete (Calendar Sync & Day Layout).
+    One of the 7 activity_engine keys: practice / game / tournament / speed_sprint /
+    strength_cond / active_recovery / double_session. Nullable = untagged; the
+    2-hour default (activity_type_resolver) resolves untagged events to 'practice'
+    on read. Idempotent."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
+    if "activity_type" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN activity_type TEXT DEFAULT NULL")
 
 
 def _add_intensity_to_daily_targets(conn):
