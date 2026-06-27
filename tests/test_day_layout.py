@@ -170,3 +170,14 @@ def test_guardrail_caps_tappable_windows_at_6():
     res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
     tappable = [c for c in res["cards"] if c["is_tappable"]]
     assert len(tappable) <= 6
+
+
+def test_tournament_not_capped_keeps_recovery_cards():
+    # 3-game tournament must retain post-tournament recharge + rebuild (cap must not drop them)
+    g = [{"id": i, "event_type": "game", "activity_type": "game",
+          "event_date": "2026-06-27", "start_time": st, "duration_hours": 1.5}
+         for i, st in [(1, "08:00"), (2, "11:00"), (3, "14:00")]]
+    res = build_day_layout(g, _athlete(), now=datetime(2026, 6, 27, 5, 0))
+    labels = [c.get("label", "") for c in res["cards"]]
+    assert any("After Final Game" in l for l in labels)
+    assert any("Tournament Recovery Meal" in l for l in labels)
