@@ -183,3 +183,30 @@ def test_keep_going_renders_as_oz_packets_nudge():
     kg_win = next(w for w in tw if w["category"] == "keep_going")
     assert kg_win["is_nudge_only"] is True
     assert "oz" in kg_win["macro_focus"].lower()
+
+
+def test_cards_to_template_windows_populates_open_close_from_date():
+    from api.services.day_layout import build_day_layout, cards_to_template_windows
+    from datetime import datetime
+    ev = {"id": 1, "event_type": "practice", "activity_type": "practice",
+          "event_date": "2026-06-27", "start_time": "15:00", "duration_hours": 1.0}
+    res = build_day_layout([ev], {"id": 1, "weight_lbs": 120, "height_ft": 5,
+                                  "height_in": 4, "gender": "boy", "age": 14},
+                           now=datetime(2026, 6, 27, 6, 0))
+    tw = cards_to_template_windows(res["cards"], "2026-06-27")
+    fb = next(w for w in tw if w["key"] == "fuel_before")
+    assert fb["open_dt"] is not None and fb["close_dt"] is not None
+    assert fb["open_dt"].strftime("%H:%M") == fb["sort_time"]
+    assert fb["close_dt"] > fb["open_dt"]
+
+
+def test_cards_to_template_windows_open_close_none_without_date():
+    from api.services.day_layout import build_day_layout, cards_to_template_windows
+    from datetime import datetime
+    ev = {"id": 1, "event_type": "practice", "activity_type": "practice",
+          "event_date": "2026-06-27", "start_time": "15:00", "duration_hours": 1.0}
+    res = build_day_layout([ev], {"id": 1, "weight_lbs": 120, "height_ft": 5,
+                                  "height_in": 4, "gender": "boy", "age": 14},
+                           now=datetime(2026, 6, 27, 6, 0))
+    tw = cards_to_template_windows(res["cards"])   # no date_str → open/close stay None
+    assert all(w["open_dt"] is None for w in tw)

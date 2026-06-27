@@ -216,8 +216,20 @@ _CARD_TO_MACRO_FOCUS = {
 }
 
 
-def cards_to_template_windows(cards: list) -> list:
-    """Adapt day_layout cards to the template_windows shape build_today_view consumes."""
+def cards_to_template_windows(cards: list, date_str: str | None = None) -> list:
+    """Adapt day_layout cards to the template_windows shape build_today_view consumes.
+
+    When date_str (YYYY-MM-DD) is provided, open_dt is built from date + card sort_time
+    and close_dt = open_dt + 60 min. Without date_str, both stay None (safe — the mobile
+    treats empty timing as always-open).
+    """
+    from datetime import datetime, timedelta
+
+    def _to_dt(hhmm: str):
+        if not date_str or not hhmm:
+            return None
+        return datetime.strptime(f"{date_str} {hhmm}", "%Y-%m-%d %H:%M")
+
     out = []
     for c in cards:
         category = _CARD_TO_CATEGORY.get(c["card"], "everyday")
@@ -232,8 +244,8 @@ def cards_to_template_windows(cards: list) -> list:
             "macro_focus": macro_focus,
             "sort_time": c["sort_time"],
             "time_display": c.get("time_display", ""),
-            "open_dt": None,
-            "close_dt": None,
+            "open_dt":  _to_dt(c["sort_time"]),
+            "close_dt": (_to_dt(c["sort_time"]) + timedelta(minutes=60)) if (date_str and c["sort_time"]) else None,
             "is_nudge_only": is_nudge,
         })
     return out

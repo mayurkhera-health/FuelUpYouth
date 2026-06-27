@@ -965,7 +965,7 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
         effective_now = now if now is not None else _dt.now()
         _layout = build_day_layout(events, athlete, now=effective_now)
         event_type       = _layout["day_type"]
-        template_windows = cards_to_template_windows(_layout["cards"])
+        template_windows = cards_to_template_windows(_layout["cards"], today_str)
     else:
         engine_result    = generate_windows_for_day(athlete_id, today_str, events, force_v2=force_v2)
         event_type       = engine_result["day_type"]
