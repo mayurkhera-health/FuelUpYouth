@@ -911,7 +911,7 @@ def _build_fuel_targets_block(athlete: dict, events: list, windows: list,
     }
 
 
-def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: bool = False) -> dict | None:
+def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: bool = False, now=None) -> dict | None:
     from api.services.nutrition_analysis import get_week_start, get_week_dates
     from api.services.window_templates import generate_windows_for_day
 
@@ -961,13 +961,9 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
         build_day_layout, cards_to_template_windows, day_layout_v2_enabled,
     )
     if day_layout_v2_enabled():
-        # NOTE: datetime.now() is server-local. The 2-hour activity-type default in
-        # resolve_activity_type compares this against event start times (athlete-local).
-        # On a UTC server this skews the untagged->practice default for non-UTC athletes.
-        # BEFORE enabling DAY_LAYOUT_V2 in prod, thread the client's local datetime
-        # through build_today_view (Plan B / mobile sends it), like the existing
-        # `today` (client local date) param does for the Timezone Invariant.
-        _layout = build_day_layout(events, athlete, now=datetime.now())
+        from datetime import datetime as _dt
+        effective_now = now if now is not None else _dt.now()
+        _layout = build_day_layout(events, athlete, now=effective_now)
         event_type       = _layout["day_type"]
         template_windows = cards_to_template_windows(_layout["cards"])
     else:

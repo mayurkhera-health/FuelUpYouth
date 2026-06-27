@@ -113,3 +113,56 @@ def test_build_today_view_flag_on_event_marker(monkeypatch, db_conn):
         f"No event-marker window found in windows list — C2 fix did not take effect. "
         f"window_types present: {[w.get('window_type') for w in windows]}"
     )
+
+
+def test_build_today_view_uses_client_now_for_2h_resolver(monkeypatch):
+    """Client-supplied now is threaded into build_day_layout (not server clock).
+
+    We verify by monkeypatching build_day_layout to capture the `now` argument
+    it receives. The test event has no activity_type (untagged), so the resolver's
+    2-hour gate is exercised: before the gate (11:00 vs 15:00 start) and after
+    (13:30 vs 15:00). What matters is that build_day_layout receives the CLIENT
+    now — not a freshly-minted datetime.now() from the server.
+    """
+    monkeypatch.setenv("DAY_LAYOUT_V2", "true")
+    from datetime import datetime
+    from api.services.today_service import build_today_view
+    from api.database import get_conn
+    from db.setup import init_db
+    from api.services.db_migrations import run_all
+    import api.services.day_layout as _dl_mod
+
+    captured_nows = []
+    _real_build = _dl_mod.build_day_layout
+
+    def _spy_build(events, athlete, now):
+        captured_nows.append(now)
+        return _real_build(events, athlete, now=now)
+
+    monkeypatch.setattr(_dl_mod, "build_day_layout", _spy_build)
+
+    conn = get_conn(); init_db(); run_all()
+    conn.execute("INSERT INTO parents (full_name, email, consent_timestamp, consent_confirmed) VALUES ('P','c1@x.com',datetime('now'),1)")
+    pid = conn.execute("SELECT id FROM parents WHERE email='c1@x.com'").fetchone()[0]
+    conn.execute("INSERT INTO athletes (parent_id, first_name, age, gender, weight_lbs, height_ft, height_in) "
+                 "VALUES (?, 'A', 14, 'boy', 120, 5, 4)", (pid,))
+    aid = conn.execute("SELECT id FROM athletes WHERE parent_id=?", (pid,)).fetchone()[0]
+    conn.execute("INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours) "
+                 "VALUES (?, 'Practice', 'practice', '2026-06-27', '15:00', 1.0)", (aid,))
+    conn.commit()
+
+    early_now = datetime(2026, 6, 27, 11, 0)
+    late_now  = datetime(2026, 6, 27, 13, 30)
+
+    early = build_today_view(aid, conn, today="2026-06-27", now=early_now)
+    late  = build_today_view(aid, conn, today="2026-06-27", now=late_now)
+    conn.close()
+
+    assert early is not None and late is not None, "build_today_view returned None"
+    assert len(captured_nows) == 2, f"Expected 2 spy calls, got {len(captured_nows)}"
+    assert captured_nows[0] == early_now, (
+        f"build_day_layout received wrong now on first call: {captured_nows[0]!r}"
+    )
+    assert captured_nows[1] == late_now, (
+        f"build_day_layout received wrong now on second call: {captured_nows[1]!r}"
+    )

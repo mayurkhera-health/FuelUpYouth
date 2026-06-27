@@ -107,10 +107,17 @@ def get_day_timeline(athlete_id: int, date: str = None, v2: bool = False):
 
 
 @router.get("/{athlete_id}/today")
-def get_today_view(athlete_id: int, date: str = Query(None), v2: bool = False):
+def get_today_view(athlete_id: int, date: str = Query(None), v2: bool = False, now: str = Query(None)):
     conn = get_conn()
     try:
-        data = build_today_view(athlete_id, conn, today=date, force_v2=v2)
+        from datetime import datetime as _dt
+        client_now = None
+        if now:
+            try:
+                client_now = _dt.fromisoformat(now)
+            except ValueError:
+                client_now = None
+        data = build_today_view(athlete_id, conn, today=date, force_v2=v2, now=client_now)
         if data is None:
             raise HTTPException(404, "Athlete not found.")
         return data
