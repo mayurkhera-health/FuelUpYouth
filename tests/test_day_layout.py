@@ -130,3 +130,26 @@ def test_two_games_same_day_is_tournament():
     labels = [c.get("label", "") for c in res["cards"]]
     assert any("Between Games 1 & 2" in l for l in labels)
     assert any("Pre-Game 2 Meal" in l for l in labels)
+
+
+def test_tournament_day_with_strength_session_excludes_non_game_from_schedule():
+    # Morning lift + two games -> tournament, but the lift must NOT become a game slot.
+    lift = {"id": 1, "event_type": "strength", "activity_type": "strength_cond",
+            "event_date": "2026-06-27", "start_time": "07:00", "duration_hours": 1.0}
+    g1 = {"id": 2, "event_type": "game", "activity_type": "game",
+          "event_date": "2026-06-27", "start_time": "10:00", "duration_hours": 1.5}
+    g2 = {"id": 3, "event_type": "game", "activity_type": "game",
+          "event_date": "2026-06-27", "start_time": "14:00", "duration_hours": 1.5}
+    res = build_day_layout([lift, g1, g2], _athlete(), now=datetime(2026, 6, 27, 5, 0))
+    assert res["day_type"] == "tournament"
+    # Exactly two game markers (game 1 and game 2), no third from the lift.
+    event_cards = [c for c in res["cards"] if c["card"] == "event"]
+    assert len(event_cards) == 2
+
+
+def test_single_tournament_event_has_no_between_games():
+    ev = {"id": 1, "event_type": "tournament", "activity_type": "tournament",
+          "event_date": "2026-06-27", "start_time": "09:00", "duration_hours": 1.5}
+    res = build_day_layout([ev], _athlete(), now=datetime(2026, 6, 27, 6, 0))
+    labels = [c.get("label", "") for c in res["cards"]]
+    assert not any("Between Games" in l for l in labels)

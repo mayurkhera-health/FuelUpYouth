@@ -108,7 +108,9 @@ def build_day_layout(events: list, athlete: dict, now: datetime) -> dict:
         schedule = sorted(
             ({"start_time": ev["start_time"],
               "duration_min": int(round((ev.get("duration_hours") or 1.5) * 60))}
-             for ev, _ in resolved if ev.get("start_time")),
+             # Only game/tournament events form the game schedule — a non-game event
+             # on a tournament day (e.g. a morning lift) must NOT become a fake game slot.
+             for ev, _ in game_like if ev.get("start_time")),
             key=lambda g: g["start_time"],
         )
         wt_kg = athlete["weight_lbs"] * 0.453592 if athlete.get("weight_lbs") else 0
