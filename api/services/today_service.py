@@ -4,6 +4,7 @@ from api.services.meal_timing import compute_meal_slots
 from api.services.nutrition_calc import calc_daily_targets
 from api.services.window_distribution import distribute_to_slots
 from api.services.window_engine_v2 import event_relative_windows_enabled
+from api.services.activity_type_resolver import resolve_activity_type
 
 log = logging.getLogger(__name__)
 
@@ -966,10 +967,17 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
         _layout = build_day_layout(events, athlete, now=effective_now)
         event_type       = _layout["day_type"]
         template_windows = cards_to_template_windows(_layout["cards"], today_str)
+        # Flag-ON targets: real event_type + resolved activity_type so event days get
+        # event-level macros and per-type modifiers apply (Plan D). Legacy unchanged.
+        _primary = events[0] if events else {}
+        event_type_for_targets    = _primary.get("event_type", "rest")
+        activity_type_for_targets = resolve_activity_type(_primary, effective_now) if _primary else None
     else:
         engine_result    = generate_windows_for_day(athlete_id, today_str, events, force_v2=force_v2)
         event_type       = engine_result["day_type"]
         template_windows = engine_result["windows"]
+        event_type_for_targets    = event_type   # legacy: day_type label, unchanged
+        activity_type_for_targets = None
 
     plan_rows = conn.execute(
         "SELECT id, slot_name, logged FROM meal_plans WHERE athlete_id = ? AND plan_date = ?",
@@ -985,11 +993,11 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
     wl_map = {r["window_id"]: dict(r) for r in wl_rows}
 
     # Compute daily macro targets once for per-window breakdown
-    event_type_for_targets = event_type
     _ev0 = events[0] if events else {}
     _dur_min = (_ev0.get("duration_hours") or 0) * 60
     _intensity = _ev0.get("intensity")
-    _daily_targets = calc_daily_targets(athlete, event_type_for_targets, _intensity, _dur_min)
+    _daily_targets = calc_daily_targets(athlete, event_type_for_targets, _intensity, _dur_min,
+                                        activity_type=activity_type_for_targets)
     _daily_carbs   = _daily_targets.get("carbs_g") or _daily_targets.get("carbs_g_max")
     _daily_protein = _daily_targets.get("protein_g") or _daily_targets.get("protein_g_max")
 

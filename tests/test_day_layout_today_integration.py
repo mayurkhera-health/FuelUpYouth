@@ -210,3 +210,72 @@ def test_cards_to_template_windows_open_close_none_without_date():
                            now=datetime(2026, 6, 27, 6, 0))
     tw = cards_to_template_windows(res["cards"])   # no date_str → open/close stay None
     assert all(w["open_dt"] is None for w in tw)
+
+
+def _seed_athlete_with_event(conn, email, event_type, activity_type, start="15:00"):
+    from db.setup import init_db
+    from api.services.db_migrations import run_all
+    init_db(); run_all()
+    conn.execute("INSERT INTO parents (full_name, email, consent_timestamp, consent_confirmed) VALUES ('P',?,datetime('now'),1)", (email,))
+    pid = conn.execute("SELECT id FROM parents WHERE email=?", (email,)).fetchone()[0]
+    conn.execute("INSERT INTO athletes (parent_id, first_name, age, gender, weight_lbs, height_ft, height_in) "
+                 "VALUES (?, 'A', 14, 'boy', 120, 5, 4)", (pid,))
+    aid = conn.execute("SELECT id FROM athletes WHERE parent_id=?", (pid,)).fetchone()[0]
+    conn.execute("INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours, activity_type) "
+                 "VALUES (?, 'E', ?, '2026-06-27', ?, 1.5, ?)", (aid, event_type, start, activity_type))
+    conn.commit()
+    return aid
+
+
+def _spy_calc_daily_targets(monkeypatch):
+    import api.services.today_service as ts
+    captured = {}
+    real = ts.calc_daily_targets
+    def spy(athlete, event_type="rest", intensity=None, duration_min=0, **kw):
+        captured["event_type"] = event_type
+        captured["activity_type"] = kw.get("activity_type")
+        return real(athlete, event_type, intensity, duration_min, **kw)
+    monkeypatch.setattr(ts, "calc_daily_targets", spy)
+    return captured
+
+
+def test_flag_on_targets_use_real_event_type_and_resolved_tag(monkeypatch):
+    monkeypatch.setenv("DAY_LAYOUT_V2", "true")
+    from datetime import datetime
+    from api.services.today_service import build_today_view
+    from api.database import get_conn
+    conn = get_conn()
+    aid = _seed_athlete_with_event(conn, "d1@x.com", "game", "game")
+    captured = _spy_calc_daily_targets(monkeypatch)
+    build_today_view(aid, conn, today="2026-06-27", now=datetime(2026, 6, 27, 14, 0))
+    conn.close()
+    assert captured["event_type"] == "game"
+    assert captured["activity_type"] == "game"
+
+
+def test_flag_on_active_recovery_tag_threaded(monkeypatch):
+    monkeypatch.setenv("DAY_LAYOUT_V2", "true")
+    from datetime import datetime
+    from api.services.today_service import build_today_view
+    from api.database import get_conn
+    conn = get_conn()
+    aid = _seed_athlete_with_event(conn, "d2@x.com", "practice", "active_recovery", start="10:00")
+    captured = _spy_calc_daily_targets(monkeypatch)
+    build_today_view(aid, conn, today="2026-06-27", now=datetime(2026, 6, 27, 9, 0))
+    conn.close()
+    assert captured["event_type"] == "practice"
+    assert captured["activity_type"] == "active_recovery"
+
+
+def test_flag_off_legacy_targets_unchanged(monkeypatch):
+    monkeypatch.delenv("DAY_LAYOUT_V2", raising=False)
+    from datetime import datetime
+    from api.services.today_service import build_today_view
+    from api.database import get_conn
+    conn = get_conn()
+    aid = _seed_athlete_with_event(conn, "d3@x.com", "game", "game")
+    captured = _spy_calc_daily_targets(monkeypatch)
+    build_today_view(aid, conn, today="2026-06-27", now=datetime(2026, 6, 27, 14, 0))
+    conn.close()
+    assert captured["activity_type"] is None
+    assert captured["event_type"] != "game"   # legacy passes the day_type label, not raw "game"
