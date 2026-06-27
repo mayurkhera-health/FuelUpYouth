@@ -56,3 +56,38 @@ def test_post_tournament_recharge_and_rebuild_always_present():
     labels = [c.get("label", "") for c in cards]
     assert any("After Final Game" in l for l in labels)
     assert any("Tournament Recovery Meal" in l for l in labels)
+
+
+def test_gap_exactly_45_recharge_only():
+    # game1 09:00-10:30, game2 11:15 -> gap exactly 45 -> recharge yes, rebuild no
+    sched = [{"start_time": "09:00", "duration_min": 90},
+             {"start_time": "11:15", "duration_min": 90}]
+    labels = [c.get("label", "") for c in get_tournament_template(sched, 50)]
+    assert any("Between Games 1 & 2" in l for l in labels)
+    assert not any("Pre-Game 2 Meal" in l for l in labels)
+
+
+def test_gap_exactly_90_recharge_and_rebuild():
+    # game1 09:00-10:30, game2 12:00 -> gap exactly 90 -> both
+    sched = [{"start_time": "09:00", "duration_min": 90},
+             {"start_time": "12:00", "duration_min": 90}]
+    labels = [c.get("label", "") for c in get_tournament_template(sched, 50)]
+    assert any("Between Games 1 & 2" in l for l in labels)
+    assert any("Pre-Game 2 Meal" in l for l in labels)
+
+
+def test_keep_going_boundary_75_excluded_76_included():
+    no_kg = get_tournament_template([{"start_time": "09:00", "duration_min": 75}], 50)
+    assert "keep_going" not in [c["card"] for c in no_kg]
+    yes_kg = get_tournament_template([{"start_time": "09:00", "duration_min": 76}], 50)
+    assert "keep_going" in [c["card"] for c in yes_kg]
+
+
+def test_three_game_tournament_has_two_between_game_recharges():
+    sched = [{"start_time": "08:00", "duration_min": 90},   # ends 09:30
+             {"start_time": "11:00", "duration_min": 90},   # ends 12:30, gap 90 from g1
+             {"start_time": "14:00", "duration_min": 90}]    # gap 90 from g2
+    labels = [c.get("label", "") for c in get_tournament_template(sched, 50)]
+    assert any("Between Games 1 & 2" in l for l in labels)
+    assert any("Between Games 2 & 3" in l for l in labels)
+    assert any("After Final Game" in l for l in labels)

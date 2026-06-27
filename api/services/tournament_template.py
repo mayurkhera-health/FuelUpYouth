@@ -9,10 +9,14 @@ Between games: Recharge at gap >= 45 min, Rebuild at gap >= 90 min.
 
 _BASE_MEAL_COLOR = "#7A9E6E"
 
+KEEP_GOING_MIN_DUR = 75   # minutes; keep_going card only for games longer than this
+RECHARGE_GAP_MIN   = 45   # minutes between games to warrant a Recharge card
+REBUILD_GAP_MIN    = 90   # minutes between games to warrant a Rebuild card
+
 
 def _add_min(t: str, m: int) -> str:
     h, mn = map(int, t.split(":"))
-    total = h * 60 + mn + m
+    total = max(0, h * 60 + mn + m)   # clamp: never emit a pre-midnight (negative) time
     return f"{total // 60:02d}:{total % 60:02d}"
 
 
@@ -24,7 +28,11 @@ def _diff_min(t1: str, t2: str) -> int:
 
 
 def get_tournament_template(game_schedule: list, wt_kg: float) -> list:
-    """game_schedule = [{'start_time':'HH:MM','duration_min':int}, ...] sorted by time."""
+    """game_schedule = [{'start_time':'HH:MM','duration_min':int}, ...] sorted by time.
+
+    wt_kg is reserved for the downstream gram overlay (window_distribution); the
+    template itself only produces card ORDER, so wt_kg is currently unused here.
+    """
     cards = []
     first_game_hour = int(game_schedule[0]["start_time"].split(":")[0])
     everyday_pos = "before" if first_game_hour >= 11 else "after"
@@ -38,7 +46,7 @@ def get_tournament_template(game_schedule: list, wt_kg: float) -> list:
                      "2 fists of grains · 1 palm of protein · vegetables."),
             "subtitle": "TOURNAMENT DAY FUEL", "color": _BASE_MEAL_COLOR,
             "is_event": False, "is_tappable": True,
-            "sort_time": game_schedule[0]["start_time"], "time_display": "",
+            "sort_time": _add_min(game_schedule[0]["start_time"], -210), "time_display": "",
             "game_num": None, "duration_min": None,
         })
 
@@ -60,7 +68,7 @@ def get_tournament_template(game_schedule: list, wt_kg: float) -> list:
                       "label": f"Game {n}", "game_num": n,
                       "is_event": True, "is_tappable": False,
                       "sort_time": st, "time_display": "", "duration_min": dur})
-        if dur > 75:
+        if dur > KEEP_GOING_MIN_DUR:
             cards.append({"key": f"keep_going_g{n}", "card": "keep_going",
                           "label": f"Keep Going — Game {n}", "game_num": n,
                           "is_event": False, "is_tappable": True,
@@ -71,14 +79,14 @@ def get_tournament_template(game_schedule: list, wt_kg: float) -> list:
             this_end = _add_min(st, dur)
             next_start = game_schedule[i + 1]["start_time"]
             gap = _diff_min(this_end, next_start)
-            if gap >= 45:
+            if gap >= RECHARGE_GAP_MIN:
                 cards.append({"key": f"recharge_g{n}_g{n+1}", "card": "recharge",
                               "label": f"Recharge — Between Games {n} & {n+1}",
                               "body": (f"You have {gap} minutes. Refuel NOW. "
                                        f"Fast carbs + protein within 30 minutes."),
                               "game_num": n, "is_event": False, "is_tappable": True,
                               "sort_time": this_end, "time_display": "", "duration_min": None})
-            if gap >= 90:
+            if gap >= REBUILD_GAP_MIN:
                 cards.append({"key": f"rebuild_g{n}_g{n+1}", "card": "rebuild",
                               "label": f"Rebuild — Pre-Game {n+1} Meal",
                               "body": ("More time between games — get a proper recovery meal in. "
@@ -90,9 +98,11 @@ def get_tournament_template(game_schedule: list, wt_kg: float) -> list:
     last = game_schedule[-1]
     final_end = _add_min(last["start_time"], last["duration_min"])
     cards.append({"key": "recharge_final", "card": "recharge", "label": "Recharge — After Final Game",
+                  "body": "Tournament's done — get fast carbs + protein in within 30 minutes to kick off recovery.",
                   "is_event": False, "is_tappable": True,
                   "sort_time": final_end, "time_display": "", "game_num": None, "duration_min": None})
     cards.append({"key": "rebuild_final", "card": "rebuild", "label": "Rebuild — Tournament Recovery Meal",
+                  "body": "Round out the day with a full meal: protein + carbs + healthy fat to rebuild for tomorrow.",
                   "is_event": False, "is_tappable": True,
                   "sort_time": _add_min(final_end, 60), "time_display": "", "game_num": None, "duration_min": None})
 
