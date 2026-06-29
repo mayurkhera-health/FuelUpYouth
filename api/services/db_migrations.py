@@ -21,6 +21,7 @@ def run_all():
         _add_intensity_to_events(conn)
         _add_venue_location_to_events(conn)
         _add_activity_type_to_events(conn)
+        _add_uid_to_events(conn)
         _add_intensity_to_daily_targets(conn)
         _add_season_phase_to_athletes(conn)
         _add_food_preferences_to_athletes(conn)
@@ -301,6 +302,22 @@ def _add_activity_type_to_events(conn):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
     if "activity_type" not in cols:
         conn.execute("ALTER TABLE events ADD COLUMN activity_type TEXT DEFAULT NULL")
+
+
+def _add_uid_to_events(conn):
+    """ICS import dedup: store the source calendar VEVENT UID so re-imports — and
+    the onboarding-then-Schedule-tab double import — skip events already on the
+    athlete's schedule. Nullable: manually-created events have no uid. A PARTIAL
+    unique index on (athlete_id, uid) WHERE uid IS NOT NULL enforces dedup at the
+    DB layer (defense-in-depth behind the client-side skip) while letting an
+    athlete keep many NULL-uid manual events. Idempotent — safe every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
+    if "uid" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN uid TEXT")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_events_athlete_uid "
+        "ON events(athlete_id, uid) WHERE uid IS NOT NULL"
+    )
 
 
 def _add_intensity_to_daily_targets(conn):

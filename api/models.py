@@ -103,6 +103,7 @@ class EventCreate(BaseModel):
     longitude: Optional[float] = None
     intensity: Optional[str] = None  # low / medium / high; derived if omitted
     activity_type: Optional[str] = None  # 7 engine keys; None = untagged (2h default applies)
+    uid: Optional[str] = None  # source ICS VEVENT UID; enables import dedup. None for manual events.
 
     @field_validator("start_time", mode="before")
     @classmethod
@@ -155,6 +156,7 @@ class EventResponse(BaseModel):
     longitude: Optional[float] = None
     intensity: Optional[str] = None
     activity_type: Optional[str] = None
+    uid: Optional[str] = None
     created_at: str
 
 

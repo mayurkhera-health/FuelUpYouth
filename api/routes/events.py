@@ -1,3 +1,4 @@
+import sqlite3
 import urllib.request
 from fastapi import APIRouter, HTTPException
 from typing import List
@@ -11,6 +12,14 @@ router = APIRouter()
 
 @router.get("/fetch-ics")
 def fetch_ics(url: str):
+    # BYGA (and many calendar apps) hand out webcal:// subscription links. That's
+    # just http(s) over the calendar scheme — normalize to https:// so urllib can
+    # fetch it. Defense-in-depth: the client normalizes too, but a webcal:// link
+    # pasted straight through must still work.
+    if url.startswith("webcal://"):
+        url = "https://" + url[len("webcal://"):]
+    elif url.startswith("webcals://"):
+        url = "https://" + url[len("webcals://"):]
     if not url.startswith("http"):
         raise HTTPException(400, "Invalid URL.")
     try:
@@ -34,13 +43,27 @@ def create_event(data: EventCreate):
 
         intensity = data.intensity or derive_intensity(data.event_type, athlete["competition_level"])
 
-        conn.execute(
-            "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours, city, venue_name, address, latitude, longitude, intensity, activity_type) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (data.athlete_id, data.event_name, data.event_type, data.event_date, data.start_time, data.duration_hours,
-             data.city, data.venue_name, data.address, data.latitude, data.longitude, intensity, data.activity_type),
-        )
-        conn.commit()
+        try:
+            conn.execute(
+                "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours, city, venue_name, address, latitude, longitude, intensity, activity_type, uid) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (data.athlete_id, data.event_name, data.event_type, data.event_date, data.start_time, data.duration_hours,
+                 data.city, data.venue_name, data.address, data.latitude, data.longitude, intensity, data.activity_type, data.uid),
+            )
+            conn.commit()
+        except sqlite3.IntegrityError:
+            # Partial unique index on (athlete_id, uid) tripped — this ICS event is
+            # already on the schedule. Make the POST idempotent: return the existing
+            # row, skip the window recompute. The client also pre-skips duplicates,
+            # so this only catches races / direct re-POSTs.
+            conn.rollback()
+            existing = conn.execute(
+                "SELECT * FROM events WHERE athlete_id = ? AND uid = ?",
+                (data.athlete_id, data.uid),
+            ).fetchone()
+            if existing:
+                return dict(existing)
+            raise
         row = conn.execute("SELECT * FROM events WHERE rowid = last_insert_rowid()").fetchone()
         on_event_added_or_changed(data.athlete_id, data.event_date, conn)
         return dict(row)
