@@ -65,6 +65,31 @@ class AthleteCreate(BaseModel):
     diet_pref: str = "omnivore"          # omnivore / vegetarian / vegan — drives DIET_PROT_MULT
 
 
+class OnboardingAthlete(BaseModel):
+    first_name: str
+    age: int
+    gender: str
+    weight_lbs: float
+    height_ft: int
+    height_in: float
+    position: Optional[str] = None
+    competition_level: Optional[str] = None
+    sweat_profile: Optional[str] = None
+    allergies: Optional[str] = None
+    dietary_restrictions: Optional[str] = None
+    supplement_use: Optional[str] = None
+    season_phase: Optional[str] = None
+    food_preferences: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    lifestyle_activity: Optional[str] = None
+    diet_pref: Optional[str] = None
+
+
+class OnboardingComplete(BaseModel):
+    parent: ParentCreate
+    athlete: OnboardingAthlete
+
+
 class AthleteResponse(BaseModel):
     id: int
     parent_id: int
