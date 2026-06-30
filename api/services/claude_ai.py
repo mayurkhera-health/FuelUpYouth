@@ -328,61 +328,61 @@ def prompt0_athlete_blueprint(athlete: dict, targets_by_event: dict) -> dict:
 
     MOCK = {
         "hero": {
-            "headline": f"{name}'s Personalized Nutrition Blueprint",
-            "parent_subtext": f"Science-backed targets calculated specifically for {name} — age {age}, {position}, {level} level — using the Everett MD 2025 formula for youth athletes.",
-            "athlete_message": f"Hey {name}! This is your custom fuel plan. Follow it and you'll have the energy to dominate every practice and game."
+            "headline": f"{name}'s Personal Fuel Blueprint",
+            "parent_subtext": f"Built just for {name} — age {age}, a {level} {position} — using the Everett MD 2025 method for youth athletes. Real targets, no guesswork.",
+            "athlete_message": f"Alright {name}, this one's all yours. Dial it in and you'll have the energy to win every sprint — every practice, every game."
         },
         "rmr": {
-            "parent_explanation": f"{name}'s Resting Metabolic Rate of {rmr:,} kcal/day is the baseline energy needed just to keep their body running — breathing, heart beating, muscles repairing. This is calculated using the Everett MD 2025 formula, the gold standard for youth athletes aged 9–17.",
-            "athlete_explanation": f"Even when you're resting, your body burns {rmr:,} calories just keeping you alive. That's your engine idling — add soccer and it goes way higher.",
+            "parent_explanation": f"{name}'s Resting Metabolic Rate is about {rmr:,} kcal/day — the energy {name} burns just existing: breathing, growing, repairing muscle. It's the floor everything else builds on, calculated with the Everett MD 2025 formula made specifically for athletes aged 9–17.",
+            "athlete_explanation": f"Here's the deal, {name}: even chilling on the couch your body burns around {rmr:,} calories a day keeping you going. That's just your engine idling — every {position} rep on top of that needs real fuel.",
             "formula_note": "Everett MD 2025 (Stony Brook) — never Harris-Benedict, which was derived from adults."
         },
         "calorie_range": {
-            "parent_explanation": f"Total daily calorie needs vary by training load. On rest days {name} needs fewer calories; on game and tournament days the number rises significantly to support glycogen replenishment and performance.",
-            "athlete_explanation": "Your calorie target changes every day based on what you're doing. Game days need the most fuel — don't skip meals before a match.",
-            "context_note": f"Position context: {position}s cover 6–8 miles per game, requiring sustained energy availability throughout the full 90 minutes."
+            "parent_explanation": f"{name}'s fuel needs move with the schedule — lighter on rest days, noticeably higher on game and tournament days to top off glycogen and protect performance.",
+            "athlete_explanation": f"Your fuel target isn't one number, {name} — it climbs on game days and eases on rest days. Big match coming? That's your cue to eat up, not skip meals.",
+            "context_note": f"As a {position}, you're covering 6–8 miles a game — that energy has to come from somewhere across the full 90 minutes."
         },
         "macros": {
             "carbs": {
-                "parent_explanation": "Carbohydrates are the primary fuel for high-intensity intermittent exercise like soccer. They replenish muscle glycogen — the energy reserves that power sprints, tackles, and sharp cuts.",
-                "athlete_explanation": "Carbs are your rocket fuel. Rice, pasta, oats, fruit — eat them especially the night before and morning of a game.",
+                "parent_explanation": f"Carbs are {name}'s number-one fuel for the stop-start sprinting soccer demands — they refill the muscle glycogen that powers every burst, tackle, and sharp cut.",
+                "athlete_explanation": f"Carbs are your rocket fuel, {name} — rice, pasta, oats, fruit. Load up the night before and the morning of a game so the tank's full when it counts.",
                 "why_it_matters": "Glycogen loading takes 24–48 hours. The pre-game day meal matters more than the pre-game meal itself."
             },
             "protein": {
-                "parent_explanation": f"Protein targets scale with training intensity. On strength and tournament days {name} needs the most protein to repair muscle micro-tears and drive adaptation.",
-                "athlete_explanation": "Protein rebuilds your muscles after hard training. Chicken, eggs, fish, Greek yogurt — eat protein within 30 minutes of finishing practice.",
+                "parent_explanation": f"Protein scales with how hard {name} trains — strength and tournament days ask the most, to repair muscle and turn the work into real gains.",
+                "athlete_explanation": f"After hard training your muscles are rebuilding, {name} — get protein in soon after you finish (chicken, eggs, fish, Greek yogurt) so the work actually sticks.",
                 "why_it_matters": "The 30-minute post-exercise window is the single most impactful nutrition moment — protein synthesis rates are highest immediately after exercise."
             },
             "fat": {
-                "parent_explanation": f"Fat targets are set at 20–35% of total calories, never lower. Restricting fat in adolescent athletes disrupts hormone production, fat-soluble vitamin absorption, and bone development. (Everett MD 2025)",
-                "athlete_explanation": "Healthy fats from avocado, nuts, olive oil, and salmon help your body absorb vitamins and keep your hormones balanced. Don't cut them out.",
+                "parent_explanation": f"Healthy fats are non-negotiable for {name} — we never push them low. In teen athletes, cutting fat disrupts hormone production, fat-soluble vitamin absorption, and bone growth. (Everett MD 2025)",
+                "athlete_explanation": f"Don't fear fat, {name} — avocado, nuts, olive oil, and salmon help you absorb vitamins and keep everything running. Keep them on the plate.",
                 "why_it_matters": "Fat restriction in youth athletes is linked to hormonal dysregulation and increased stress fracture risk. (AAP)"
             }
         },
         "micronutrients": {
             "iron": {
                 "parent_explanation": f"{'Girls aged 9–17 have significantly higher iron needs due to menstruation onset and rapid growth. Iron deficiency is the leading nutritional deficiency in female youth athletes — affecting endurance, focus, and immune function.' if is_girl else f'Iron supports oxygen delivery to muscles via hemoglobin. Even mild deficiency impairs endurance and focus in male youth athletes.'}",
-                "athlete_explanation": f"Iron helps carry oxygen to your muscles. {'As a female athlete your iron needs are higher — spinach, lentils, and lean red meat are your best friends.' if is_girl else 'Strong iron levels mean powerful legs and sharp focus all game long.'}",
+                "athlete_explanation": f"Iron carries oxygen to your muscles, {name}. {'Your needs run higher as a female athlete — lean red meat, spinach, and lentils are your go-tos.' if is_girl else 'Keep it strong and your legs stay powerful and your focus stays sharp deep into the game.'}",
                 "urgency_level": "high" if is_girl else "important",
                 "food_sources": ["Lean red meat (grass-fed)", "Spinach + lemon juice (vitamin C boosts absorption)", "Lentils + hummus", "Fortified cereal (no artificial dyes)"],
                 "absorption_tip": "Pair iron-rich foods with vitamin C (orange juice, bell peppers, strawberries). Avoid calcium-rich foods within 1 hour of iron-rich meals."
             },
             "calcium": {
                 "parent_explanation": f"Ages 9–17 is the most important window for peak bone mass accumulation. {name} will never have this opportunity again — adequate calcium now determines bone density for life. (AAP)",
-                "athlete_explanation": "You're building your bones right now — literally. The calcium you get in your teens determines how strong your bones are for the rest of your life. Milk, yogurt, and fortified plant milks all count.",
+                "athlete_explanation": f"Right now, {name}, you're literally building the bones you'll have for life — the calcium you get in your teens sets your bone strength forever. Milk, yogurt, and fortified plant milks all count.",
                 "urgency_level": "important",
                 "food_sources": ["Low-fat milk or plant milk (fortified)", "Greek yogurt", "Cottage cheese", "Broccoli + kale (non-dairy option)"]
             },
             "magnesium": {
                 "parent_explanation": f"Magnesium is involved in over 300 enzymatic reactions, including ATP energy production, muscle contraction, and nerve function. Youth athletes are frequently deficient — especially during growth spurts when demand outpaces dietary intake. {'At 14+, girls need 360 mg/day.' if is_girl and athlete.get('age',13) >= 14 else 'At 14+, boys need 410 mg/day.' if not is_girl and athlete.get('age',13) >= 14 else 'At 9–13, the target is 240 mg/day for all athletes.'} (NIH/AAP)",
-                "athlete_explanation": "Magnesium helps your muscles relax after a hard game — it's literally the mineral that prevents cramps. Almonds, pumpkin seeds, spinach, and dark chocolate are all great sources.",
+                "athlete_explanation": f"Magnesium is your anti-cramp mineral, {name} — it helps your muscles relax after a hard game. Pumpkin seeds, almonds, spinach, even dark chocolate all bring it.",
                 "urgency_level": "important",
                 "food_sources": ["Pumpkin seeds", "Almonds + cashews", "Spinach + edamame", "Dark chocolate (70%+, no artificial dyes)", "Black beans + lentils"],
                 "absorption_tip": "Magnesium absorption improves when paired with vitamin B6-rich foods (chicken, bananas, potatoes). Excess calcium can compete — balance both throughout the day."
             },
             "vitamin_d": {
                 "parent_explanation": f"Vitamin D deficiency is extremely common in youth athletes, especially those training indoors or in northern climates. It governs calcium absorption (without it, even adequate calcium intake can't build bone), supports muscle power output, and modulates immune function. Boston Children's Hospital recommends 1,000–2,000 IU/day for active youth athletes — well above the 600 IU dietary minimum.",
-                "athlete_explanation": "Vitamin D is the 'sunshine vitamin' — it helps your body actually USE the calcium you eat for stronger bones. Most indoor athletes are low on it. Salmon, fortified milk, and eggs are your best food sources.",
+                "athlete_explanation": f"Vitamin D is what lets your body actually USE the calcium you eat, {name} — and most indoor athletes run low on it. Salmon, fortified milk, and eggs are your best food sources.",
                 "urgency_level": "important",
                 "food_sources": ["Salmon + tuna (best food source)", "Fortified milk or plant milk", "Egg yolks", "Fortified orange juice (no artificial dyes)", "Mushrooms (UV-exposed)"],
                 "absorption_tip": "Vitamin D is fat-soluble — take supplements or eat D-rich foods alongside a meal containing healthy fats (avocado, olive oil, nuts) for maximum absorption."
@@ -395,20 +395,22 @@ def prompt0_athlete_blueprint(athlete: dict, targets_by_event: dict) -> dict:
             "action_required": "Consult a registered dietitian immediately. Do not restrict calories further." if lea_risk else None
         } if lea_risk else {"triggered": False, "threshold_kcal": lea_thresh},
         "unlock_cta": {
-            "headline": "Your Blueprint is Ready",
-            "parent_message": f"Log {name}'s first meal to start tracking against these targets. The AI gap analysis updates in real time as you log.",
-            "athlete_message": f"Time to eat like an athlete, {name}. Log your first meal and watch your fuel score go up."
+            "headline": f"You're all set, {name}",
+            "parent_message": f"Log {name}'s first meal to start tracking against these targets — the gap analysis updates the moment you do.",
+            "athlete_message": f"Let's eat like an athlete, {name}. Log your first meal and watch your fuel score climb."
         },
         "_meta": {
-            "generated_by": "Fueling2Win AI — Everett MD 2025 + Boston Children's Hospital RDN + AAP",
+            "generated_by": "Fueling2Win — Everett MD 2025 + Boston Children's Hospital RDN + AAP",
             "disclaimer": "Fueling2Win provides educational food guidance — not medical nutrition therapy.",
-            "prompt_version": "0.1"
+            "template_version": "1.0"
         }
     }
 
-    # If no AWS credentials, return the mock directly
-    if not is_configured():
-        return MOCK
+    # Product decision: the blueprint is a personalized TEMPLATE — no LLM call.
+    # Numbers come from _calculated; the copy above is personalized via f-strings
+    # (name, age, position, level, gender, RMR). This is instant and deterministic.
+    # The LLM path below is intentionally unreachable, kept for future re-enable.
+    return MOCK
 
     # Build the prompt
     targets_summary = "\n".join([
