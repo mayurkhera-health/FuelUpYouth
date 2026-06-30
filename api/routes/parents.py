@@ -170,6 +170,19 @@ def dismiss_schedule_reminder(parent_id: int):
         conn.close()
 
 
+@router.get("/exists")
+def email_exists(email: str):
+    """Read-only: does a parent with this email exist? Creates nothing."""
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM parents WHERE email = ?", (email.strip().lower(),)
+        ).fetchone()
+        return {"exists": row is not None}
+    finally:
+        conn.close()
+
+
 @router.get("/{parent_id}", response_model=ParentResponse)
 def get_parent(parent_id: int):
     conn = get_conn()

@@ -72,3 +72,9 @@ def test_athlete_failure_rolls_back_parent(client, monkeypatch):
     assert conn.execute("SELECT COUNT(*) FROM parents").fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM athletes").fetchone()[0] == 0
     monkeypatch.setattr(ob, "normalize_season_phase", real_norm)
+
+
+def test_email_exists_check(client):
+    assert client.get("/api/parents/exists", params={"email": "who@example.com"}).json() == {"exists": False}
+    client.post("/api/onboarding/complete", json=_body("who@example.com"))
+    assert client.get("/api/parents/exists", params={"email": "WHO@example.com"}).json() == {"exists": True}
