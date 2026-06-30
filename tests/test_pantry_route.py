@@ -8,13 +8,6 @@ from api.database import get_conn
 @pytest.fixture
 def db():
     keep = get_conn(); init_db(); run_all()
-    # Clear data rows between tests so unique constraints don't collide
-    for tbl in ["pantry_list_items","athlete_food_prefs","events","athletes","parents"]:
-        try:
-            keep.execute(f"DELETE FROM {tbl}")
-        except Exception:
-            pass
-    keep.commit()
     yield keep
     keep.close()
 
@@ -35,8 +28,11 @@ def client(db):
     with TestClient(app) as c:
         yield c
 
+_counter = {"n": 0}
+
 def _make_athlete(client):
-    p = client.post("/api/parents/", json={"full_name":"P","email":"pan@test.com","consent_confirmed":True})
+    _counter["n"] += 1
+    p = client.post("/api/parents/", json={"full_name":"P","email":f"pan{_counter['n']}@test.com","consent_confirmed":True})
     pid = p.json()["id"]
     a = client.post("/api/athletes/", json={"parent_id":pid,"first_name":"Ari","age":15,"gender":"girl",
         "weight_lbs":110,"height_ft":5,"height_in":6})
