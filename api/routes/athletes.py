@@ -120,8 +120,10 @@ def create_athlete(data: AthleteCreate, background_tasks: BackgroundTasks):
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE rowid = last_insert_rowid()").fetchone()
         athlete = dict(row)
-        # Blueprint runs after response is sent — never blocks athlete creation.
-        background_tasks.add_task(generate_blueprint_bg, athlete["id"])
+        # Blueprint is a deterministic MOCK (instant) — generate inline so it's ready
+        # immediately and never lost to a Fly machine-stop / deploy mid-background-task.
+        blueprint = _build_blueprint(athlete)
+        _persist_blueprint(conn, athlete["id"], blueprint)
         return athlete
     finally:
         conn.close()

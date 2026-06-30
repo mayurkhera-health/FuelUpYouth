@@ -75,3 +75,24 @@ def test_blueprint_get_lazy_generates_when_null(client):
     ).fetchone()
     assert row["blueprint_json"]
     assert "__status" not in json.loads(row["blueprint_json"])
+
+
+def test_create_generates_blueprint_inline_not_via_background(client, monkeypatch):
+    """create_athlete must generate inline, not depend on the post-response task
+    (which gets killed by Fly machine-stop / deploy)."""
+    import api.routes.athletes as ar
+
+    called = {"bg": False}
+    monkeypatch.setattr(
+        ar, "generate_blueprint_bg",
+        lambda *a, **k: called.__setitem__("bg", True),
+    )
+
+    aid = _make_athlete(client, age=15, gender="girl")
+
+    assert called["bg"] is False, "create should not schedule the background task"
+    row = get_conn().execute(
+        "SELECT blueprint_json FROM athletes WHERE id=?", (aid,)
+    ).fetchone()
+    assert row["blueprint_json"], "blueprint should be generated inline during create"
+    assert "__status" not in json.loads(row["blueprint_json"])
