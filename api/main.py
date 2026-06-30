@@ -22,6 +22,19 @@ async def lifespan(app: FastAPI):
         run_startup()
     except Exception:
         logger.exception("Startup migrations/ingest failed — coach may be unavailable")
+
+    # Start the 15-min notification scheduler HERE — @app.on_event("startup") is
+    # ignored by Starlette when a lifespan handler is set.
+    try:
+        from api.services.notification_service import run_notification_tick
+        _scheduler.add_job(run_notification_tick, "interval", minutes=15,
+                           id="notifications", replace_existing=True)
+        if not _scheduler.running:
+            _scheduler.start()
+        logger.info("Notification scheduler started (15-min interval).")
+    except Exception:
+        logger.exception("Notification scheduler failed to start")
+
     yield
 
 
@@ -73,19 +86,6 @@ app.include_router(pantry.router,        prefix="/api/pantry",        tags=["23.
 
 
 _scheduler = BackgroundScheduler()
-
-
-@app.on_event("startup")
-def on_startup():
-    db_migrations.run_all()
-    from api.services.notification_service import run_notification_tick
-    _scheduler.add_job(run_notification_tick, "interval", minutes=15, id="notifications")
-    _scheduler.start()
-
-
-@app.on_event("shutdown")
-def on_shutdown():
-    _scheduler.shutdown(wait=False)
 
 
 @app.get("/api/info")
