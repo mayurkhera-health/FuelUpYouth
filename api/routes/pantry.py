@@ -47,7 +47,7 @@ def _week_nutrition(athlete: dict, week_start: str, week_events: list[dict]) -> 
     """Compute avg daily nutrition targets for the week — called once per request."""
     monday = date.fromisoformat(week_start)
     event_by_date = {e.get("event_date") or e.get("date"): e for e in week_events}
-    daily_totals = {"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0}
+    daily_totals = {"calories": 0, "carbs_g": 0, "protein_g": 0, "fat_g": 0, "hydration_oz": 0}
     for i in range(7):
         d = (monday + timedelta(days=i)).isoformat()
         ev = event_by_date.get(d)
@@ -57,11 +57,13 @@ def _week_nutrition(athlete: dict, week_start: str, week_events: list[dict]) -> 
         daily_totals["carbs_g"]   += targets.get("carbs_g", 0)
         daily_totals["protein_g"] += targets.get("protein_g", 0)
         daily_totals["fat_g"]     += targets.get("fat_g", 0)
+        daily_totals["hydration_oz"] += targets.get("hydration_oz", 0)
     return {
         "calories":  round(daily_totals["calories"] / 7),
         "carbs_g":   round(daily_totals["carbs_g"] / 7),
         "protein_g": round(daily_totals["protein_g"] / 7),
         "fat_g":     round(daily_totals["fat_g"] / 7),
+        "hydration_oz": round(daily_totals["hydration_oz"] / 7),
     }
 
 
