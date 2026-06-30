@@ -17,3 +17,16 @@ def test_prompt8_junk_returns_empty_fallback(monkeypatch):
     monkeypatch.setattr(ai, "converse_text", lambda **k: "not json")
     out = ai.prompt8_pantry_plan(ATHLETE, [], SLOT_PLAN, SAFE)
     assert out == {"items": [], "reasoning": ""}
+
+def test_suggest_replacement_parses(monkeypatch):
+    monkeypatch.setattr(ai, "converse_text", lambda **k: '{"food_id":"oats"}')
+    monkeypatch.setattr(ai, "extract_json", lambda s: s)
+    out = ai.prompt_suggest_replacement(athlete=ATHLETE, excluded_food_name="Rice",
+        meal_context="pre_training_fuel", safe_foods=[{"food_id":"oats","name":"Oats","role":"carb","gi_tier":"slow","diet_tags":[]}], current_food_ids=[])
+    assert out["food_id"] == "oats"
+
+def test_suggest_replacement_junk_returns_none(monkeypatch):
+    monkeypatch.setattr(ai, "converse_text", lambda **k: "boom")
+    out = ai.prompt_suggest_replacement(athlete=ATHLETE, excluded_food_name="Rice",
+        meal_context="pre_training_fuel", safe_foods=[], current_food_ids=[])
+    assert out == {"food_id": None}
