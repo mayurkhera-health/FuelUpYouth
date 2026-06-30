@@ -13,6 +13,7 @@ from api.services.pantry_service import (
     cue_label_for,
 )
 from api.services.food_db import get_food_by_id
+from api.services.pantry_plan import compute_slot_plan, fallback_select, fallback_replacement
 
 router = APIRouter()
 
@@ -33,7 +34,7 @@ def _require_athlete(athlete_id: int, conn):
     row = conn.execute(
         """SELECT id, first_name, allergies, dietary_restrictions,
                   weight_lbs, height_ft, height_in, gender, age,
-                  lifestyle_activity, season_phase
+                  lifestyle_activity, season_phase, food_preferences
            FROM athletes WHERE id = ?""",
         (athlete_id,),
     ).fetchone()
@@ -132,26 +133,22 @@ def generate_list(athlete_id: int = Query(...), week_start: str = Query(...)):
 
         safe = [f for f in safe_foods_for_athlete(athlete) if f["name"] not in excluded_names]
 
-        ai_result = claude_ai.prompt8_pantry_plan(athlete, week_schedule, safe)
+        targets_by_day = [calc_daily_targets(athlete, event_type=d["event_type"]) for d in week_schedule]
+        slot_plan = compute_slot_plan(week_schedule, targets_by_day, athlete)
 
-        raw_items = ai_result.get("items", [])
-        if raw_items:
-            food_item_map = {
-                item["food_id"]: {
-                    "meal_context": item.get("meal_context", "snacks_everyday"),
-                    "must_have":    bool(item.get("must_have", False)),
-                }
-                for item in raw_items
-                if isinstance(item, dict) and item.get("food_id")
-            }
-        else:
-            food_item_map = {
-                fid: {"meal_context": "snacks_everyday", "must_have": False}
-                for fid in ai_result.get("food_ids", [])
-            }
+        ai_result = claude_ai.prompt8_pantry_plan(athlete, week_schedule, slot_plan, safe)
+        raw_items = [it for it in ai_result.get("items", [])
+                     if isinstance(it, dict) and get_food_by_id(it.get("food_id"))]
+        if not raw_items:
+            raw_items = fallback_select(slot_plan, safe, athlete)
 
-        if not food_item_map:
-            raise HTTPException(502, "AI generation failed — please try again.")
+        food_item_map = {
+            it["food_id"]: {"meal_context": it.get("meal_context", "snacks_everyday"),
+                            "must_have": bool(it.get("must_have", False))}
+            for it in raw_items if it.get("food_id")
+        }
+        if not food_item_map:                      # truly nothing safe to pick (extreme allergies)
+            raise HTTPException(422, "No suitable foods available for this athlete's restrictions.")
 
         items  = build_pantry_items(athlete_id, week_start, food_item_map, conn)
         groups = group_pantry_items(items)
@@ -438,27 +435,23 @@ def regenerate_unchecked(athlete_id: int = Query(...), week_start: str = Query(.
             if f["name"] not in excluded_names and f["food_id"] not in checked_food_ids
         ]
 
-        # 6. Ask AI
-        ai_result = claude_ai.prompt8_pantry_plan(athlete, week_schedule, safe)
+        # 6. Ask AI (hybrid: slot plan + AI + deterministic fallback)
+        targets_by_day = [calc_daily_targets(athlete, event_type=d["event_type"]) for d in week_schedule]
+        slot_plan = compute_slot_plan(week_schedule, targets_by_day, athlete)
 
-        raw_items = ai_result.get("items", [])
-        if raw_items:
-            food_item_map = {
-                item["food_id"]: {
-                    "meal_context": item.get("meal_context", "snacks_everyday"),
-                    "must_have": bool(item.get("must_have", False)),
-                }
-                for item in raw_items
-                if isinstance(item, dict) and item.get("food_id")
-            }
-        else:
-            food_item_map = {
-                fid: {"meal_context": "snacks_everyday", "must_have": False}
-                for fid in ai_result.get("food_ids", [])
-            }
+        ai_result = claude_ai.prompt8_pantry_plan(athlete, week_schedule, slot_plan, safe)
+        raw_items = [it for it in ai_result.get("items", [])
+                     if isinstance(it, dict) and get_food_by_id(it.get("food_id"))]
+        if not raw_items:
+            raw_items = fallback_select(slot_plan, safe, athlete)
 
-        if not food_item_map:
-            raise HTTPException(502, "AI generation failed — please try again.")
+        food_item_map = {
+            it["food_id"]: {"meal_context": it.get("meal_context", "snacks_everyday"),
+                            "must_have": bool(it.get("must_have", False))}
+            for it in raw_items if it.get("food_id")
+        }
+        if not food_item_map:                      # truly nothing safe to pick (extreme allergies)
+            raise HTTPException(422, "No suitable foods available for this athlete's restrictions.")
 
         # 7. Insert new items only (INSERT OR IGNORE won't touch checked items)
         for food_id, meta in food_item_map.items():

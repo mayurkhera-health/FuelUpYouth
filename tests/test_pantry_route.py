@@ -8,6 +8,13 @@ from api.database import get_conn
 @pytest.fixture
 def db():
     keep = get_conn(); init_db(); run_all()
+    # Clear data rows between tests so unique constraints don't collide
+    for tbl in ["pantry_list_items","athlete_food_prefs","events","athletes","parents"]:
+        try:
+            keep.execute(f"DELETE FROM {tbl}")
+        except Exception:
+            pass
+    keep.commit()
     yield keep
     keep.close()
 
@@ -17,3 +24,36 @@ def test_pantry_list_items_table_exists(db):
     for c in ["id","athlete_id","week_start","food_id","name","cue_label",
               "purchase_unit","role","meal_context","must_have","checked"]:
         assert c in cols, f"missing column {c}"
+
+
+from fastapi.testclient import TestClient
+from api.main import app
+import api.routes.pantry as pantry_route
+
+@pytest.fixture
+def client(db):
+    with TestClient(app) as c:
+        yield c
+
+def _make_athlete(client):
+    p = client.post("/api/parents/", json={"full_name":"P","email":"pan@test.com","consent_confirmed":True})
+    pid = p.json()["id"]
+    a = client.post("/api/athletes/", json={"parent_id":pid,"first_name":"Ari","age":15,"gender":"girl",
+        "weight_lbs":110,"height_ft":5,"height_in":6})
+    return a.json()["id"]
+
+def test_generate_happy_path(client, monkeypatch):
+    aid = _make_athlete(client)
+    monkeypatch.setattr(pantry_route.claude_ai, "prompt8_pantry_plan",
+        lambda *a, **k: {"items":[{"food_id":"banana_ripe","meal_context":"pre_training_fuel","must_have":True}], "reasoning":"go"})
+    r = client.post(f"/api/pantry/generate?athlete_id={aid}&week_start=2026-06-29")
+    assert r.status_code == 200, r.text
+    assert r.json()["item_count"] >= 1
+
+def test_generate_ai_fail_uses_fallback_not_502(client, monkeypatch):
+    aid = _make_athlete(client)
+    monkeypatch.setattr(pantry_route.claude_ai, "prompt8_pantry_plan",
+        lambda *a, **k: {"items": [], "reasoning": ""})
+    r = client.post(f"/api/pantry/generate?athlete_id={aid}&week_start=2026-06-29")
+    assert r.status_code == 200, r.text          # fallback, not 502
+    assert r.json()["item_count"] >= 1
