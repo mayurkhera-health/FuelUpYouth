@@ -79,6 +79,21 @@ def generate_blueprint_bg(athlete_id: int) -> None:
         conn.close()
 
 
+def _build_blueprint(athlete: dict) -> dict:
+    """Build the blueprint narrative dict. Deterministic (MOCK — no external call,
+    cannot fail on valid athlete data). Single source of truth for create / lazy-gen."""
+    targets_by_event = {et: calc_daily_targets(athlete, et) for et in _EVENT_TYPES}
+    return claude_ai.prompt0_athlete_blueprint(athlete, targets_by_event)
+
+
+def _persist_blueprint(conn, athlete_id: int, blueprint: dict) -> None:
+    conn.execute(
+        "UPDATE athletes SET blueprint_json=? WHERE id=?",
+        (json.dumps(blueprint), athlete_id),
+    )
+    conn.commit()
+
+
 @router.post("/", response_model=AthleteResponse, status_code=201)
 def create_athlete(data: AthleteCreate, background_tasks: BackgroundTasks):
     if not (9 <= data.age <= 17):
@@ -178,12 +193,17 @@ def get_blueprint(athlete_id: int):
         athlete = dict(row)
         blueprint_str = athlete.get("blueprint_json")
 
-        # No blueprint_json at all — background task hasn't started yet.
+        # No blueprint_json — generate it inline now (deterministic MOCK, instant).
+        # Self-heals athletes whose background task never ran (killed on deploy/stop).
         if not blueprint_str:
-            raise HTTPException(
-                404,
-                detail={"status": "pending", "message": "Blueprint is being generated."},
-            )
+            blueprint_data = _build_blueprint(athlete)
+            _persist_blueprint(conn, athlete_id, blueprint_data)
+            return {
+                "athlete_id": athlete_id,
+                "status": "ready",
+                "blueprint": blueprint_data,
+                "_calculated": _computed_calculated(athlete),
+            }
 
         try:
             blueprint_data = json.loads(blueprint_str)

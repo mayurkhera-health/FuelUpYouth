@@ -55,3 +55,23 @@ def test_blueprint_get_does_not_500_for_age_ge_14(client):
     assert body["status"] == "ready"
     # female + age>=14 → magnesium 360 (the exact branch that referenced is_girl)
     assert body["_calculated"]["magnesium_mg"] == 360
+
+
+def test_blueprint_get_lazy_generates_when_null(client):
+    """A never-generated athlete (background task was killed) self-heals on view."""
+    aid = _make_athlete(client, age=12, gender="boy")  # age<14 → isolates from Task 1
+    conn = get_conn()
+    conn.execute("UPDATE athletes SET blueprint_json=NULL WHERE id=?", (aid,))
+    conn.commit()
+
+    r = client.get(f"/api/athletes/{aid}/blueprint")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "ready"
+    assert r.json()["blueprint"]["hero"]["headline"]  # real blueprint content
+
+    # Persisted: a follow-up read shows a real blueprint, not NULL / not a sentinel.
+    row = get_conn().execute(
+        "SELECT blueprint_json FROM athletes WHERE id=?", (aid,)
+    ).fetchone()
+    assert row["blueprint_json"]
+    assert "__status" not in json.loads(row["blueprint_json"])
