@@ -29,7 +29,7 @@ def _computed_calculated(athlete: dict) -> dict:
         "rmr": calc_rmr(wt_kg, ht_cm, sex, age_yr),
         "iron_mg": 15 if sex == "female" else 11,
         "calcium_mg": 1300,
-        "magnesium_mg": (360 if is_girl else 410) if age >= 14 else 240,
+        "magnesium_mg": (360 if sex == "female" else 410) if age >= 14 else 240,
         "vitamin_d_iu": 1000,
         "ffm_kg": round(athlete["weight_lbs"] * 0.453592 * 0.85, 1),
         "targets": {et: calc_daily_targets(athlete, et) for et in _EVENT_TYPES},
