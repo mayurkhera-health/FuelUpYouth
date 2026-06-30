@@ -267,6 +267,14 @@ def suggest_replacement(data: PantrySuggestReplacement):
         )
 
         new_food_id = result.get("food_id")
+        if not new_food_id or not get_food_by_id(new_food_id):
+            removed = get_food_by_id(data.food_id)
+            new_food_id = fallback_replacement(
+                removed["role"] if removed else "carb",
+                removed.get("gi_tier") if (removed and data.meal_context == "pre_training_fuel") else None,
+                safe,
+                list(current_food_ids),
+            )
         if new_food_id:
             food = get_food_by_id(new_food_id)
             if food:

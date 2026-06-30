@@ -57,3 +57,18 @@ def test_generate_ai_fail_uses_fallback_not_502(client, monkeypatch):
     r = client.post(f"/api/pantry/generate?athlete_id={aid}&week_start=2026-06-29")
     assert r.status_code == 200, r.text          # fallback, not 502
     assert r.json()["item_count"] >= 1
+
+
+def test_suggest_replacement_ai_fail_uses_fallback(client, monkeypatch):
+    aid = _make_athlete(client)
+    monkeypatch.setattr(pantry_route.claude_ai, "prompt8_pantry_plan",
+        lambda *a, **k: {"items":[{"food_id":"banana_ripe","meal_context":"snacks_everyday","must_have":False}], "reasoning":""})
+    client.post(f"/api/pantry/generate?athlete_id={aid}&week_start=2026-06-29")
+    monkeypatch.setattr(pantry_route.claude_ai, "prompt_suggest_replacement", lambda **k: {"food_id": None})
+    r = client.post("/api/pantry/suggest-replacement", json={
+        "athlete_id": aid, "week_start": "2026-06-29", "food_id": "banana_ripe",
+        "food_name": "Banana (ripe)", "meal_context": "snacks_everyday"})
+    assert r.status_code == 200, r.text
+    # a same-role replacement (carb) should have been inserted by the fallback
+    names = [i["food_id"] for g in r.json()["groups"] for i in g["items"]]
+    assert "banana_ripe" not in names
