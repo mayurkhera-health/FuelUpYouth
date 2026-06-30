@@ -16,10 +16,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Never run `flyctl deploy` from `FuelUp-Admin` or any worktree based on it
 
 ### Deployment command
-Always deploy from `main`:
+Always deploy from the main worktree:
 ```bash
-cd ~/FuelUpYouth
-git checkout main
+cd ~/FuelUpYouth-main
 flyctl deploy --app fuelup-youth
 ```
 
