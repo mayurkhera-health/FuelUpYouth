@@ -17,6 +17,13 @@ def client():
     keepalive = get_conn()
     init_db()
     run_all()
+    # Isolate THIS file's count-based assertions without touching seed data other
+    # test files rely on: clear only the account tables, in FK-safe order.
+    keepalive.execute("PRAGMA foreign_keys = OFF")
+    for tbl in ("events", "athletes", "parents"):
+        keepalive.execute(f"DELETE FROM {tbl}")
+    keepalive.execute("PRAGMA foreign_keys = ON")
+    keepalive.commit()
     with TestClient(app) as c:
         yield c
     keepalive.close()

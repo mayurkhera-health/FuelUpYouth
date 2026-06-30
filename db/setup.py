@@ -20,18 +20,6 @@ def init_db():
             _persistent_memory_conn = sqlite3.connect(
                 "file::memory:?cache=shared", uri=True, check_same_thread=False
             )
-        else:
-            # A subsequent fixture invocation re-uses the same in-memory DB but
-            # must start with a clean slate so counts/assertions are isolated.
-            _c = _persistent_memory_conn
-            _c.execute("PRAGMA foreign_keys = OFF")
-            tables = _c.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
-            for (tbl,) in tables:
-                _c.execute(f"DELETE FROM {tbl}")
-            _c.execute("PRAGMA foreign_keys = ON")
-            _c.commit()
         conn = _persistent_memory_conn
     else:
         conn = sqlite3.connect(db_path)
