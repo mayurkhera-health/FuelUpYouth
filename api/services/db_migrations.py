@@ -30,6 +30,7 @@ def run_all():
         _add_diet_pref_to_athletes(conn)
         _create_problem_reports(conn)
         _create_coach_feedback(conn)
+        _create_pantry_list_items(conn)
         conn.commit()
     finally:
         conn.close()
@@ -356,6 +357,32 @@ def _create_coach_feedback(conn):
             created_at     TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+
+def _create_pantry_list_items(conn):
+    """Weekly Prep storage. Columns match pantry_service INSERT/SELECT; UNIQUE backs
+    the INSERT OR IGNORE dedup. Idempotent."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS pantry_list_items (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id    INTEGER NOT NULL,
+            week_start    TEXT    NOT NULL,
+            food_id       TEXT    NOT NULL,
+            name          TEXT    NOT NULL,
+            cue_label     TEXT,
+            purchase_unit TEXT,
+            role          TEXT,
+            meal_context  TEXT,
+            must_have     INTEGER NOT NULL DEFAULT 0,
+            checked       INTEGER NOT NULL DEFAULT 0,
+            created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, week_start, food_id)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pantry_athlete_week "
+        "ON pantry_list_items (athlete_id, week_start)"
+    )
 
 
 def _migrate_athlete_logins_unique():
