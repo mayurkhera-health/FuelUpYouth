@@ -1,0 +1,55 @@
+from datetime import datetime
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+
+from api.models import OnboardingComplete
+from api.database import get_conn
+from api.services.fueling_targets import normalize_season_phase
+from api.routes.athletes import generate_blueprint_bg
+
+router = APIRouter()
+
+
+@router.post("/complete", status_code=201)
+def complete_onboarding(data: OnboardingComplete, background_tasks: BackgroundTasks):
+    """Create parent + athlete atomically. Either both exist or neither does."""
+    p = data.parent
+    a = data.athlete
+    if not p.consent_confirmed:
+        raise HTTPException(400, "Parental consent must be confirmed before creating an account.")
+    if not (9 <= a.age <= 17):
+        raise HTTPException(400, "Fueling2Win is designed for athletes ages 9-17.")
+
+    conn = get_conn()
+    try:
+        ts = datetime.utcnow().isoformat()
+        conn.execute(
+            "INSERT INTO parents (full_name, email, consent_timestamp, consent_confirmed) VALUES (?, ?, ?, ?)",
+            (p.full_name, p.email, ts, p.consent_confirmed),
+        )
+        parent_row = conn.execute("SELECT * FROM parents WHERE email = ?", (p.email,)).fetchone()
+        parent_id = parent_row["id"]
+        conn.execute(
+            """INSERT INTO athletes
+               (parent_id, first_name, age, gender, weight_lbs, height_ft, height_in,
+                position, competition_level, sweat_profile, allergies, dietary_restrictions, supplement_use,
+                season_phase, food_preferences, date_of_birth, lifestyle_activity, diet_pref)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (parent_id, a.first_name, a.age, a.gender, a.weight_lbs, a.height_ft, a.height_in,
+             a.position, a.competition_level, a.sweat_profile, a.allergies, a.dietary_restrictions,
+             a.supplement_use, normalize_season_phase(a.season_phase), a.food_preferences,
+             a.date_of_birth, a.lifestyle_activity, a.diet_pref),
+        )
+        athlete_row = conn.execute("SELECT * FROM athletes WHERE rowid = last_insert_rowid()").fetchone()
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        if "UNIQUE" in str(e):
+            raise HTTPException(409, "A parent account with this email already exists.")
+        raise HTTPException(500, str(e))
+    conn.close()
+
+    parent = dict(parent_row)
+    athlete = dict(athlete_row)
+    background_tasks.add_task(generate_blueprint_bg, athlete["id"])
+    return {"parent": parent, "athlete": athlete}
