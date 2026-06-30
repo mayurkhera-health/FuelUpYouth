@@ -2,6 +2,38 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Branch & Deployment Rules (CRITICAL — read before any backend work)
+
+### Single source of truth
+- `main` is the ONLY branch for backend production deployments
+- All backend fixes, features, and hotfixes must be applied to `main`
+- Never deploy from `FuelUp-Admin`, a worktree, or any other branch
+
+### FuelUp-Admin
+- `FuelUp-Admin` is NOT a deployment branch
+- Do not apply fixes to `FuelUp-Admin` directly
+- If a fix exists on `FuelUp-Admin` that is needed in production, cherry-pick it onto `main` — do not switch deployment branches
+- Never run `flyctl deploy` from `FuelUp-Admin` or any worktree based on it
+
+### Deployment command
+Always deploy from `main`:
+```bash
+cd ~/FuelUpYouth
+git checkout main
+flyctl deploy --app fuelup-youth
+```
+
+### Before every deploy, confirm:
+1. You are on `main` (`git branch` shows `* main`)
+2. All intended fixes are committed to `main`
+3. `git status` is clean
+4. `tsc --noEmit` passes (for mobile changes)
+
+### Why this rule exists
+- v177 (Jun 30 2026) was deployed from `FuelUp-Admin` instead of `main`
+- This broke parent signup because `/parents/exists` and `/onboarding/complete` only existed on `main`
+- One deployment branch only — always `main`
+
 ## Commands
 
 ### Backend
