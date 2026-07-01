@@ -1,0 +1,70 @@
+"""
+Feature requests ("What's Coming" → Suggest a Feature).
+
+POST /api/feedback/feature-request — persist a user-submitted feature suggestion
+and email the team. The row is saved and a 200 is returned REGARDLESS of email
+outcome: email is best-effort so a delivery failure never loses the suggestion
+or fails the request (same pattern as routes/support.py).
+"""
+
+import logging
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+from api.database import get_conn
+from api.services.email_service import send_email
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+_RECIPIENTS = ["mayurkhera@gmail.com"]
+
+
+class FeatureRequest(BaseModel):
+    suggestion: str
+    reason: str | None = None
+    email: str | None = None
+    athlete_id: int | None = None
+    submitted_at: str | None = None
+
+
+@router.post("/feature-request")
+def submit_feature_request(payload: FeatureRequest):
+    suggestion = (payload.suggestion or "").strip()
+    if not suggestion:
+        raise HTTPException(400, "Suggestion is required.")
+
+    reason = (payload.reason or "").strip() or None
+
+    conn = get_conn()
+    try:
+        cur = conn.execute(
+            """INSERT INTO feature_requests
+                   (email, athlete_id, suggestion, reason, submitted_at)
+               VALUES (?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))""",
+            (payload.email, payload.athlete_id, suggestion, reason, payload.submitted_at),
+        )
+        conn.commit()
+        request_id = cur.lastrowid
+        submitted_at = conn.execute(
+            "SELECT submitted_at FROM feature_requests WHERE id = ?", (request_id,)
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+    # Best-effort notification — must never block or fail the 200.
+    subject = "FuelUp — New Feature Suggestion"
+    body = (
+        "A new feature suggestion was submitted via the FuelUp app.\n\n"
+        f"From:        {payload.email or 'not provided'}\n"
+        f"Athlete ID:  {payload.athlete_id if payload.athlete_id is not None else 'not provided'}\n"
+        f"Submitted:   {submitted_at}\n\n"
+        "--- What would you like to see? ---\n"
+        f"{suggestion}\n\n"
+        "--- Why would this help your athlete? ---\n"
+        f"{reason or 'Not provided.'}"
+    )
+    email_sent = send_email(subject, body, _RECIPIENTS)
+
+    return {"ok": True, "id": request_id, "email_sent": email_sent}

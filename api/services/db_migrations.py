@@ -31,6 +31,7 @@ def run_all():
         _create_problem_reports(conn)
         _create_coach_feedback(conn)
         _create_pantry_list_items(conn)
+        _create_feature_requests(conn)
         conn.commit()
     finally:
         conn.close()
@@ -337,6 +338,22 @@ def _create_problem_reports(conn):
             platform       TEXT,
             role_hint      TEXT,
             created_at     TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+
+def _create_feature_requests(conn):
+    # "What's Coming" → Suggest a Feature submissions. Each row also triggers a
+    # best-effort email to the team (see api/routes/feedback.py). reason is
+    # nullable — it's an optional field on the form.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS feature_requests (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            email        TEXT,
+            athlete_id   INTEGER,
+            suggestion   TEXT NOT NULL,
+            reason       TEXT,
+            submitted_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
