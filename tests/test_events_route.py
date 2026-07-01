@@ -90,6 +90,62 @@ def test_rest_event_derives_low_for_elite(client):
     assert r.json()["intensity"] == "low"
 
 
+def _insert_synced_event(aid, source, uid):
+    """Insert a synced event straight into the (shared in-memory) DB — the API has
+    no route that sets a non-manual source, which is the whole point of read-only."""
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, "
+        "duration_hours, uid, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (aid, "Synced Game", "game", "2026-07-15", "18:30", 1.5, uid, source),
+    )
+    conn.commit()
+    return conn.execute("SELECT id FROM events WHERE uid = ?", (uid,)).fetchone()["id"]
+
+
+def test_cannot_edit_synced_event(client):
+    aid = _make_athlete(client, "Recreational")
+    eid = _insert_synced_event(aid, "byga", "byga-123")
+    r = client.put(f"/api/events/{eid}", json={"event_name": "Hacked"})
+    assert r.status_code == 409, r.text
+    assert "Cannot edit" in r.json()["detail"]
+    # Unchanged in the DB.
+    assert client.get(f"/api/events/{eid}").json()["event_name"] == "Synced Game"
+
+
+def test_cannot_delete_synced_event(client):
+    aid = _make_athlete(client, "Recreational")
+    eid = _insert_synced_event(aid, "playmetrics", "pm-456")
+    r = client.delete(f"/api/events/{eid}")
+    assert r.status_code == 409, r.text
+    assert "Cannot delete" in r.json()["detail"]
+    assert client.get(f"/api/events/{eid}").status_code == 200  # still there
+
+
+def test_can_edit_manual_event(client):
+    aid = _make_athlete(client, "Recreational")
+    created = client.post("/api/events/", json={
+        "athlete_id": aid, "event_name": "Private Coaching", "event_type": "training",
+        "event_date": "2026-07-15", "start_time": "19:00",
+    })
+    assert created.status_code == 201, created.text
+    eid = created.json()["id"]
+    r = client.put(f"/api/events/{eid}", json={"event_name": "Private Coaching (moved)"})
+    assert r.status_code == 200, r.text
+    assert r.json()["event_name"] == "Private Coaching (moved)"
+
+
+def test_can_delete_manual_event(client):
+    aid = _make_athlete(client, "Recreational")
+    created = client.post("/api/events/", json={
+        "athlete_id": aid, "event_name": "One-time Training", "event_type": "training",
+        "event_date": "2026-07-14", "start_time": "17:00",
+    })
+    assert created.status_code == 201, created.text
+    eid = created.json()["id"]
+    assert client.delete(f"/api/events/{eid}").status_code == 200
+
+
 def test_targets_reflect_event_intensity(client):
     aid = _make_athlete(client, "Recreational")
     # Recreational would derive "low" for a game; send explicit "high" to prove threading

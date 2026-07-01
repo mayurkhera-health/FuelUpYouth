@@ -80,6 +80,13 @@ def update_event(event_id: int, data: EventUpdate):
             raise HTTPException(404, "Event not found.")
         existing = dict(row)
 
+        # Synced events are read-only — the club calendar is the source of truth, and
+        # the 6-hourly sync would overwrite any local edit anyway. Manual events (the
+        # default, source='manual' or legacy NULL) stay fully editable.
+        if (existing.get("source") or "manual") != "manual":
+            raise HTTPException(
+                409, f"Cannot edit {existing['source']} synced events. Edit them in your club's calendar app.")
+
         new_name     = data.event_name     if data.event_name     is not None else existing["event_name"]
         new_type     = data.event_type     if data.event_type     is not None else existing["event_type"]
         new_date     = data.event_date     if data.event_date     is not None else existing["event_date"]
@@ -178,6 +185,11 @@ def delete_event(event_id: int):
         if not row:
             raise HTTPException(404, "Event not found.")
         ev = dict(row)
+        # Synced events are read-only (see update_event) — deleting locally would just
+        # let the next sync re-insert the event. Manual events remain deletable.
+        if (ev.get("source") or "manual") != "manual":
+            raise HTTPException(
+                409, f"Cannot delete {ev['source']} synced events. Remove them in your club's calendar app.")
         conn.execute("DELETE FROM events WHERE id = ?", (event_id,))
         conn.commit()
         on_event_added_or_changed(ev["athlete_id"], ev["event_date"], conn)
