@@ -101,6 +101,12 @@ def build_pantry_items(
     return [dict(r) for r in rows]
 
 
+def _strip_paren(name: str) -> str:
+    """Normalize a food name for dislike matching — mirrors the mobile's exclude
+    normalization (item.name.split('(')[0].trim()) so 'Tuna (5 oz can)' matches 'Tuna'."""
+    return (name or "").split("(")[0].strip()
+
+
 def get_pantry_list(athlete_id: int, week_start: str, conn) -> list[dict]:
     rows = conn.execute(
         """SELECT id, food_id, name, cue_label, purchase_unit, role, meal_context, must_have, checked
@@ -109,7 +115,17 @@ def get_pantry_list(athlete_id: int, week_start: str, conn) -> list[dict]:
            ORDER BY must_have DESC, meal_context, name""",
         (athlete_id, week_start),
     ).fetchall()
-    return [dict(r) for r in rows]
+    # Defense in depth: never surface a disliked/allergen food, even if a stored row
+    # lingers. Matches the food_name filter used by generate/regenerate, but normalized
+    # on BOTH sides so parenthetical unit suffixes don't defeat the match.
+    disliked = {
+        _strip_paren(r["food_name"])
+        for r in conn.execute(
+            "SELECT food_name FROM athlete_food_prefs WHERE athlete_id = ? AND preference = 'disliked'",
+            (athlete_id,),
+        ).fetchall()
+    }
+    return [dict(r) for r in rows if _strip_paren(r["name"]) not in disliked]
 
 
 def group_pantry_items(items: list[dict]) -> list[dict]:

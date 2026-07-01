@@ -231,6 +231,12 @@ def exclude_food(data: PantryExclude):
                VALUES (?, ?, 'disliked', NULL)""",
             (data.athlete_id, data.food_name),
         )
+        # Also remove it from the current stored list(s) so it can't resurface on a
+        # swap or refetch. Allergy => all weeks; food_id is the exact key.
+        conn.execute(
+            "DELETE FROM pantry_list_items WHERE athlete_id = ? AND food_id = ?",
+            (data.athlete_id, data.food_id),
+        )
         conn.commit()
         return {"status": "excluded", "food_name": data.food_name}
     finally:
