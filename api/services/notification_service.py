@@ -171,27 +171,36 @@ def _athlete_copy(
     event_name: str | None,
     start_time_display: str | None,
 ) -> tuple[str, str]:
-    en = event_name or "your event"
-    st = start_time_display or ""
+    st = start_time_display
 
     if window_key.startswith("pre_event_meal"):
         if is_game:
-            return "Fuel Before", f"Your fuel window is open. Eat now — {en} starts at {st}."
-        return "Fuel Before", "Fuel up before your session — energy for a strong one."
+            body = (
+                f"Time to eat! Your game starts at {st}. Fuel up now so you're ready to play your best."
+                if st
+                else "Time to eat! Fuel up now so you're ready to play your best."
+            )
+            return "⚡ Game Day Fuel", body
+        body = (
+            f"Practice starts at {st}. Eat now — your body needs fuel before you train."
+            if st
+            else "Eat now — your body needs fuel before you train."
+        )
+        return "⚡ Fuel Up", body
 
     if window_key.startswith("quick_morning_snack"):
-        return "Early Start", "Light snack time before your early game. Keep it simple."
+        return "🌅 Early Game Today", "Early morning game — eat something light right now before you head out."
 
     if window_key.startswith("fuel_after_primary"):
-        return "Recharge Snack", "Eat in the next 30 min. Your muscles are ready to recover."
+        return "💪 Recovery Time", "Great work! Eat something in the next 30 min — your body is ready to recover."
 
     if window_key.startswith("refuel_ready"):
-        return "Recover & Refuel", "Recovery + fuel for your next session — both in one window."
+        return "🔄 Refuel Now", "Time to eat between sessions. Fuel up now so you're strong for what's next."
 
     if window_key.startswith("between_games"):
-        return "Quick Refuel", "Short break — grab fast carbs and fluid before the next game."
+        return "⚡ Quick Break", "Short break before your next game — eat something quick and drink fluids now."
 
-    return "Fuel Window Open", "Your next fuel window is open."
+    return "⏰ Time to Eat", "Your fuel window is open — eat something now to keep your energy up."
 
 
 def _parent_copy(
