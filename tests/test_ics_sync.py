@@ -1,0 +1,168 @@
+"""Tests for the calendar-sync reconcile (api/services/ics_sync.py).
+
+Focus on the two correctness guarantees that make full add/update/delete safe:
+  * past synced events are NEVER deleted (history preserved),
+  * a failed/empty feed never wipes anything,
+and that every mutation triggers a fuel-window recompute.
+"""
+
+import sqlite3
+from datetime import datetime, timezone, timedelta
+
+import pytest
+
+from api.services import ics_sync
+from api.services.db_migrations import _add_calendar_sync_to_athletes, _add_source_to_events
+
+
+# ─── helpers ──────────────────────────────────────────────────────────────────
+def _fresh_conn():
+    """A PRIVATE in-memory DB per test. Deliberately NOT get_conn() — that uses a
+    process-wide shared-cache :memory: DB, and these tests drop/recreate tables,
+    which would clobber other test modules' schema when the suite runs together.
+    sync_platform() operates on the conn we pass, so a private connection is fully
+    isolated."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript("""
+        CREATE TABLE athletes (id INTEGER PRIMARY KEY, competition_level TEXT);
+        CREATE TABLE events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id INTEGER, event_name TEXT, event_type TEXT, event_date TEXT,
+            start_time TEXT, duration_hours REAL, city TEXT, venue_name TEXT,
+            intensity TEXT, uid TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    _add_source_to_events(conn)          # adds source + synced_at (as in prod)
+    _add_calendar_sync_to_athletes(conn)
+    conn.execute("INSERT INTO athletes (id, competition_level) VALUES (1, 'competitive')")
+    conn.commit()
+    return conn
+
+
+def _vevent(uid, dt_utc, summary, hours=1.5, status="CONFIRMED"):
+    start = dt_utc.strftime("%Y%m%dT%H%M%SZ")
+    end = (dt_utc + timedelta(hours=hours)).strftime("%Y%m%dT%H%M%SZ")
+    return (f"BEGIN:VEVENT\nUID:{uid}\nDTSTART:{start}\nDTEND:{end}\n"
+            f"SUMMARY:{summary}\nSTATUS:{status}\nLOCATION:Field, San Jose\nEND:VEVENT\n")
+
+
+def _cal(*vevents):
+    return "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//test//EN\n" + "".join(vevents) + "END:VCALENDAR\n"
+
+
+@pytest.fixture(autouse=True)
+def _spy_windows(monkeypatch):
+    """Isolate reconcile from the heavy window engine; record recompute calls."""
+    calls = []
+    monkeypatch.setattr(ics_sync, "on_event_added_or_changed",
+                        lambda aid, d, conn: calls.append((aid, d)))
+    return calls
+
+
+def _feed(monkeypatch, ics_text):
+    monkeypatch.setattr(ics_sync, "fetch_ics_text", lambda url: ics_text)
+
+
+NOW = datetime.now(timezone.utc)
+FUT1 = NOW + timedelta(days=7)
+FUT2 = NOW + timedelta(days=8)
+PAST = NOW - timedelta(days=30)
+
+
+# ─── tests ────────────────────────────────────────────────────────────────────
+def test_insert_new_events_and_recompute(monkeypatch, _spy_windows):
+    conn = _fresh_conn()
+    _feed(monkeypatch, _cal(
+        _vevent("g1", FUT1, "U10 vs Rivals - Game"),
+        _vevent("p1", FUT2, "Team Practice"),
+        _vevent("old", PAST, "Past Game"),               # skipped: past
+        _vevent("x", FUT1, "Game", status="CANCELLED"),  # skipped: cancelled
+    ))
+    counts = ics_sync.sync_platform(conn, 1, "byga", "http://x", "competitive")
+
+    assert counts["inserted"] == 2 and counts["updated"] == 0 and counts["deleted"] == 0
+    rows = conn.execute("SELECT uid, event_type, source FROM events ORDER BY uid").fetchall()
+    assert [(r["uid"], r["event_type"], r["source"]) for r in rows] == [
+        ("g1", "game", "byga"), ("p1", "practice", "byga")]
+    # one recompute per affected day
+    assert set(_spy_windows) == {(1, FUT1.strftime("%Y-%m-%d")), (1, FUT2.strftime("%Y-%m-%d"))}
+
+
+def test_update_changed_event_only(monkeypatch, _spy_windows):
+    conn = _fresh_conn()
+    _feed(monkeypatch, _cal(_vevent("g1", FUT1, "Game")))
+    ics_sync.sync_platform(conn, 1, "byga", "http://x", "competitive")
+    _spy_windows.clear()
+
+    # Same feed again → no-op (no needless update / recompute).
+    ics_sync.sync_platform(conn, 1, "byga", "http://x", "competitive")
+    assert _spy_windows == []
+
+    # Now the game moves 2h later → exactly one update + recompute.
+    _feed(monkeypatch, _cal(_vevent("g1", FUT1 + timedelta(hours=2), "Game")))
+    counts = ics_sync.sync_platform(conn, 1, "byga", "http://x", "competitive")
+    assert counts["updated"] == 1 and counts["inserted"] == 0
+    assert len(_spy_windows) == 1
+
+
+def test_future_removal_deletes_but_past_preserved(monkeypatch, _spy_windows):
+    conn = _fresh_conn()
+    # Seed one future + one PAST synced event directly.
+    conn.execute("INSERT INTO events (athlete_id, event_name, event_type, event_date, "
+                 "start_time, duration_hours, uid, source) VALUES "
+                 "(1,'Future','game',?, '10:00',1.5,'fut','byga')", (FUT1.strftime("%Y-%m-%d"),))
+    conn.execute("INSERT INTO events (athlete_id, event_name, event_type, event_date, "
+                 "start_time, duration_hours, uid, source) VALUES "
+                 "(1,'History','game',?, '10:00',1.5,'hist','byga')", (PAST.strftime("%Y-%m-%d"),))
+    # Also a manual event with the SAME future date — must never be touched.
+    conn.execute("INSERT INTO events (athlete_id, event_name, event_type, event_date, "
+                 "start_time, duration_hours, uid, source) VALUES "
+                 "(1,'Manual','practice',?, '08:00',1.0,NULL,'manual')", (FUT1.strftime("%Y-%m-%d"),))
+    conn.commit()
+
+    # Feed no longer contains 'fut' (game cancelled/removed) and never had 'hist'.
+    _feed(monkeypatch, _cal(_vevent("g2", FUT2, "New Game")))
+    counts = ics_sync.sync_platform(conn, 1, "byga", "http://x", "competitive")
+
+    assert counts["inserted"] == 1 and counts["deleted"] == 1
+    remaining = {r["uid"] or r["source"] for r in
+                 conn.execute("SELECT uid, source FROM events").fetchall()}
+    assert "fut" not in remaining          # future removal deleted
+    assert "hist" in remaining             # PAST preserved (history)
+    assert "manual" in remaining           # manual never touched
+    assert "g2" in remaining               # new one inserted
+
+
+def test_failed_feed_never_deletes(monkeypatch, _spy_windows):
+    conn = _fresh_conn()
+    conn.execute("INSERT INTO events (athlete_id, event_name, event_type, event_date, "
+                 "start_time, duration_hours, uid, source) VALUES "
+                 "(1,'Future','game',?, '10:00',1.5,'fut','byga')", (FUT1.strftime("%Y-%m-%d"),))
+    conn.commit()
+
+    def _boom(url):
+        raise ConnectionError("network down")
+    monkeypatch.setattr(ics_sync, "fetch_ics_text", _boom)
+
+    counts = ics_sync.sync_platform(conn, 1, "byga", "http://x", "competitive")
+    assert counts["error"] is not None
+    assert counts["deleted"] == 0
+    # The event survives a transient failure.
+    assert conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 1
+    assert _spy_windows == []
+
+
+def test_migrations_idempotent():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE athletes (id INTEGER PRIMARY KEY)")
+    conn.execute("CREATE TABLE events (id INTEGER PRIMARY KEY, athlete_id INTEGER, event_type TEXT)")
+    for _ in range(2):  # run twice — must be a no-op the second time
+        _add_calendar_sync_to_athletes(conn)
+        _add_source_to_events(conn)
+    acols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
+    ecols = [r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
+    assert "byga_ics_url" in acols and "playmetrics_ics_url" in acols
+    assert "source" in ecols and "synced_at" in ecols
+    conn.execute("INSERT INTO events (event_type) VALUES ('practice')")
+    assert conn.execute("SELECT source FROM events").fetchone()[0] == "manual"  # default

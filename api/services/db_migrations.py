@@ -32,6 +32,8 @@ def run_all():
         _create_coach_feedback(conn)
         _create_pantry_list_items(conn)
         _create_feature_requests(conn)
+        _add_calendar_sync_to_athletes(conn)
+        _add_source_to_events(conn)
         conn.commit()
     finally:
         conn.close()
@@ -340,6 +342,38 @@ def _create_problem_reports(conn):
             created_at     TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+
+def _add_calendar_sync_to_athletes(conn):
+    """Recurring calendar sync: store the BYGA / PlayMetrics .ics subscription URL
+    per athlete. Both nullable — an athlete may connect zero, one, or both feeds.
+    SQLite has no `ADD COLUMN IF NOT EXISTS` and only allows ONE column per ALTER,
+    so guard each add with a PRAGMA check (same pattern as _add_uid_to_events).
+    Idempotent — safe every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
+    if "byga_ics_url" not in cols:
+        conn.execute("ALTER TABLE athletes ADD COLUMN byga_ics_url TEXT")
+    if "playmetrics_ics_url" not in cols:
+        conn.execute("ALTER TABLE athletes ADD COLUMN playmetrics_ics_url TEXT")
+
+
+def _add_source_to_events(conn):
+    """Tag each event with its origin so the calendar-sync reconcile can tell
+    synced events apart from manually-added ones. `source` defaults to 'manual'
+    (existing rows + parent-created events); the sync job writes 'byga' /
+    'playmetrics'. `synced_at` records the last time the sync touched the row
+    (TEXT ISO, NULL for manual events) — useful for debugging + sync-status UI.
+    The delete phase only ever removes rows whose source matches the feed, so a
+    manual event is never wiped. Idempotent — safe every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(events)").fetchall()]
+    if "source" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN source TEXT DEFAULT 'manual'")
+    if "synced_at" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN synced_at TEXT")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_events_athlete_source "
+        "ON events(athlete_id, source)"
+    )
 
 
 def _create_feature_requests(conn):

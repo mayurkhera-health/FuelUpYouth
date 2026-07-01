@@ -30,18 +30,21 @@ async def lifespan(app: FastAPI):
         from api.services.notification_service import run_notification_tick
         _scheduler.add_job(run_notification_tick, "interval", minutes=15,
                            id="notifications", replace_existing=True)
+        from api.services.ics_sync import run_calendar_sync_tick
+        _scheduler.add_job(run_calendar_sync_tick, "interval", hours=6,
+                           id="calendar_sync", replace_existing=True)
         if not _scheduler.running:
             _scheduler.start()
-        logger.info("Notification scheduler started (15-min interval).")
+        logger.info("Schedulers started (notifications 15-min, calendar sync 6-hr).")
     except Exception:
-        logger.exception("Notification scheduler failed to start")
+        logger.exception("Scheduler failed to start")
 
     yield
 
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback
+from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar
 from api.services import db_migrations
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -85,6 +88,7 @@ app.include_router(shopping.router,      prefix="/api/shopping",      tags=["21.
 app.include_router(support.router,       prefix="/api/support",       tags=["22. Support"])
 app.include_router(pantry.router,        prefix="/api/pantry",        tags=["23. Pantry Planner"])
 app.include_router(feedback.router,      prefix="/api/feedback",      tags=["24. Feature Requests"])
+app.include_router(calendar.router,      prefix="/api/athletes",      tags=["25. Calendar Sync"])
 
 
 _scheduler = BackgroundScheduler()
