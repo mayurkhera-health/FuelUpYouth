@@ -37,7 +37,7 @@ def complete_onboarding(data: OnboardingComplete, background_tasks: BackgroundTa
             (parent_id, a.first_name, a.age, a.gender, a.weight_lbs, a.height_ft, a.height_in,
              a.position, a.competition_level, a.sweat_profile, a.allergies, a.dietary_restrictions,
              a.supplement_use, normalize_season_phase(a.season_phase), a.food_preferences,
-             a.date_of_birth, a.lifestyle_activity, a.diet_pref),
+             a.date_of_birth, a.lifestyle_activity or "light", a.diet_pref or "omnivore"),
         )
         athlete_row = conn.execute("SELECT * FROM athletes WHERE rowid = last_insert_rowid()").fetchone()
         conn.commit()

@@ -113,6 +113,16 @@ class AthleteResponse(BaseModel):
     schedule_reminder_dismissed: bool = False
     created_at: str
 
+    @field_validator("lifestyle_activity", "diet_pref", "schedule_reminder_dismissed", mode="before")
+    @classmethod
+    def _coerce_null_to_default(cls, v, info):
+        # DB rows created via onboarding can have these columns NULL; a NULL defeats
+        # the field default (defaults apply only to MISSING keys) → ResponseValidationError.
+        if v is None:
+            return {"lifestyle_activity": "light", "diet_pref": "omnivore",
+                    "schedule_reminder_dismissed": False}[info.field_name]
+        return v
+
 
 class EventCreate(BaseModel):
     athlete_id: int
