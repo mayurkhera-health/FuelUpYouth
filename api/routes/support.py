@@ -10,6 +10,7 @@ failure never loses the report or fails the request.
 import uuid
 import logging
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
@@ -67,9 +68,12 @@ async def submit_report(
         )
         conn.commit()
         report_id = cur.lastrowid
-        created_at = conn.execute(
+        created_at_utc = conn.execute(
             "SELECT created_at FROM problem_reports WHERE id = ?", (report_id,)
         ).fetchone()[0]
+        # Convert UTC → PST (UTC-8) / PDT (UTC-7); display as PST for simplicity
+        PST = timezone(timedelta(hours=-8))
+        created_at = datetime.fromisoformat(created_at_utc).replace(tzinfo=timezone.utc).astimezone(PST).strftime("%Y-%m-%d %I:%M %p PST")
     finally:
         conn.close()
 
