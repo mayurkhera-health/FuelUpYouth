@@ -203,17 +203,36 @@ def call_coach_api(context: dict, messages: list[dict], persona: str) -> str:
     if blocked:
         return blocked
 
-    from api.services.bedrock_client import converse_multi_turn
+    from api.services.bedrock_client import converse_multi_turn, _anthropic_converse, is_configured
+    import logging
+    logger = logging.getLogger(__name__)
     system = build_system_prompt(context, persona)
-    try:
-        response = converse_multi_turn(
-            messages=messages,
-            system=system,
-            max_tokens=600,
-            temperature=0.7,
+
+    # Build a single-string user turn for the Anthropic fallback
+    def _anthropic_fallback() -> str:
+        history = "\n".join(
+            f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
+            for m in messages
         )
+        return _anthropic_converse(user=history, system=system, max_tokens=600, temperature=0.7)
+
+    try:
+        if is_configured():
+            response = converse_multi_turn(
+                messages=messages,
+                system=system,
+                max_tokens=600,
+                temperature=0.7,
+            )
+        else:
+            response = _anthropic_fallback()
     except Exception:
-        return "Sorry, I'm having trouble right now. Try asking again in a moment."
+        logger.exception("Bedrock coach call failed; falling back to Anthropic")
+        try:
+            response = _anthropic_fallback()
+        except Exception:
+            logger.exception("Anthropic fallback also failed")
+            return "Sorry, I'm having trouble right now. Try asking again in a moment."
 
     # Layer 2 — output filter (model response discarded if this fires)
     blocked = check_output_safe(response)
