@@ -51,6 +51,7 @@ async def submit_report(
     role_hint: str | None = Form(None),
     reporter_name: str | None = Form(None),
     reporter_email: str | None = Form(None),
+    parent_id: int | None = Form(None),
     screenshot: UploadFile | None = File(None),
 ):
     desc = description.strip()
@@ -59,6 +60,7 @@ async def submit_report(
 
     screenshot_url = await _store_screenshot(screenshot) if screenshot is not None else None
 
+    account_email = None  # resolved from parent_id inside the DB block below
     conn = get_conn()
     try:
         cur = conn.execute(
@@ -75,6 +77,16 @@ async def submit_report(
         # Convert UTC → PST (UTC-8) / PDT (UTC-7); display as PST for simplicity
         PST = timezone(timedelta(hours=-8))
         created_at = datetime.fromisoformat(created_at_utc).replace(tzinfo=timezone.utc).astimezone(PST).strftime("%Y-%m-%d %I:%M %p PST")
+        # Resolve the account holder's email from parent_id when supplied, so the
+        # confirmation reaches the logged-in user even if the form email is blank.
+        if parent_id is not None:
+            try:
+                prow = conn.execute(
+                    "SELECT email FROM parents WHERE id = ?", (parent_id,)
+                ).fetchone()
+                account_email = prow["email"] if prow else None
+            except Exception:
+                logger.exception("parent email lookup failed (non-blocking)")
     finally:
         conn.close()
 
@@ -94,15 +106,17 @@ async def submit_report(
     )
     email_sent = send_email(subject, body, _REPORT_RECIPIENTS, attachment_path=screenshot_url)
 
-    # Best-effort confirmation to the reporter (only if they gave an email).
-    if reporter_email:
+    # Best-effort confirmation to the reporter. Prefer the logged-in account's
+    # email (resolved from parent_id); fall back to any email typed on the form.
+    confirm_to = account_email or reporter_email
+    if confirm_to:
         try:
             text, html = email_templates.problem_report_email(
                 athlete_name="your athlete", problem_summary=desc, report_id=report_id,
             )
             send_email(
                 "We received your bug report - we're on it!",
-                text, [reporter_email], html=html, bcc=["mayurkhera@gmail.com"],
+                text, [confirm_to], html=html, bcc=["mayurkhera@gmail.com"],
             )
         except Exception:
             logger.exception("problem-report confirmation email failed (non-blocking)")

@@ -39,6 +39,7 @@ def submit_feature_request(payload: FeatureRequest):
 
     reason = (payload.reason or "").strip() or None
 
+    account_email = None  # resolved from athlete_id inside the DB block below
     conn = get_conn()
     try:
         cur = conn.execute(
@@ -52,6 +53,17 @@ def submit_feature_request(payload: FeatureRequest):
         submitted_at = conn.execute(
             "SELECT submitted_at FROM feature_requests WHERE id = ?", (request_id,)
         ).fetchone()[0]
+        # Resolve the account holder's email from athlete_id when supplied, so the
+        # confirmation reaches the logged-in user even if the payload email is blank.
+        if payload.athlete_id is not None:
+            try:
+                prow = conn.execute(
+                    "SELECT p.email FROM athletes a JOIN parents p ON a.parent_id = p.id WHERE a.id = ?",
+                    (payload.athlete_id,),
+                ).fetchone()
+                account_email = prow["email"] if prow else None
+            except Exception:
+                logger.exception("parent email lookup failed (non-blocking)")
     finally:
         conn.close()
 
@@ -69,8 +81,10 @@ def submit_feature_request(payload: FeatureRequest):
     )
     email_sent = send_email(subject, body, _RECIPIENTS)
 
-    # Best-effort confirmation to the submitter (only if they gave an email).
-    if payload.email:
+    # Best-effort confirmation to the submitter. Prefer the logged-in account's
+    # email (resolved from athlete_id); fall back to any email in the payload.
+    confirm_to = account_email or payload.email
+    if confirm_to:
         try:
             try:
                 submitted_date = datetime.fromisoformat(
@@ -84,7 +98,7 @@ def submit_feature_request(payload: FeatureRequest):
             )
             send_email(
                 "Your feature idea is in our backlog! 💡",
-                text, [payload.email], html=html, bcc=["mayurkhera@gmail.com"],
+                text, [confirm_to], html=html, bcc=["mayurkhera@gmail.com"],
             )
         except Exception:
             logger.exception("feature-idea confirmation email failed (non-blocking)")

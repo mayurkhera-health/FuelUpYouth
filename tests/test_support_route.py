@@ -22,8 +22,9 @@ def client(monkeypatch):
     sent = []
     monkeypatch.setattr(
         support, "send_email",
-        lambda subject, body, to, attachment_path=None: sent.append(
-            {"subject": subject, "body": body, "to": to, "attachment_path": attachment_path}
+        lambda subject, body, to, attachment_path=None, html=None, bcc=None: sent.append(
+            {"subject": subject, "body": body, "to": to,
+             "attachment_path": attachment_path, "html": html, "bcc": bcc}
         ) or True,
     )
     with TestClient(app) as c:
@@ -92,6 +93,43 @@ def test_no_attachment_when_no_screenshot(client):
     r = client.post("/api/support/report", data={"description": "no screenshot here"})
     assert r.status_code == 201, r.text
     assert client.sent[0]["attachment_path"] is None
+
+
+def test_confirmation_uses_account_email_from_parent_id(client):
+    # A logged-in report: the client sends parent_id but no typed reporter_email.
+    # The confirmation must go to the account holder's email, resolved server-side.
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO parents (full_name, email, consent_timestamp, consent_confirmed) VALUES (?, ?, ?, ?)",
+        ("Account Holder", "holder@example.com", "2026-07-02T00:00:00", 1),
+    )
+    conn.commit()
+    pid = conn.execute(
+        "SELECT id FROM parents WHERE email = ?", ("holder@example.com",)
+    ).fetchone()["id"]
+
+    r = client.post("/api/support/report", data={
+        "description": "crash on save",
+        "parent_id": str(pid),
+        # deliberately NO reporter_email
+    })
+    assert r.status_code == 201, r.text
+    # two sends: team notification + confirmation to the account holder
+    assert len(client.sent) == 2
+    confirm = client.sent[1]
+    assert confirm["to"] == ["holder@example.com"]
+    assert confirm["bcc"] == ["mayurkhera@gmail.com"]
+    assert confirm["html"] is not None  # HTML confirmation
+
+
+def test_unknown_parent_id_falls_back_to_no_confirmation(client):
+    # parent_id that doesn't resolve and no reporter_email -> only the team email.
+    r = client.post("/api/support/report", data={
+        "description": "orphan report",
+        "parent_id": "999999",
+    })
+    assert r.status_code == 201, r.text
+    assert len(client.sent) == 1  # team notification only, no confirmation
 
 
 def test_blank_description_rejected(client):
