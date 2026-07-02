@@ -162,6 +162,28 @@ def converse_text(
     return _extract_text(_client().converse(**kwargs))
 
 
+def _anthropic_converse_multi_turn(
+    *,
+    messages: list[dict],
+    system: str | None = None,
+    max_tokens: int = 1024,
+    temperature: float = 0.7,
+) -> str:
+    """Fallback: Anthropic Claude for multi-turn conversations when AWS Bedrock is absent."""
+    import anthropic
+    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    kwargs: dict = {
+        "model": os.getenv("ANTHROPIC_COACH_MODEL", "claude-haiku-4-5-20251001"),
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "messages": [{"role": m["role"], "content": m["content"]} for m in messages],
+    }
+    if system:
+        kwargs["system"] = system
+    msg = client.messages.create(**kwargs)
+    return msg.content[0].text
+
+
 def converse_multi_turn(
     *,
     messages: list[dict],
@@ -171,6 +193,10 @@ def converse_multi_turn(
     model: str | None = None,
 ) -> str:
     """Send a multi-turn conversation. Each message: {"role": "user"|"assistant", "content": "..."}."""
+    if not is_configured():
+        return _anthropic_converse_multi_turn(
+            messages=messages, system=system, max_tokens=max_tokens, temperature=temperature
+        )
     bedrock_messages = [
         {"role": m["role"], "content": [{"text": m["content"]}]}
         for m in messages
@@ -182,7 +208,12 @@ def converse_multi_turn(
     }
     if system:
         kwargs["system"] = [{"text": system}]
-    return _extract_text(_client().converse(**kwargs))
+    try:
+        return _extract_text(_client().converse(**kwargs))
+    except Exception:
+        return _anthropic_converse_multi_turn(
+            messages=messages, system=system, max_tokens=max_tokens, temperature=temperature
+        )
 
 
 def converse_vision(

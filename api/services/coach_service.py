@@ -203,12 +203,7 @@ def call_coach_api(context: dict, messages: list[dict], persona: str) -> str:
     if blocked:
         return blocked
 
-    from api.services.bedrock_client import converse_multi_turn, is_configured
-    if not is_configured():
-        return (
-            "The Nutrition Coach isn't available right now — "
-            "please check back shortly or ask your team's dietitian."
-        )
+    from api.services.bedrock_client import converse_multi_turn
     system = build_system_prompt(context, persona)
     try:
         response = converse_multi_turn(
