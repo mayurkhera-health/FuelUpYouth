@@ -47,6 +47,8 @@ async def submit_report(
     app_version: str | None = Form(None),
     platform: str | None = Form(None),
     role_hint: str | None = Form(None),
+    reporter_name: str | None = Form(None),
+    reporter_email: str | None = Form(None),
     screenshot: UploadFile | None = File(None),
 ):
     desc = description.strip()
@@ -75,7 +77,8 @@ async def submit_report(
     subject = f"FuelUp — Problem Report from {role_hint or 'unknown'} (v{app_version or 'unknown'})"
     body = (
         "A new problem report was submitted via the FuelUp app.\n\n"
-        f"Role:        {role_hint or 'not provided'}\n"
+        f"Name:        {reporter_name or 'not provided'}\n"
+        f"Email:       {reporter_email or 'not provided'}\n"
         f"App version: {app_version or 'not provided'}\n"
         f"Platform:    {platform or 'not provided'}\n"
         f"Submitted:   {created_at} UTC\n\n"
