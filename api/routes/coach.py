@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from api.database import get_conn
-from api.services.coach_service import assemble_context, call_coach_api
+from api.services.coach_service import assemble_context, call_coach_api, call_general_coach_api
 
 router = APIRouter()
 
@@ -72,6 +72,28 @@ def post_chat(body: ChatRequest):
 
     raw_messages = [{"role": m.role, "content": m.content} for m in body.messages]
     response_text = call_coach_api(ctx, raw_messages, body.persona)
+    return {"response": response_text}
+
+
+class GeneralChatRequest(BaseModel):
+    athlete_id: int
+    persona: str = "parent"
+    messages: list[_Msg]
+
+
+@router.post("/general-chat")
+def post_general_chat(body: GeneralChatRequest):
+    conn = get_conn()
+    try:
+        athlete = conn.execute("SELECT * FROM athletes WHERE id = ?", (body.athlete_id,)).fetchone()
+        if not athlete:
+            raise HTTPException(404, "Athlete not found")
+        athlete_dict = dict(athlete)
+    finally:
+        conn.close()
+
+    raw_messages = [{"role": m.role, "content": m.content} for m in body.messages]
+    response_text = call_general_coach_api(athlete_dict, raw_messages, body.persona)
     return {"response": response_text}
 
 

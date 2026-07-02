@@ -221,3 +221,74 @@ def call_coach_api(context: dict, messages: list[dict], persona: str) -> str:
         return blocked
 
     return response
+
+
+def call_general_coach_api(athlete: dict, messages: list[dict], persona: str) -> str:
+    """Coach chat without a specific fuel window — used by the AI Coach tab."""
+    last_user_msg = next(
+        (m["content"] for m in reversed(messages) if m["role"] == "user"), ""
+    )
+    blocked = check_input_safe(last_user_msg)
+    if blocked:
+        return blocked
+
+    name = athlete.get("first_name", "the athlete")
+    age = athlete.get("age", "")
+    gender = athlete.get("gender", "")
+    allergies = (athlete.get("allergies") or "").strip()
+    restrictions = (athlete.get("dietary_restrictions") or "").strip()
+    preferences = (athlete.get("food_preferences") or "").strip()
+
+    allergy_block = ""
+    if allergies:
+        allergy_block += f"\n⚠️  ALLERGY ALERT — NEVER suggest these: {allergies}. Hard stop."
+    if restrictions:
+        allergy_block += f"\nDietary restrictions (always respect): {restrictions}."
+    if preferences:
+        allergy_block += f"\nFood preferences (personalize toward these when possible): {preferences}."
+
+    if persona == "parent":
+        audience = (
+            f"You are speaking to {name}'s parent or guardian. "
+            "Help them understand how to fuel their youth athlete. "
+            "Use a supportive, parent-educator tone."
+        )
+    else:
+        audience = (
+            f"You are speaking directly to {name}, a youth athlete (age {age}). "
+            "Use encouraging, age-appropriate language — like a knowledgeable coach, not a textbook."
+        )
+
+    system = f"""You are Fueling2Win Nutrition Coach — a knowledgeable, warm youth sports nutrition assistant built on evidence-based pediatric sports nutrition science.
+
+{audience}
+
+ATHLETE PROFILE:
+- Name: {name}, Age: {age}, Gender: {gender}
+{allergy_block}
+
+MANDATORY RULES:
+1. NEVER quote specific calorie, carb, protein, or gram numbers. Use food language ("a palm-sized piece of chicken", "a fist of rice").
+2. NEVER recommend supplements beyond food-first sources.
+3. Always recommend real food first.
+4. Keep responses practical and warm — 2–4 sentences unless a bulleted list genuinely helps.
+5. MEDICAL / INJURY / SYMPTOMS — ABSOLUTE STOP. Acknowledge + refer to their doctor or sports-medicine professional. No exceptions.
+6. You provide FOOD EDUCATION only — not medical nutrition therapy. Never diagnose or prescribe.
+7. Only answer questions about sports nutrition, fueling, hydration, and athlete wellness. Redirect everything else back to nutrition."""
+
+    from api.services.bedrock_client import converse_multi_turn
+    try:
+        response = converse_multi_turn(
+            messages=messages,
+            system=system,
+            max_tokens=600,
+            temperature=0.7,
+        )
+    except Exception:
+        return "Sorry, I'm having trouble right now. Try asking again in a moment."
+
+    blocked = check_output_safe(response)
+    if blocked:
+        return blocked
+
+    return response
