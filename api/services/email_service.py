@@ -12,11 +12,13 @@ import ssl
 import smtplib
 import logging
 from email.message import EmailMessage
+from email.utils import formataddr
 
 logger = logging.getLogger(__name__)
 
 _SMTP_HOST = "smtp.gmail.com"
 _SMTP_PORT = 465  # implicit TLS (SMTP_SSL)
+_FROM_NAME = "Purvi Shah"  # display name shown on outbound mail; address is GMAIL_USER
 
 
 def send_email(subject: str, body: str, to: list[str], attachment_path: str | None = None) -> bool:
@@ -39,7 +41,7 @@ def send_email(subject: str, body: str, to: list[str], attachment_path: str | No
     try:
         msg = EmailMessage()
         msg["Subject"] = subject
-        msg["From"] = user
+        msg["From"] = formataddr((_FROM_NAME, user))
         msg["To"] = ", ".join(to)
         msg.set_content(body)
 

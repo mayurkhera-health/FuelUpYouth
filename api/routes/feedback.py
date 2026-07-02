@@ -18,7 +18,7 @@ from api.services.email_service import send_email
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_RECIPIENTS = ["mayurkhera@gmail.com"]
+_RECIPIENTS = ["purvihshah@gmail.com", "mayurkhera@gmail.com"]
 
 
 class FeatureRequest(BaseModel):
