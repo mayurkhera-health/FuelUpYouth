@@ -8,12 +8,14 @@ or fails the request (same pattern as routes/support.py).
 """
 
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from api.database import get_conn
 from api.services.email_service import send_email
+from api.services import email_templates
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -66,5 +68,25 @@ def submit_feature_request(payload: FeatureRequest):
         f"{reason or 'Not provided.'}"
     )
     email_sent = send_email(subject, body, _RECIPIENTS)
+
+    # Best-effort confirmation to the submitter (only if they gave an email).
+    if payload.email:
+        try:
+            try:
+                submitted_date = datetime.fromisoformat(
+                    str(submitted_at).replace("Z", "+00:00")
+                ).strftime("%B %d, %Y")
+            except Exception:
+                submitted_date = str(submitted_at)
+            text, html = email_templates.feature_idea_email(
+                parent_name="there", feature_idea_summary=suggestion,
+                idea_id=request_id, submitted_date=submitted_date,
+            )
+            send_email(
+                "Your feature idea is in our backlog! 💡",
+                text, [payload.email], html=html, bcc=["mayurkhera@gmail.com"],
+            )
+        except Exception:
+            logger.exception("feature-idea confirmation email failed (non-blocking)")
 
     return {"ok": True, "id": request_id, "email_sent": email_sent}

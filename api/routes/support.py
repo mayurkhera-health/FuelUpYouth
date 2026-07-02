@@ -16,6 +16,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
 from api.database import get_conn
 from api.services.email_service import send_email
+from api.services import email_templates
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -92,5 +93,18 @@ async def submit_report(
         f"{'Attached — see image below.' if screenshot_url else 'No screenshot provided.'}"
     )
     email_sent = send_email(subject, body, _REPORT_RECIPIENTS, attachment_path=screenshot_url)
+
+    # Best-effort confirmation to the reporter (only if they gave an email).
+    if reporter_email:
+        try:
+            text, html = email_templates.problem_report_email(
+                athlete_name="your athlete", problem_summary=desc, report_id=report_id,
+            )
+            send_email(
+                "We received your bug report - we're on it!",
+                text, [reporter_email], html=html, bcc=["mayurkhera@gmail.com"],
+            )
+        except Exception:
+            logger.exception("problem-report confirmation email failed (non-blocking)")
 
     return {"ok": True, "id": report_id, "email_sent": email_sent}

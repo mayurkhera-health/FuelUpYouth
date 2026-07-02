@@ -1,11 +1,15 @@
+import logging
 from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from api.models import OnboardingComplete
 from api.database import get_conn
 from api.services.fueling_targets import normalize_season_phase
+from api.services.email_service import send_email
+from api.services import email_templates
 from api.routes.athletes import generate_blueprint_bg
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -52,4 +56,18 @@ def complete_onboarding(data: OnboardingComplete, background_tasks: BackgroundTa
     parent = dict(parent_row)
     athlete = dict(athlete_row)
     background_tasks.add_task(generate_blueprint_bg, athlete["id"])
+
+    # Best-effort welcome email — must never block or fail the 201.
+    try:
+        name_parts = (parent.get("full_name") or "").split()
+        parent_first = name_parts[0] if name_parts else "there"
+        athlete_name = athlete.get("first_name") or "your athlete"
+        text, html = email_templates.welcome_email(parent_first, athlete_name)
+        send_email(
+            f"Welcome to FuelUp! Let's fuel {athlete_name} 🏃",
+            text, [parent["email"]], html=html, bcc=["mayurkhera@gmail.com"],
+        )
+    except Exception:
+        logger.exception("welcome email failed (non-blocking)")
+
     return {"parent": parent, "athlete": athlete}

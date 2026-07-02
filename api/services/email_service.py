@@ -21,9 +21,22 @@ _SMTP_PORT = 465  # implicit TLS (SMTP_SSL)
 _FROM_NAME = "Purvi Shah"  # display name shown on outbound mail; address is GMAIL_USER
 
 
-def send_email(subject: str, body: str, to: list[str], attachment_path: str | None = None) -> bool:
+def send_email(
+    subject: str,
+    body: str,
+    to: list[str],
+    attachment_path: str | None = None,
+    html: str | None = None,
+    bcc: list[str] | None = None,
+) -> bool:
     """
-    Send a plaintext email to `to`, optionally with an image attached.
+    Send an email to `to`. `body` is the plaintext part; when `html` is provided
+    it is added as an HTML alternative (multipart/alternative — clients that can
+    render HTML show it, others fall back to `body`).
+
+    `bcc` — blind-copy recipients. They receive the message but are not shown in
+    the visible headers (smtplib.send_message delivers to Bcc, then strips the
+    header before transmission).
 
     `attachment_path` — when provided and readable, the file is attached as an
     image (the body stays plain text). A missing/unreadable attachment is logged
@@ -43,7 +56,11 @@ def send_email(subject: str, body: str, to: list[str], attachment_path: str | No
         msg["Subject"] = subject
         msg["From"] = formataddr((_FROM_NAME, user))
         msg["To"] = ", ".join(to)
+        if bcc:
+            msg["Bcc"] = ", ".join(bcc)
         msg.set_content(body)
+        if html:
+            msg.add_alternative(html, subtype="html")
 
         if attachment_path:
             try:
