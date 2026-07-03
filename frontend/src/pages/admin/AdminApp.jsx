@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getToken, clearToken, adminFetch } from "./adminApi";
 import { C, FONT_DISPLAY } from "./theme";
+import { useIsNarrow } from "./hooks";
 import AdminLogin from "./AdminLogin";
 import AdminUsersSplit from "./AdminUsersSplit";
 import AdminAnalytics from "./AdminAnalytics";
@@ -38,9 +39,11 @@ function HealthStrip({ onOpen }) {
 
 export default function AdminApp() {
   const [authed, setAuthed] = useState(!!getToken());
-  // Default landing = the plain-language Overview (the hourly reporter's screen).
+  // Default landing = Mission Control (the founder's ops dashboard).
   const [section, setSection] = useState("actionhub"); // actionhub|users|analytics|health
   const [pendingUserId, setPendingUserId] = useState(null); // deep-link a family from the Action Hub
+  const mobile = useIsNarrow(768);     // phones/small tablets → top bar + drawer nav
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Called by child fetches when a 401 (AuthError) bubbles up.
   function onLoggedOut() {
@@ -61,7 +64,7 @@ export default function AdminApp() {
     return (
       <button
         key={key}
-        onClick={() => setSection(key)}
+        onClick={() => { setSection(key); setMenuOpen(false); }}
         style={{
           display: "block", width: "100%", textAlign: "left", cursor: "pointer",
           font: `${active ? 700 : 600} 14px ${FONT_DISPLAY}`, padding: "11px 14px 11px 16px",
@@ -74,6 +77,74 @@ export default function AdminApp() {
     );
   };
 
+  const navItems = (
+    <>
+      {navItem("actionhub", "Mission Control")}
+      {navItem("users", "Users")}
+      {navItem("analytics", "Analytics")}
+      {navItem("health", "System Health")}
+    </>
+  );
+
+  const logoutBtn = (
+    <button onClick={onLoggedOut} style={{
+      font: `600 13px ${FONT_DISPLAY}`, color: C.sidebarInactive, background: "transparent",
+      border: `1px solid rgba(255,255,255,0.2)`, borderRadius: 8, padding: "9px 12px", cursor: "pointer",
+    }}>Log out</button>
+  );
+
+  const pageContent = (
+    <>
+      {/* Health strip is redundant where a page has its own health line. */}
+      {section !== "health" && section !== "actionhub" && (
+        <HealthStrip onOpen={() => setSection("health")} />
+      )}
+      {section === "actionhub" && <AdminActionHub onLoggedOut={onLoggedOut} onNavigate={navigate} />}
+      {section === "users" && <AdminUsersSplit onLoggedOut={onLoggedOut} initialSelectedId={pendingUserId} />}
+      {section === "analytics" && <AdminAnalytics onLoggedOut={onLoggedOut} />}
+      {section === "health" && <AdminHealth onLoggedOut={onLoggedOut} />}
+    </>
+  );
+
+  // Mobile: sticky top bar + collapsible drawer nav; content stacks full-width.
+  if (mobile) {
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, font: `400 14px ${FONT_DISPLAY}` }}>
+        <header style={{
+          position: "sticky", top: 0, zIndex: 20, background: C.sidebarBg,
+          display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px",
+        }}>
+          <span style={{ font: `800 17px ${FONT_DISPLAY}`, color: C.sidebarText }}>FuelUp Admin</span>
+          <button
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((o) => !o)}
+            style={{
+              background: "transparent", border: `1px solid rgba(255,255,255,0.25)`, borderRadius: 8,
+              color: C.sidebarText, font: `700 18px ${FONT_DISPLAY}`, lineHeight: 1,
+              padding: "6px 13px", cursor: "pointer",
+            }}
+          >{menuOpen ? "✕" : "☰"}</button>
+        </header>
+        {menuOpen && (
+          <nav style={{
+            position: "sticky", top: 53, zIndex: 19, background: C.sidebarBg,
+            padding: "8px 12px 16px", display: "flex", flexDirection: "column",
+            boxShadow: C.shadowMd,
+          }}>
+            {navItems}
+            <div style={{ height: 8 }} />
+            {logoutBtn}
+          </nav>
+        )}
+        <main style={{ padding: "18px 16px", width: "100%", minWidth: 0 }}>
+          {pageContent}
+        </main>
+      </div>
+    );
+  }
+
+  // Desktop: fixed sidebar + content.
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", font: `400 14px ${FONT_DISPLAY}` }}>
       <aside style={{
@@ -83,26 +154,13 @@ export default function AdminApp() {
         <div style={{ font: `800 18px ${FONT_DISPLAY}`, color: C.sidebarText, padding: "0 12px 22px" }}>
           FuelUp Admin
         </div>
-        {navItem("actionhub", "Mission Control")}
-        {navItem("users", "Users")}
-        {navItem("analytics", "Analytics")}
-        {navItem("health", "System Health")}
+        {navItems}
         <div style={{ flex: 1 }} />
-        <button onClick={onLoggedOut} style={{
-          font: `600 13px ${FONT_DISPLAY}`, color: C.sidebarInactive, background: "transparent",
-          border: `1px solid rgba(255,255,255,0.2)`, borderRadius: 8, padding: "9px 12px", cursor: "pointer",
-        }}>Log out</button>
+        {logoutBtn}
       </aside>
 
       <main style={{ flex: 1, minWidth: 0, padding: "28px 32px", width: "100%" }}>
-        {/* Health strip is redundant where a page has its own health line. */}
-        {section !== "health" && section !== "actionhub" && (
-          <HealthStrip onOpen={() => setSection("health")} />
-        )}
-        {section === "actionhub" && <AdminActionHub onLoggedOut={onLoggedOut} onNavigate={navigate} />}
-        {section === "users" && <AdminUsersSplit onLoggedOut={onLoggedOut} initialSelectedId={pendingUserId} />}
-        {section === "analytics" && <AdminAnalytics onLoggedOut={onLoggedOut} />}
-        {section === "health" && <AdminHealth onLoggedOut={onLoggedOut} />}
+        {pageContent}
       </main>
     </div>
   );

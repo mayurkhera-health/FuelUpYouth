@@ -1,24 +1,15 @@
 import { useEffect, useState } from "react";
 import { C, FONT_DISPLAY } from "./theme";
+import { useIsNarrow } from "./hooks";
 import AdminUsers from "./AdminUsers";
 import AdminFamilyDetail from "./AdminFamilyDetail";
 
 // Split-pane (master-detail) Users view: family directory on the left, the
-// selected family's detail on the right. Collapses to a single pane on narrow
-// screens (list → detail with a back button).
-function useNarrow(bp = 900) {
-  const [narrow, setNarrow] = useState(typeof window !== "undefined" && window.innerWidth < bp);
-  useEffect(() => {
-    const onResize = () => setNarrow(window.innerWidth < bp);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [bp]);
-  return narrow;
-}
-
+// selected family's detail on the right. Collapses to a single pane below 900px
+// (list → detail with a back button).
 export default function AdminUsersSplit({ onLoggedOut, initialSelectedId }) {
   const [selectedId, setSelectedId] = useState(initialSelectedId ?? null);
-  const narrow = useNarrow();
+  const narrow = useIsNarrow(900);
 
   // Deep-link from the Action Hub ("View family" → open this family).
   useEffect(() => {

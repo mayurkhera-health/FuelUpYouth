@@ -58,7 +58,7 @@ export default function AdminAnalytics({ onLoggedOut }) {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
         <h1 style={{ font: `800 24px ${FONT_DISPLAY}`, color: C.text1, margin: 0 }}>Analytics</h1>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <span style={{ font: `500 13px ${FONT_DISPLAY}`, color: C.text3 }}>as of {asOf} UTC</span>
@@ -85,8 +85,9 @@ export default function AdminAnalytics({ onLoggedOut }) {
           sub={`${c.sync_adoption.connected}/${c.sync_adoption.total} athletes`} />
       </div>
 
-      {/* Charts as a responsive dashboard grid — 2–3 across on wide screens. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(440px,1fr))", gap: 16, alignItems: "start" }}>
+      {/* Charts as a responsive dashboard grid — 2–3 across on wide screens,
+          single column on phones (min() keeps the 440px track from overflowing). */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(440px,100%),1fr))", gap: 16, alignItems: "start" }}>
         <Card>
           <SectionTitle>Signups over time ({c.signups.window_days}d)</SectionTitle>
           <LineChart points={overview.signups_over_time.points} />
