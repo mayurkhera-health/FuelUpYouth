@@ -11,7 +11,6 @@ export default function AdminOverview({ onLoggedOut }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     load(false);
@@ -30,18 +29,6 @@ export default function AdminOverview({ onLoggedOut }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }
-
-  function copyReport() {
-    if (!data) return;
-    const stamp = new Date(data.as_of).toLocaleString(undefined, {
-      month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-    });
-    const text = `FuelUp Status — ${stamp}\n${data.report_body}`;
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    });
   }
 
   if (loading) {
@@ -111,12 +98,6 @@ export default function AdminOverview({ onLoggedOut }) {
           ))}
         </div>
 
-        {/* Copy report — subtle outline button, no heavy bar */}
-        <div style={{ padding: "14px 22px", borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "center" }}>
-          <Button variant="ghost" onClick={copyReport}>
-            {copied ? "Copied ✓ — paste into your message" : "Copy report for founder"}
-          </Button>
-        </div>
       </div>
     </div>
   );
