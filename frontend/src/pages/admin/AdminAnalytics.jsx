@@ -48,14 +48,13 @@ export default function AdminAnalytics({ onLoggedOut }) {
 
   const c = overview.cards;
   const asOf = (overview.as_of || "").slice(11, 16);
-  const mp = overview.mixpanel_status || { configured: overview.mixpanel_available };
-  // Show an info note whenever the Mixpanel Query API isn't usable.
-  const mpNote = !mp.available;
-  const mpNoteText = mp.plan_gated
-    ? "Mixpanel is on the free plan — event-level analytics (top events, retention cohorts) need a paid plan. All database metrics below are live."
-    : mp.configured
-      ? "Mixpanel Query API is unavailable right now — showing database-backed metrics."
-      : "Mixpanel not connected — showing database-backed metrics. Signup, funnel, and health cards are fully available.";
+  const ph = overview.posthog_status || { configured: overview.posthog_available, available: overview.posthog_available };
+  // Note only when the PostHog Query API isn't usable (unconfigured or erroring).
+  // An empty-but-working PostHog still counts as available (cards show "no data").
+  const phNote = !ph.available;
+  const phNoteText = ph.configured
+    ? "PostHog Query API is unavailable right now (check the Personal API Key) — showing database-backed metrics."
+    : "PostHog not connected — showing database-backed metrics. Signup, funnel, and health cards are fully available.";
 
   return (
     <div>
@@ -69,11 +68,11 @@ export default function AdminAnalytics({ onLoggedOut }) {
         </div>
       </div>
 
-      {mpNote && (
+      {phNote && (
         <div style={{
           font: `500 13px ${FONT_DISPLAY}`, color: C.text2, background: C.warmLight,
           border: `1px solid #f0d9a8`, borderRadius: 10, padding: "8px 14px", marginBottom: 16,
-        }}>{mpNoteText}</div>
+        }}>{phNoteText}</div>
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 16 }}>
@@ -97,7 +96,7 @@ export default function AdminAnalytics({ onLoggedOut }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 16 }}>
         <Card>
-          <SectionTitle>Top events (30d) <Src>Mixpanel</Src></SectionTitle>
+          <SectionTitle>Top events (30d) <Src>PostHog</Src></SectionTitle>
           <TopEvents events={events} />
         </Card>
         <Card>
@@ -112,7 +111,7 @@ export default function AdminAnalytics({ onLoggedOut }) {
       </div>
 
       <Card style={{ marginTop: 16 }}>
-        <SectionTitle>Retention <Src>{retention.source === "mixpanel" ? "Mixpanel" : "DB (WAU)"}</Src></SectionTitle>
+        <SectionTitle>Weekly active users <Src>{retention.source === "posthog" ? "PostHog" : "DB (WAU)"}</Src></SectionTitle>
         <Retention retention={retention} />
       </Card>
     </div>
@@ -133,14 +132,13 @@ function HealthRow({ label, value }) {
   );
 }
 
-function MixpanelUnavailable({ info, subtitle }) {
-  const gated = info?.plan_gated;
+function PostHogUnavailable({ info, subtitle }) {
   return (
     <div style={{
       font: `600 13px ${FONT_DISPLAY}`, color: C.text2, background: C.surface2,
       border: `1px dashed ${C.border2}`, borderRadius: 10, padding: "16px", textAlign: "center",
     }}>
-      {gated ? "Requires a Mixpanel paid plan" : (info?.reason || "Mixpanel not connected")}
+      {info?.reason || "PostHog not connected"}
       <div style={{ font: `400 12px ${FONT_DISPLAY}`, color: C.text3, marginTop: 4 }}>{subtitle}</div>
     </div>
   );
@@ -148,20 +146,17 @@ function MixpanelUnavailable({ info, subtitle }) {
 
 function TopEvents({ events }) {
   if (!events || !events.available) {
-    return <MixpanelUnavailable info={events}
-      subtitle="Top events by volume come from the Mixpanel Query API." />;
+    return <PostHogUnavailable info={events}
+      subtitle="Top events by volume come from PostHog." />;
   }
-  // Mixpanel events endpoint returns { data: { values: { EventName: {date:count} } } }.
-  const values = events.data?.data?.values || events.data?.values || {};
-  const rows = Object.entries(values).map(([name, series]) => [
-    name, Object.values(series).reduce((a, b) => a + b, 0),
-  ]).sort((a, b) => b[1] - a[1]).slice(0, 10);
-  if (rows.length === 0) return <div style={{ color: C.text3, fontSize: 13 }}>No events in range.</div>;
+  // PostHog client returns shaped rows: { data: { rows: [{event, count}] } }.
+  const rows = events.data?.rows || [];
+  if (rows.length === 0) return <div style={{ color: C.text3, fontSize: 13 }}>No events yet — they’ll appear as the app fires them.</div>;
   return (
     <div>
-      {rows.map(([name, count]) => (
-        <div key={name} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: `1px solid ${C.border}`, font: `500 13px ${FONT_DISPLAY}`, color: C.text1 }}>
-          <span>{name}</span><span style={{ color: C.text2 }}>{count}</span>
+      {rows.slice(0, 10).map((r) => (
+        <div key={r.event} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: `1px solid ${C.border}`, font: `500 13px ${FONT_DISPLAY}`, color: C.text1 }}>
+          <span>{r.event}</span><span style={{ color: C.text2 }}>{r.count}</span>
         </div>
       ))}
     </div>
@@ -169,11 +164,6 @@ function TopEvents({ events }) {
 }
 
 function Retention({ retention }) {
-  if (retention.source === "mixpanel") {
-    return <div style={{ font: `500 13px ${FONT_DISPLAY}`, color: C.text2 }}>
-      Mixpanel retention loaded. (Cohort grid rendering uses the raw Mixpanel shape — see network payload.)
-    </div>;
-  }
   const points = (retention.points || []).map((p) => ({ date: p.week_start, count: p.active }));
   return (
     <>

@@ -1,12 +1,13 @@
 """
-Admin Analytics dashboard — hybrid Mixpanel + our own SQLite.
+Admin Analytics dashboard — hybrid PostHog + our own SQLite.
 
-Data-source policy (explicit per the spec):
-  • Mixpanel Query API  → signups-over-time line, top events, retention.
+Data-source policy:
+  • PostHog Query API (HogQL) → top events, WAU/retention, event discovery, and
+    a signups probe. Free tier includes the Query API (unlike Mixpanel's).
   • Our SQLite (always available, free) → families total, sync adoption %,
-    synced-vs-manual split, problem-report / feature-idea counts, and the whole
-    activation funnel (every step is reliably derivable from our tables).
-The dashboard NEVER 500s because Mixpanel is down: Mixpanel-sourced cards return
+    synced-vs-manual split, problem-report / feature-idea counts, the whole
+    activation funnel, and the signups line (parents.created_at — complete).
+The dashboard NEVER 500s because PostHog is down: PostHog-sourced cards return
 {available: false, reason} and the DB cards always render.
 """
 
@@ -15,7 +16,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
 
 from api.database import get_conn
-from api.services import mixpanel_client
+from api.services import posthog_client
 from api.services.admin_auth import require_admin
 
 router = APIRouter()
@@ -85,21 +86,20 @@ def overview(days: int = 30, force: bool = False, _: bool = Depends(require_admi
             "SELECT COALESCE(source,'manual') AS s, COUNT(*) AS n FROM events GROUP BY s").fetchall()
         event_sources = {r["s"]: r["n"] for r in src_rows}
 
-        # Mixpanel enrichment (optional). One probe query tells us whether the
-        # Query API is actually usable (creds valid AND plan allows it).
-        mp_signups = mixpanel_client.signups_over_time(days, force=force)
-        mp_status = {
-            "configured": mixpanel_client.is_configured(),
-            "available": bool(mp_signups.get("available")),
-            "plan_gated": bool(mp_signups.get("plan_gated")),
-            "reason": mp_signups.get("reason"),
+        # PostHog enrichment (optional). One probe query tells us whether the
+        # Query API is actually usable (creds valid + reachable).
+        ph_signups = posthog_client.signups_over_time(days, force=force)
+        ph_status = {
+            "configured": posthog_client.is_configured(),
+            "available": bool(ph_signups.get("available")),
+            "reason": ph_signups.get("reason"),
         }
 
         return {
             "as_of": datetime.utcnow().isoformat() + "Z",
-            # True only when Mixpanel is configured AND the Query API actually works.
-            "mixpanel_available": mp_status["available"],
-            "mixpanel_status": mp_status,
+            # True only when PostHog is configured AND the Query API actually works.
+            "posthog_available": ph_status["available"],
+            "posthog_status": ph_status,
             "cards": {
                 "signups": {"value": signups_window, "window_days": days, "source": "db"},
                 "active_users_7d": {"value": active_7d, "source": "db"},
@@ -112,7 +112,7 @@ def overview(days: int = 30, force: bool = False, _: bool = Depends(require_admi
             "signups_over_time": {
                 "source": "db",
                 "points": db_signup_series,
-                "mixpanel": mp_signups,  # {available, data|reason}
+                "posthog": ph_signups,  # {available, data|reason}
             },
             "app_health": {
                 "problem_reports_7d": problem_7d,
@@ -170,13 +170,15 @@ def funnel(days: int = 30, _: bool = Depends(require_admin)):
         conn.close()
 
 
-# ── Retention (Mixpanel, with DB WAU fallback) ───────────────────────────────
+# ── Retention / WAU (PostHog, with DB WAU fallback) ──────────────────────────
 @router.get("/analytics/retention")
 def retention(weeks: int = 8, force: bool = False, _: bool = Depends(require_admin)):
     weeks = max(1, min(12, weeks))
-    mp = mixpanel_client.retention(weeks, force=force)
-    if mp.get("available"):
-        return {"source": "mixpanel", **mp}
+    ph = posthog_client.retention(weeks, force=force)
+    if ph.get("available"):
+        return {"source": "posthog", "available": True,
+                "points": ph["data"]["points"],
+                "note": "Weekly active users (distinct people) from PostHog."}
 
     # Fallback: weekly-active-users trend from our DB (active families only).
     conn = get_conn()
@@ -193,30 +195,28 @@ def retention(weeks: int = 8, force: bool = False, _: bool = Depends(require_adm
                     UNION SELECT athlete_id FROM water_logs  WHERE updated_at >= ? AND updated_at < ?
                 ) WHERE athlete_id IN ({active_athletes})""", (start, end, start, end, start, end))
             points.append({"week_start": start[:10], "active": wau})
-        note = ("Retention cohorts require a Mixpanel paid plan — showing weekly active users instead."
-                if mp.get("plan_gated") else
-                "Mixpanel retention unavailable — showing DB weekly-active-users trend instead.")
         return {"source": "db_wau_fallback", "available": True,
-                "reason": mp.get("reason"), "plan_gated": bool(mp.get("plan_gated")),
-                "points": points, "note": note}
+                "reason": ph.get("reason"), "points": points,
+                "note": "PostHog not connected — showing DB weekly-active-users trend instead."}
     finally:
         conn.close()
 
 
-# ── Top events (Mixpanel only) ───────────────────────────────────────────────
+# ── Top events (PostHog) ─────────────────────────────────────────────────────
 @router.get("/analytics/events")
 def top_events(days: int = 30, force: bool = False, _: bool = Depends(require_admin)):
-    return mixpanel_client.top_events(days, force=force)
+    return posthog_client.top_events(days, force=force)
 
 
-# ── Event-name discovery (run once after setting the Mixpanel secret) ─────────
+# ── Event-name discovery (verify mobile events are landing in PostHog) ────────
 @router.get("/analytics/discover")
 def discover(force: bool = False, _: bool = Depends(require_admin)):
     return {
-        "discovered": mixpanel_client.discover_event_names(force=force),
-        "current_event_map": mixpanel_client.EVENT_MAP,
-        "how_to_adjust": "Edit EVENT_MAP at the top of api/services/mixpanel_client.py "
-                         "to match the discovered event names.",
+        "discovered": posthog_client.discover_event_names(force=force),
+        "canonical_events": posthog_client.CANONICAL_EVENTS,
+        "how_to_verify": "Each canonical event should appear here once the mobile "
+                         "app has fired it. Missing events mean that mobile hook "
+                         "isn't wired yet.",
     }
 
 

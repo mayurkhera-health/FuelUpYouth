@@ -1,5 +1,5 @@
-"""Admin Analytics: DB-backed cards + funnel always available; Mixpanel mocked
-both ways (success + unavailable). Dashboard must never depend on Mixpanel."""
+"""Admin Analytics: DB-backed cards + funnel always available; PostHog mocked
+both ways (success + unavailable). Dashboard must never depend on PostHog."""
 
 import os
 os.environ["DB_PATH"] = ":memory:"
@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from db.setup import init_db
 from api.services.db_migrations import run_all
 from api.database import get_conn
-from api.services import admin_auth, mixpanel_client
+from api.services import admin_auth, posthog_client
 from api.main import app
 
 PASSWORD = "s3cret-admin"
@@ -26,6 +26,12 @@ def _wipe(conn):
     conn.execute("PRAGMA foreign_keys=ON")
 
 
+def _configure_posthog(monkeypatch):
+    monkeypatch.setenv("POSTHOG_PERSONAL_API_KEY", "phx_fake")
+    monkeypatch.setenv("POSTHOG_PROJECT_ID", "123")
+    posthog_client._cache.clear()
+
+
 @pytest.fixture
 def client(monkeypatch):
     keepalive = get_conn()
@@ -34,10 +40,11 @@ def client(monkeypatch):
     _wipe(keepalive)  # clean slate — shared in-memory DB persists across tests
     monkeypatch.setenv("ADMIN_PASSWORD", PASSWORD)
     monkeypatch.setenv("ADMIN_SESSION_SECRET", "unit-test-signing-key")
-    monkeypatch.delenv("MIXPANEL_API_SECRET", raising=False)
+    monkeypatch.delenv("POSTHOG_PERSONAL_API_KEY", raising=False)
+    monkeypatch.delenv("POSTHOG_PROJECT_ID", raising=False)
     admin_auth._failed_logins.clear()
-    mixpanel_client._cache.clear()
-    mixpanel_client._last_forced.clear()
+    posthog_client._cache.clear()
+    posthog_client._last_forced.clear()
 
     # Two families; one athlete connected + has a meal plan → funnel + sync %.
     p1 = keepalive.execute(
@@ -66,7 +73,7 @@ def client(monkeypatch):
 
 def test_overview_db_cards(client):
     body = client.get("/api/admin/analytics/overview").json()
-    assert body["mixpanel_available"] is False
+    assert body["posthog_available"] is False
     assert body["cards"]["families_total"]["value"] == 2
     # 2 athletes, 1 connected → 50%
     assert body["cards"]["sync_adoption"]["percent"] == 50
@@ -74,9 +81,9 @@ def test_overview_db_cards(client):
     assert body["app_health"]["event_sources"] == {"byga": 1, "manual": 1}
 
 
-def test_overview_mixpanel_unavailable_is_graceful(client):
+def test_overview_posthog_unavailable_is_graceful(client):
     body = client.get("/api/admin/analytics/overview").json()
-    assert body["signups_over_time"]["mixpanel"]["available"] is False
+    assert body["signups_over_time"]["posthog"]["available"] is False
     # DB signup series still present.
     assert isinstance(body["signups_over_time"]["points"], list)
 
@@ -127,6 +134,7 @@ def test_funnel_counts_uploaded_ics_as_connected(client):
 def test_top_events_unavailable_without_creds(client):
     body = client.get("/api/admin/analytics/events").json()
     assert body["available"] is False
+    assert body["reason"] == "PostHog not connected"
 
 
 def test_retention_falls_back_to_db_wau(client):
@@ -135,55 +143,55 @@ def test_retention_falls_back_to_db_wau(client):
     assert isinstance(body["points"], list) and len(body["points"]) == 8
 
 
-def test_mixpanel_success_path_mocked(client, monkeypatch):
-    monkeypatch.setenv("MIXPANEL_API_SECRET", "fake-secret")
-    mixpanel_client._cache.clear()
-
-    def fake_query(path, params):
-        if path == "events":
-            return {"data": {"values": {"Sign Up": {"2026-07-01": 5, "2026-07-02": 3}}}}
-        return {}
-
-    monkeypatch.setattr(mixpanel_client, "_query", fake_query)
+# ── PostHog success paths (HogQL endpoint mocked) ────────────────────────────
+def test_posthog_top_events_success(client, monkeypatch):
+    _configure_posthog(monkeypatch)
+    monkeypatch.setattr(posthog_client, "_hogql",
+                        lambda sql, name="admin": [["app_opened", 12], ["signup_completed", 4]])
     body = client.get("/api/admin/analytics/events").json()
     assert body["available"] is True
-    assert "Sign Up" in body["data"]["data"]["values"]
+    assert body["data"]["rows"][0] == {"event": "app_opened", "count": 12}
 
 
-def test_plan_gated_402_shows_clean_reason(client, monkeypatch):
+def test_posthog_retention_success(client, monkeypatch):
+    _configure_posthog(monkeypatch)
+    monkeypatch.setattr(posthog_client, "_hogql",
+                        lambda sql, name="admin": [["2026-06-23", 3], ["2026-06-30", 5]])
+    body = client.get("/api/admin/analytics/retention").json()
+    assert body["source"] == "posthog"
+    assert body["points"][-1] == {"week_start": "2026-06-30", "active": 5}
+
+
+def test_discover_lists_events(client, monkeypatch):
+    _configure_posthog(monkeypatch)
+    monkeypatch.setattr(posthog_client, "_hogql",
+                        lambda sql, name="admin": [["signup_completed", 9], ["app_opened", 20]])
+    body = client.get("/api/admin/analytics/discover").json()
+    assert body["discovered"]["available"] is True
+    assert body["discovered"]["data"]["events"][0] == {"event": "signup_completed", "count": 9}
+    assert "signup_completed" in body["canonical_events"]
+
+
+def test_posthog_query_error_is_graceful(client, monkeypatch):
     import requests
-    monkeypatch.setenv("MIXPANEL_API_SECRET", "fake-secret")
-    mixpanel_client._cache.clear()
+    _configure_posthog(monkeypatch)
 
     class _Resp:
-        status_code = 402
+        status_code = 403
 
-    def boom(path, params):
-        e = requests.HTTPError("402 Client Error: Payment Required")
+    def boom(sql, name="admin"):
+        e = requests.HTTPError("403 Forbidden")
         e.response = _Resp()
         raise e
 
-    monkeypatch.setattr(mixpanel_client, "_query", boom)
-
+    monkeypatch.setattr(posthog_client, "_hogql", boom)
     ev = client.get("/api/admin/analytics/events").json()
     assert ev["available"] is False
-    assert ev.get("plan_gated") is True
-    assert ev["reason"] == "Requires Mixpanel paid plan"
+    assert "authentication failed" in ev["reason"]
 
     ov = client.get("/api/admin/analytics/overview").json()
-    assert ov["mixpanel_available"] is False
-    assert ov["mixpanel_status"]["plan_gated"] is True
+    assert ov["posthog_available"] is False
+    assert ov["posthog_status"]["configured"] is True  # creds set, but query failed
 
     rt = client.get("/api/admin/analytics/retention").json()
-    assert rt["source"] == "db_wau_fallback"      # still falls back to real DB data
-    assert "paid plan" in rt["note"]
-
-
-def test_discover_endpoint_lists_current_map(client, monkeypatch):
-    monkeypatch.setenv("MIXPANEL_API_SECRET", "fake-secret")
-    mixpanel_client._cache.clear()
-    monkeypatch.setattr(mixpanel_client, "_query", lambda path, params: ["Sign Up", "Athlete Created"])
-    body = client.get("/api/admin/analytics/discover").json()
-    assert body["discovered"]["available"] is True
-    assert body["discovered"]["data"]["events"] == ["Sign Up", "Athlete Created"]
-    assert "signup" in body["current_event_map"]
+    assert rt["source"] == "db_wau_fallback"  # still falls back to real DB data
