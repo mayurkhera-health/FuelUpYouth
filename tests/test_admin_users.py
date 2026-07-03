@@ -213,6 +213,20 @@ def test_delete_athlete_preview_and_cascade(ctx):
                       (ids["ava"],)).fetchone()[0] == 1
 
 
+def test_hard_deleted_parents_excluded_from_list(ctx):
+    # Simulate the prod schema: the old FuelUp-Admin soft-delete adds
+    # parents.account_status and anonymizes rows to 'hard_deleted'.
+    c, ids, ka = ctx
+    ka.execute("ALTER TABLE parents ADD COLUMN account_status TEXT")
+    ka.execute("UPDATE parents SET account_status = 'hard_deleted' WHERE id = ?", (ids["mike"],))
+    ka.commit()
+    body = c.get("/api/admin/users").json()
+    returned = {f["id"] for f in body["items"]}
+    assert ids["mike"] not in returned
+    assert ids["sarah"] in returned          # active rows still shown
+    assert body["total"] == 3                # was 4
+
+
 def test_delete_parent_requires_confirm(ctx):
     c, ids, _ = ctx
     r = c.request("DELETE", f"/api/admin/parents/{ids['sarah']}", json={"confirm": "nope"})

@@ -81,6 +81,23 @@ def test_overview_mixpanel_unavailable_is_graceful(client):
     assert isinstance(body["signups_over_time"]["points"], list)
 
 
+def test_deleted_parents_excluded_from_metrics(client):
+    from api.database import get_conn
+    conn = get_conn()
+    conn.execute("ALTER TABLE parents ADD COLUMN account_status TEXT")
+    # Mark family B (Bob, no calendar) as hard-deleted.
+    conn.execute("UPDATE parents SET account_status = 'hard_deleted' WHERE email = 'b@x.com'")
+    conn.commit()
+    conn.close()
+    ov = client.get("/api/admin/analytics/overview").json()
+    assert ov["cards"]["families_total"]["value"] == 1        # was 2
+    # Only Ann remains; she is connected → 1/1 = 100%.
+    assert ov["cards"]["sync_adoption"]["total"] == 1
+    assert ov["cards"]["sync_adoption"]["percent"] == 100
+    fn = client.get("/api/admin/analytics/funnel").json()
+    assert {s["label"]: s["value"] for s in fn["steps"]}["Signed up"] == 1
+
+
 def test_funnel_steps_are_db_derived(client):
     body = client.get("/api/admin/analytics/funnel").json()
     labels = [s["label"] for s in body["steps"]]

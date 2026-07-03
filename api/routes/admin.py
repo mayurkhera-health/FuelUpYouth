@@ -91,6 +91,19 @@ def _table_exists(conn, name: str) -> bool:
     ).fetchone() is not None
 
 
+def _has_col(conn, table: str, col: str) -> bool:
+    return any(r[1] == col for r in conn.execute(f"PRAGMA table_info({table})").fetchall())
+
+
+def _active_parent_clause(conn, alias: str) -> str:
+    """Exclude anonymized tombstones left by the old FuelUp-Admin soft-delete
+    (parents.account_status = 'hard_deleted'). The column only exists in
+    production (added by that deployment), so this is a no-op on fresh/test DBs."""
+    if _has_col(conn, "parents", "account_status"):
+        return f"({alias}.account_status IS NULL OR {alias}.account_status != 'hard_deleted')"
+    return ""
+
+
 def _count(conn, table: str, where: str, params) -> int:
     if not _table_exists(conn, table):
         return 0
@@ -179,8 +192,12 @@ def list_families(
     offset = (page - 1) * limit
     stale_cutoff = (datetime.utcnow() - timedelta(hours=48)).isoformat()
 
+    conn = get_conn()
     where = []
     params: list = []
+    active_clause = _active_parent_clause(conn, "p")
+    if active_clause:
+        where.append(active_clause)
     if search:
         like = f"%{search.strip()}%"
         where.append(
@@ -238,7 +255,6 @@ def list_families(
         GROUP BY p.id
         {having}
     """
-    conn = get_conn()
     try:
         # recent_synced_count subquery param comes first in the SELECT param order
         select_params = [stale_cutoff] + params

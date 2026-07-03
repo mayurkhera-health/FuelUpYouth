@@ -30,6 +30,14 @@ def _scalar(conn, sql: str, params=()) -> int:
     return (row[0] or 0) if row else 0
 
 
+def _active_where(conn) -> str:
+    """WHERE fragment (on the parents table) that excludes anonymized tombstones
+    from the old FuelUp-Admin soft-delete. account_status only exists in prod, so
+    this is '1=1' (no-op) on fresh/test DBs."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(parents)").fetchall()]
+    return "(account_status IS NULL OR account_status != 'hard_deleted')" if "account_status" in cols else "1=1"
+
+
 # ── Overview ─────────────────────────────────────────────────────────────────
 @router.get("/analytics/overview")
 def overview(days: int = 30, force: bool = False, _: bool = Depends(require_admin)):
@@ -38,29 +46,34 @@ def overview(days: int = 30, force: bool = False, _: bool = Depends(require_admi
         since_30 = _iso_days_ago(days)
         since_7 = _iso_days_ago(7)
 
-        families_total = _scalar(conn, "SELECT COUNT(*) FROM parents")
-        signups_window = _scalar(
-            conn, "SELECT COUNT(*) FROM parents WHERE created_at >= ?", (since_30,))
+        aw = _active_where(conn)                          # excludes deleted parents
+        active_ids = f"SELECT id FROM parents WHERE {aw}"
+        active_athletes = f"SELECT id FROM athletes WHERE parent_id IN ({active_ids})"
 
-        athletes_total = _scalar(conn, "SELECT COUNT(*) FROM athletes")
+        families_total = _scalar(conn, f"SELECT COUNT(*) FROM parents WHERE {aw}")
+        signups_window = _scalar(
+            conn, f"SELECT COUNT(*) FROM parents WHERE created_at >= ? AND {aw}", (since_30,))
+
+        athletes_total = _scalar(conn, f"SELECT COUNT(*) FROM athletes WHERE parent_id IN ({active_ids})")
         athletes_connected = _scalar(
             conn,
-            "SELECT COUNT(*) FROM athletes WHERE byga_ics_url IS NOT NULL OR playmetrics_ics_url IS NOT NULL")
+            f"SELECT COUNT(*) FROM athletes WHERE (byga_ics_url IS NOT NULL OR playmetrics_ics_url IS NOT NULL) "
+            f"AND parent_id IN ({active_ids})")
         sync_pct = round(100 * athletes_connected / athletes_total) if athletes_total else 0
 
-        # DB-derived active users (7d): distinct athletes with any activity.
-        active_7d = _scalar(conn, """
+        # DB-derived active users (7d): distinct athletes (of active families) with any activity.
+        active_7d = _scalar(conn, f"""
             SELECT COUNT(DISTINCT athlete_id) FROM (
                 SELECT athlete_id FROM meal_logs   WHERE logged_at  >= ?
                 UNION SELECT athlete_id FROM window_logs WHERE created_at >= ?
                 UNION SELECT athlete_id FROM water_logs  WHERE updated_at >= ?
-            )""", (since_7, since_7, since_7))
+            ) WHERE athlete_id IN ({active_athletes})""", (since_7, since_7, since_7))
 
         # Signups-over-time from DB (daily). substr() gets the date part for both
         # ISO ('...T...') and CURRENT_TIMESTAMP ('... ...') formats.
         rows = conn.execute(
-            "SELECT substr(created_at,1,10) AS d, COUNT(*) AS n FROM parents "
-            "WHERE created_at >= ? GROUP BY d ORDER BY d", (since_30,)).fetchall()
+            f"SELECT substr(created_at,1,10) AS d, COUNT(*) AS n FROM parents "
+            f"WHERE created_at >= ? AND {aw} GROUP BY d ORDER BY d", (since_30,)).fetchall()
         db_signup_series = [{"date": r["d"], "count": r["n"]} for r in rows]
 
         # App health
@@ -107,17 +120,22 @@ def overview(days: int = 30, force: bool = False, _: bool = Depends(require_admi
 def funnel(days: int = 30, _: bool = Depends(require_admin)):
     conn = get_conn()
     try:
-        signed_up = _scalar(conn, "SELECT COUNT(*) FROM parents")
+        aw = _active_where(conn)
+        active_ids = f"SELECT id FROM parents WHERE {aw}"
+
+        signed_up = _scalar(conn, f"SELECT COUNT(*) FROM parents WHERE {aw}")
         created_athlete = _scalar(
-            conn, "SELECT COUNT(DISTINCT parent_id) FROM athletes")
-        connected_calendar = _scalar(conn, """
+            conn, f"SELECT COUNT(DISTINCT parent_id) FROM athletes WHERE parent_id IN ({active_ids})")
+        connected_calendar = _scalar(conn, f"""
             SELECT COUNT(DISTINCT parent_id) FROM athletes
-            WHERE byga_ics_url IS NOT NULL OR playmetrics_ics_url IS NOT NULL""")
-        # "Built a meal plan" — parents with an athlete that has any meal-plan row.
-        planned = _scalar(conn, """
+            WHERE (byga_ics_url IS NOT NULL OR playmetrics_ics_url IS NOT NULL)
+              AND parent_id IN ({active_ids})""")
+        # "Built a meal plan" — active parents with an athlete that has any meal-plan row.
+        planned = _scalar(conn, f"""
             SELECT COUNT(DISTINCT a.parent_id) FROM athletes a
-            WHERE EXISTS(SELECT 1 FROM meal_plans mp WHERE mp.athlete_id = a.id)
-               OR EXISTS(SELECT 1 FROM meal_plan_selections ms WHERE ms.athlete_id = a.id)""")
+            WHERE a.parent_id IN ({active_ids})
+              AND (EXISTS(SELECT 1 FROM meal_plans mp WHERE mp.athlete_id = a.id)
+                OR EXISTS(SELECT 1 FROM meal_plan_selections ms WHERE ms.athlete_id = a.id))""")
 
         def step(label, value, prev):
             return {
@@ -147,19 +165,20 @@ def retention(weeks: int = 8, force: bool = False, _: bool = Depends(require_adm
     if mp.get("available"):
         return {"source": "mixpanel", **mp}
 
-    # Fallback: weekly-active-users trend from our DB.
+    # Fallback: weekly-active-users trend from our DB (active families only).
     conn = get_conn()
     try:
+        active_athletes = f"SELECT id FROM athletes WHERE parent_id IN (SELECT id FROM parents WHERE {_active_where(conn)})"
         points = []
         for w in range(weeks - 1, -1, -1):
             start = _iso_days_ago((w + 1) * 7)
             end = _iso_days_ago(w * 7)
-            wau = _scalar(conn, """
+            wau = _scalar(conn, f"""
                 SELECT COUNT(DISTINCT athlete_id) FROM (
                     SELECT athlete_id FROM meal_logs   WHERE logged_at  >= ? AND logged_at  < ?
                     UNION SELECT athlete_id FROM window_logs WHERE created_at >= ? AND created_at < ?
                     UNION SELECT athlete_id FROM water_logs  WHERE updated_at >= ? AND updated_at < ?
-                )""", (start, end, start, end, start, end))
+                ) WHERE athlete_id IN ({active_athletes})""", (start, end, start, end, start, end))
             points.append({"week_start": start[:10], "active": wau})
         return {"source": "db_wau_fallback", "available": True,
                 "reason": mp.get("reason"), "points": points,
