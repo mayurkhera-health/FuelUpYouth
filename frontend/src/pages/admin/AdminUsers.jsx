@@ -101,9 +101,9 @@ export default function AdminUsers({ onOpenFamily, onLoggedOut }) {
       )}
 
       {!error && data && data.items.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, opacity: loading ? 0.5 : 1 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, opacity: loading ? 0.5 : 1 }}>
           {data.items.map((f) => (
-            <Card key={f.id} style={{ padding: 16, cursor: "pointer" }}>
+            <Card key={f.id} style={{ padding: "10px 14px", borderRadius: 12, cursor: "pointer" }}>
               <div onClick={() => onOpenFamily(f.id)}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ minWidth: 0 }}>
@@ -121,11 +121,11 @@ export default function AdminUsers({ onOpenFamily, onLoggedOut }) {
                   </div>
                 </div>
                 {f.athletes.length > 0 && (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 7 }}>
                     {f.athletes.map((a) => (
                       <span key={a.id} style={{
                         font: `500 12px ${FONT_DISPLAY}`, color: C.text2, background: C.surface2,
-                        border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 9px",
+                        border: `1px solid ${C.border}`, borderRadius: 8, padding: "2px 8px",
                         display: "inline-flex", gap: 6, alignItems: "center",
                       }}>
                         {a.first_name}{a.position ? ` · ${a.position}` : ""}{a.age ? ` · ${a.age}` : ""}
