@@ -108,9 +108,9 @@ export default function AdminOverview({ onLoggedOut }) {
           ))}
         </div>
 
-        {/* Copy report */}
-        <div style={{ padding: "16px 22px", borderTop: `1px solid ${C.border}`, background: C.surface2 }}>
-          <Button onClick={copyReport} style={{ width: "100%" }}>
+        {/* Copy report — subtle outline button, no heavy bar */}
+        <div style={{ padding: "14px 22px", borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "center" }}>
+          <Button variant="ghost" onClick={copyReport}>
             {copied ? "Copied ✓ — paste into your message" : "Copy report for founder"}
           </Button>
         </div>
