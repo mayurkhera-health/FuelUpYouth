@@ -68,6 +68,8 @@ export default function AdminAnalytics({ onLoggedOut }) {
         </div>
       </div>
 
+      <FounderSummary overview={overview} funnel={funnel} />
+
       {phNote && (
         <div style={{
           font: `500 13px ${FONT_DISPLAY}`, color: C.text2, background: C.warmLight,
@@ -115,6 +117,58 @@ export default function AdminAnalytics({ onLoggedOut }) {
         <Retention retention={retention} />
       </Card>
     </div>
+  );
+}
+
+// Plain-language, jargon-free headline for a non-technical team member checking
+// hourly. All values come from our own database (always available), so it never
+// shows "no data" or depends on PostHog. Detailed charts live below for the deep view.
+function FounderSummary({ overview, funnel }) {
+  const c = overview.cards;
+  const families = c.families_total.value;
+  const active = c.active_users_7d.value;
+  const bugs = overview.app_health.problem_reports_7d;
+  const ideas = overview.app_health.feature_ideas_7d;
+  const step = (label) => funnel?.steps?.find((s) => s.label === label)?.value;
+  const connected = step("Connected calendar") ?? c.sync_adoption.connected;
+  const base = step("Signed up") ?? families;
+  const asOf = (overview.as_of || "").slice(11, 16);
+
+  const rows = [
+    { ok: true, text: `${families} ${families === 1 ? "family" : "families"} using FuelUp` },
+    {
+      ok: active > 0,
+      text: active > 0 ? `${active} ${active === 1 ? "athlete" : "athletes"} active this week` : "No athletes active this week",
+    },
+    {
+      ok: base > 0 && connected * 2 >= base,
+      text: `${connected} of ${base} ${base === 1 ? "family has" : "families have"} added their schedule`,
+    },
+    {
+      ok: bugs === 0,
+      text: bugs > 0 ? `${bugs} ${bugs === 1 ? "problem" : "problems"} reported this week` : "No problems reported this week",
+    },
+    {
+      ok: true,
+      text: ideas > 0 ? `${ideas} new ${ideas === 1 ? "idea" : "ideas"} this week` : "No new ideas this week",
+    },
+  ];
+
+  return (
+    <Card style={{ marginBottom: 18, background: C.brandGhost, borderColor: C.brandLight }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
+        <span style={{ font: `800 18px ${FONT_DISPLAY}`, color: C.text1 }}>At a glance</span>
+        <span style={{ font: `500 12px ${FONT_DISPLAY}`, color: C.text3 }}>updated {asOf} UTC</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 11, font: `600 15px ${FONT_DISPLAY}`, color: C.text1 }}>
+            <span style={{ fontSize: 15, width: 20, textAlign: "center" }}>{r.ok ? "🟢" : "⚠️"}</span>
+            <span>{r.text}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
