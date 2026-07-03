@@ -5,7 +5,6 @@ import AdminLogin from "./AdminLogin";
 import AdminUsersSplit from "./AdminUsersSplit";
 import AdminAnalytics from "./AdminAnalytics";
 import AdminHealth from "./AdminHealth";
-import AdminOverview from "./AdminOverview";
 import AdminActionHub from "./AdminActionHub";
 
 // Overall health strip — one fetch per admin page load, no polling.
@@ -40,7 +39,7 @@ function HealthStrip({ onOpen }) {
 export default function AdminApp() {
   const [authed, setAuthed] = useState(!!getToken());
   // Default landing = the plain-language Overview (the hourly reporter's screen).
-  const [section, setSection] = useState("overview"); // overview|actionhub|users|analytics|health
+  const [section, setSection] = useState("actionhub"); // actionhub|users|analytics|health
   const [pendingUserId, setPendingUserId] = useState(null); // deep-link a family from the Action Hub
 
   // Called by child fetches when a 401 (AuthError) bubbles up.
@@ -84,8 +83,7 @@ export default function AdminApp() {
         <div style={{ font: `800 18px ${FONT_DISPLAY}`, color: C.sidebarText, padding: "0 12px 22px" }}>
           FuelUp Admin
         </div>
-        {navItem("overview", "Overview")}
-        {navItem("actionhub", "Action Hub")}
+        {navItem("actionhub", "Mission Control")}
         {navItem("users", "Users")}
         {navItem("analytics", "Analytics")}
         {navItem("health", "System Health")}
@@ -98,10 +96,9 @@ export default function AdminApp() {
 
       <main style={{ flex: 1, minWidth: 0, padding: "28px 32px", width: "100%" }}>
         {/* Health strip is redundant where a page has its own health line. */}
-        {section !== "health" && section !== "overview" && section !== "actionhub" && (
+        {section !== "health" && section !== "actionhub" && (
           <HealthStrip onOpen={() => setSection("health")} />
         )}
-        {section === "overview" && <AdminOverview onLoggedOut={onLoggedOut} />}
         {section === "actionhub" && <AdminActionHub onLoggedOut={onLoggedOut} onNavigate={navigate} />}
         {section === "users" && <AdminUsersSplit onLoggedOut={onLoggedOut} initialSelectedId={pendingUserId} />}
         {section === "analytics" && <AdminAnalytics onLoggedOut={onLoggedOut} />}
