@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics, admin_health
+from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics, admin_health, admin_overview
 from api.services import db_migrations
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -101,6 +101,7 @@ app.include_router(calendar.router,      prefix="/api/athletes",      tags=["25.
 app.include_router(admin.router,           prefix="/api/admin",           tags=["26. Admin"])
 app.include_router(admin_analytics.router, prefix="/api/admin",           tags=["27. Admin Analytics"])
 app.include_router(admin_health.router,    prefix="/api/admin",           tags=["28. Admin Health"])
+app.include_router(admin_overview.router,  prefix="/api/admin",           tags=["29. Admin Overview"])
 
 
 _scheduler = BackgroundScheduler()

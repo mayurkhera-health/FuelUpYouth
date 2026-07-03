@@ -39,89 +39,111 @@ def _active_where(conn) -> str:
     return "(account_status IS NULL OR account_status != 'hard_deleted')" if "account_status" in cols else "1=1"
 
 
+# ── Shared DB metrics (single source of truth — reused by the plain /overview) ─
+def db_metrics(conn, days: int = 30) -> dict:
+    """Core database-derived analytics. No PostHog, so always fast + available.
+    Consumed by /analytics/overview AND the plain-language /overview endpoint."""
+    since_30 = _iso_days_ago(days)
+    since_7 = _iso_days_ago(7)
+    aw = _active_where(conn)                          # excludes deleted parents
+    active_ids = f"SELECT id FROM parents WHERE {aw}"
+    active_athletes = f"SELECT id FROM athletes WHERE parent_id IN ({active_ids})"
+
+    families_total = _scalar(conn, f"SELECT COUNT(*) FROM parents WHERE {aw}")
+    signups_window = _scalar(conn, f"SELECT COUNT(*) FROM parents WHERE created_at >= ? AND {aw}", (since_30,))
+    athletes_total = _scalar(conn, f"SELECT COUNT(*) FROM athletes WHERE parent_id IN ({active_ids})")
+    athletes_connected = _scalar(conn,
+        f"SELECT COUNT(*) FROM athletes WHERE (byga_ics_url IS NOT NULL OR playmetrics_ics_url IS NOT NULL) "
+        f"AND parent_id IN ({active_ids})")
+    sync_pct = round(100 * athletes_connected / athletes_total) if athletes_total else 0
+    active_7d = _scalar(conn, f"""
+        SELECT COUNT(DISTINCT athlete_id) FROM (
+            SELECT athlete_id FROM meal_logs   WHERE logged_at  >= ?
+            UNION SELECT athlete_id FROM window_logs WHERE created_at >= ?
+            UNION SELECT athlete_id FROM water_logs  WHERE updated_at >= ?
+        ) WHERE athlete_id IN ({active_athletes})""", (since_7, since_7, since_7))
+    rows = conn.execute(
+        f"SELECT substr(created_at,1,10) AS d, COUNT(*) AS n FROM parents "
+        f"WHERE created_at >= ? AND {aw} GROUP BY d ORDER BY d", (since_30,)).fetchall()
+    signup_series = [{"date": r["d"], "count": r["n"]} for r in rows]
+    problem_7d = _scalar(conn, "SELECT COUNT(*) FROM problem_reports WHERE created_at >= ?", (since_7,)) \
+        if _table_exists(conn, "problem_reports") else 0
+    ideas_7d = _scalar(conn, "SELECT COUNT(*) FROM feature_requests WHERE submitted_at >= ?", (since_7,)) \
+        if _table_exists(conn, "feature_requests") else 0
+    src_rows = conn.execute("SELECT COALESCE(source,'manual') AS s, COUNT(*) AS n FROM events GROUP BY s").fetchall()
+    event_sources = {r["s"]: r["n"] for r in src_rows}
+    return {
+        "families_total": families_total, "signups_window": signups_window, "window_days": days,
+        "active_7d": active_7d,
+        "athletes_total": athletes_total, "athletes_connected": athletes_connected, "sync_pct": sync_pct,
+        "signup_series": signup_series,
+        "problem_reports_7d": problem_7d, "feature_ideas_7d": ideas_7d, "event_sources": event_sources,
+    }
+
+
+def funnel_steps(conn) -> list:
+    """Activation funnel steps (DB-derived). Reused by /overview for the
+    calendar-connection and meal-plan counts."""
+    aw = _active_where(conn)
+    active_ids = f"SELECT id FROM parents WHERE {aw}"
+    signed_up = _scalar(conn, f"SELECT COUNT(*) FROM parents WHERE {aw}")
+    created_athlete = _scalar(conn, f"SELECT COUNT(DISTINCT parent_id) FROM athletes WHERE parent_id IN ({active_ids})")
+    # "Connected calendar" = auto-sync URL OR a one-time uploaded .ics file (uid).
+    connected_calendar = _scalar(conn, f"""
+        SELECT COUNT(DISTINCT a.parent_id) FROM athletes a
+        WHERE a.parent_id IN ({active_ids})
+          AND (a.byga_ics_url IS NOT NULL OR a.playmetrics_ics_url IS NOT NULL
+            OR EXISTS(SELECT 1 FROM events e WHERE e.athlete_id = a.id AND e.uid IS NOT NULL AND e.uid != ''))""")
+    planned = _scalar(conn, f"""
+        SELECT COUNT(DISTINCT a.parent_id) FROM athletes a
+        WHERE a.parent_id IN ({active_ids})
+          AND (EXISTS(SELECT 1 FROM meal_plans mp WHERE mp.athlete_id = a.id)
+            OR EXISTS(SELECT 1 FROM meal_plan_selections ms WHERE ms.athlete_id = a.id))""")
+
+    def step(label, value, prev):
+        return {"label": label, "value": value,
+                "pct_of_start": round(100 * value / signed_up) if signed_up else 0,
+                "pct_of_prev": round(100 * value / prev) if prev else 0}
+    return [
+        step("Signed up", signed_up, signed_up),
+        step("Created athlete", created_athlete, signed_up),
+        step("Connected calendar", connected_calendar, created_athlete),
+        step("Built meal plan", planned, connected_calendar),
+    ]
+
+
 # ── Overview ─────────────────────────────────────────────────────────────────
 @router.get("/analytics/overview")
 def overview(days: int = 30, force: bool = False, _: bool = Depends(require_admin)):
     conn = get_conn()
     try:
-        since_30 = _iso_days_ago(days)
-        since_7 = _iso_days_ago(7)
-
-        aw = _active_where(conn)                          # excludes deleted parents
-        active_ids = f"SELECT id FROM parents WHERE {aw}"
-        active_athletes = f"SELECT id FROM athletes WHERE parent_id IN ({active_ids})"
-
-        families_total = _scalar(conn, f"SELECT COUNT(*) FROM parents WHERE {aw}")
-        signups_window = _scalar(
-            conn, f"SELECT COUNT(*) FROM parents WHERE created_at >= ? AND {aw}", (since_30,))
-
-        athletes_total = _scalar(conn, f"SELECT COUNT(*) FROM athletes WHERE parent_id IN ({active_ids})")
-        athletes_connected = _scalar(
-            conn,
-            f"SELECT COUNT(*) FROM athletes WHERE (byga_ics_url IS NOT NULL OR playmetrics_ics_url IS NOT NULL) "
-            f"AND parent_id IN ({active_ids})")
-        sync_pct = round(100 * athletes_connected / athletes_total) if athletes_total else 0
-
-        # DB-derived active users (7d): distinct athletes (of active families) with any activity.
-        active_7d = _scalar(conn, f"""
-            SELECT COUNT(DISTINCT athlete_id) FROM (
-                SELECT athlete_id FROM meal_logs   WHERE logged_at  >= ?
-                UNION SELECT athlete_id FROM window_logs WHERE created_at >= ?
-                UNION SELECT athlete_id FROM water_logs  WHERE updated_at >= ?
-            ) WHERE athlete_id IN ({active_athletes})""", (since_7, since_7, since_7))
-
-        # Signups-over-time from DB (daily). substr() gets the date part for both
-        # ISO ('...T...') and CURRENT_TIMESTAMP ('... ...') formats.
-        rows = conn.execute(
-            f"SELECT substr(created_at,1,10) AS d, COUNT(*) AS n FROM parents "
-            f"WHERE created_at >= ? AND {aw} GROUP BY d ORDER BY d", (since_30,)).fetchall()
-        db_signup_series = [{"date": r["d"], "count": r["n"]} for r in rows]
-
-        # App health
-        problem_7d = _scalar(conn, "SELECT COUNT(*) FROM problem_reports WHERE created_at >= ?", (since_7,)) \
-            if _table_exists(conn, "problem_reports") else 0
-        ideas_7d = _scalar(conn, "SELECT COUNT(*) FROM feature_requests WHERE submitted_at >= ?", (since_7,)) \
-            if _table_exists(conn, "feature_requests") else 0
-        src_rows = conn.execute(
-            "SELECT COALESCE(source,'manual') AS s, COUNT(*) AS n FROM events GROUP BY s").fetchall()
-        event_sources = {r["s"]: r["n"] for r in src_rows}
-
-        # PostHog enrichment (optional). One probe query tells us whether the
-        # Query API is actually usable (creds valid + reachable).
-        ph_signups = posthog_client.signups_over_time(days, force=force)
-        ph_status = {
-            "configured": posthog_client.is_configured(),
-            "available": bool(ph_signups.get("available")),
-            "reason": ph_signups.get("reason"),
-        }
-
-        return {
-            "as_of": datetime.utcnow().isoformat() + "Z",
-            # True only when PostHog is configured AND the Query API actually works.
-            "posthog_available": ph_status["available"],
-            "posthog_status": ph_status,
-            "cards": {
-                "signups": {"value": signups_window, "window_days": days, "source": "db"},
-                "active_users_7d": {"value": active_7d, "source": "db"},
-                "families_total": {"value": families_total, "source": "db"},
-                "sync_adoption": {
-                    "percent": sync_pct, "connected": athletes_connected,
-                    "total": athletes_total, "source": "db",
-                },
-            },
-            "signups_over_time": {
-                "source": "db",
-                "points": db_signup_series,
-                "posthog": ph_signups,  # {available, data|reason}
-            },
-            "app_health": {
-                "problem_reports_7d": problem_7d,
-                "feature_ideas_7d": ideas_7d,
-                "event_sources": event_sources,
-            },
-        }
+        m = db_metrics(conn, days)
     finally:
         conn.close()
+
+    # PostHog enrichment (optional). One probe query tells us whether the Query
+    # API is actually usable (creds valid + reachable).
+    ph_signups = posthog_client.signups_over_time(days, force=force)
+    ph_status = {
+        "configured": posthog_client.is_configured(),
+        "available": bool(ph_signups.get("available")),
+        "reason": ph_signups.get("reason"),
+    }
+    return {
+        "as_of": datetime.utcnow().isoformat() + "Z",
+        "posthog_available": ph_status["available"],
+        "posthog_status": ph_status,
+        "cards": {
+            "signups": {"value": m["signups_window"], "window_days": m["window_days"], "source": "db"},
+            "active_users_7d": {"value": m["active_7d"], "source": "db"},
+            "families_total": {"value": m["families_total"], "source": "db"},
+            "sync_adoption": {"percent": m["sync_pct"], "connected": m["athletes_connected"],
+                              "total": m["athletes_total"], "source": "db"},
+        },
+        "signups_over_time": {"source": "db", "points": m["signup_series"], "posthog": ph_signups},
+        "app_health": {"problem_reports_7d": m["problem_reports_7d"],
+                       "feature_ideas_7d": m["feature_ideas_7d"], "event_sources": m["event_sources"]},
+    }
 
 
 # ── Activation funnel (DB-derived, always available) ─────────────────────────
@@ -129,45 +151,10 @@ def overview(days: int = 30, force: bool = False, _: bool = Depends(require_admi
 def funnel(days: int = 30, _: bool = Depends(require_admin)):
     conn = get_conn()
     try:
-        aw = _active_where(conn)
-        active_ids = f"SELECT id FROM parents WHERE {aw}"
-
-        signed_up = _scalar(conn, f"SELECT COUNT(*) FROM parents WHERE {aw}")
-        created_athlete = _scalar(
-            conn, f"SELECT COUNT(DISTINCT parent_id) FROM athletes WHERE parent_id IN ({active_ids})")
-        # "Connected calendar" = auto-sync URL OR a one-time uploaded .ics file
-        # (imported events carry a uid). Matches the Users-page calendar badge, so
-        # families who uploaded a file aren't shown as 0.
-        connected_calendar = _scalar(conn, f"""
-            SELECT COUNT(DISTINCT a.parent_id) FROM athletes a
-            WHERE a.parent_id IN ({active_ids})
-              AND (a.byga_ics_url IS NOT NULL OR a.playmetrics_ics_url IS NOT NULL
-                OR EXISTS(SELECT 1 FROM events e WHERE e.athlete_id = a.id AND e.uid IS NOT NULL AND e.uid != ''))""")
-        # "Built a meal plan" — active parents with an athlete that has any meal-plan row.
-        planned = _scalar(conn, f"""
-            SELECT COUNT(DISTINCT a.parent_id) FROM athletes a
-            WHERE a.parent_id IN ({active_ids})
-              AND (EXISTS(SELECT 1 FROM meal_plans mp WHERE mp.athlete_id = a.id)
-                OR EXISTS(SELECT 1 FROM meal_plan_selections ms WHERE ms.athlete_id = a.id))""")
-
-        def step(label, value, prev):
-            return {
-                "label": label, "value": value,
-                "pct_of_start": round(100 * value / signed_up) if signed_up else 0,
-                "pct_of_prev": round(100 * value / prev) if prev else 0,
-            }
-
-        steps = [
-            step("Signed up", signed_up, signed_up),
-            step("Created athlete", created_athlete, signed_up),
-            step("Connected calendar", connected_calendar, created_athlete),
-            step("Built meal plan", planned, connected_calendar),
-        ]
-        return {"source": "db", "steps": steps,
-                "note": "All steps derived from our database (most reliable). "
-                        "Mixpanel event counts can refine these once event names are mapped."}
+        steps = funnel_steps(conn)
     finally:
         conn.close()
+    return {"source": "db", "steps": steps, "note": "All steps derived from our own data."}
 
 
 # ── Retention / WAU (PostHog, with DB WAU fallback) ──────────────────────────

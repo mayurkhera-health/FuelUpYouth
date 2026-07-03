@@ -6,6 +6,7 @@ import AdminUsers from "./AdminUsers";
 import AdminFamilyDetail from "./AdminFamilyDetail";
 import AdminAnalytics from "./AdminAnalytics";
 import AdminHealth from "./AdminHealth";
+import AdminOverview from "./AdminOverview";
 
 // Overall health strip — one fetch per admin page load, no polling.
 function HealthStrip({ onOpen }) {
@@ -38,7 +39,8 @@ function HealthStrip({ onOpen }) {
 
 export default function AdminApp() {
   const [authed, setAuthed] = useState(!!getToken());
-  const [section, setSection] = useState("users"); // "users" | "analytics" | "health"
+  // Default landing = the plain-language Overview (the hourly reporter's screen).
+  const [section, setSection] = useState("overview"); // "overview" | "users" | "analytics" | "health"
   const [openParentId, setOpenParentId] = useState(null);
 
   // Called by child fetches when a 401 (AuthError) bubbles up.
@@ -73,6 +75,7 @@ export default function AdminApp() {
         <div style={{ font: `800 18px ${FONT_DISPLAY}`, color: C.text1, padding: "0 8px 20px" }}>
           FuelUp Admin
         </div>
+        {navItem("overview", "Overview")}
         {navItem("users", "Users")}
         {navItem("analytics", "Analytics")}
         {navItem("health", "System Health")}
@@ -84,7 +87,11 @@ export default function AdminApp() {
       </aside>
 
       <main style={{ flex: 1, padding: "28px 32px", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
-        {section !== "health" && <HealthStrip onOpen={() => { setSection("health"); setOpenParentId(null); }} />}
+        {/* Health strip is redundant on Overview (its own health line) and Health. */}
+        {section !== "health" && section !== "overview" && (
+          <HealthStrip onOpen={() => { setSection("health"); setOpenParentId(null); }} />
+        )}
+        {section === "overview" && <AdminOverview onLoggedOut={onLoggedOut} />}
         {section === "users" && (
           openParentId
             ? <AdminFamilyDetail
