@@ -378,19 +378,28 @@ def _add_source_to_events(conn):
 
 
 def _create_admin_audit_log(conn):
-    # Admin Module: every admin mutation (parent/athlete edit + delete) writes one
-    # row here. `detail_json` is a TEXT JSON blob (e.g. cascade counts, changed
-    # fields) — SQLite has no JSON column type so it's stored as text. There is no
-    # parent/athlete FK because rows must survive after the target is hard-deleted.
+    # Admin Module audit trail. This schema intentionally matches the richer table
+    # already present in production from the earlier FuelUp-Admin deployment (46
+    # historical rows on the volume) so both coexist and CREATE IF NOT EXISTS is a
+    # no-op there. actor_*/action/target_type/target_id are NOT NULL; the detail
+    # blob (cascade counts, changed fields) is stored as JSON text in after_state.
+    # No parent/athlete FK — rows must survive after the target is hard-deleted.
     # Idempotent — safe every startup.
     conn.execute("""
         CREATE TABLE IF NOT EXISTS admin_audit_log (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            action      TEXT NOT NULL,
-            target_type TEXT NOT NULL,
-            target_id   INTEGER,
-            detail_json TEXT,
-            created_at  TEXT DEFAULT CURRENT_TIMESTAMP
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            actor_id     INTEGER NOT NULL,
+            actor_email  TEXT NOT NULL,
+            actor_role   TEXT NOT NULL,
+            action       TEXT NOT NULL,
+            target_type  TEXT NOT NULL,
+            target_id    INTEGER NOT NULL,
+            target_email TEXT,
+            before_state TEXT,
+            after_state  TEXT,
+            request_ip   TEXT,
+            user_agent   TEXT,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now'))
         )
     """)
     conn.execute(

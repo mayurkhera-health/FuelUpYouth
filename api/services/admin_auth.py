@@ -127,22 +127,33 @@ def require_admin(authorization: str = Header(None)) -> bool:
 
 
 # ── Audit log ───────────────────────────────────────────────────────────────
+# Single-admin (founder) product: there is no per-user identity beyond the
+# password, so the actor is a fixed super-admin. These fill the NOT NULL actor_*
+# columns of the shared admin_audit_log table. actor_id=1 matches the historical
+# FuelUp-Admin rows on the production volume.
+ACTOR_ID = 1
+ACTOR_EMAIL = os.getenv("ADMIN_EMAIL", "admin")
+ACTOR_ROLE = "super_admin"
+
+
 def write_audit(action: str, target_type: str, target_id, detail: dict | None = None,
                 conn=None) -> None:
-    """Append one row to admin_audit_log. Pass an existing `conn` to enlist the
-    audit write in the caller's transaction (used by cascade delete so the log
-    row is atomic with the delete); otherwise a fresh connection is opened and
-    committed here."""
-    detail_json = json.dumps(detail or {}, default=str)
+    """Append one row to admin_audit_log. The `detail` dict (cascade counts,
+    changed fields) is stored as JSON in after_state. Pass an existing `conn` to
+    enlist the audit write in the caller's transaction (used by cascade delete so
+    the log row is atomic with the delete); otherwise a fresh connection is opened
+    and committed here."""
+    after_state = json.dumps(detail or {}, default=str)
     created_at = datetime.utcnow().isoformat()
     own = conn is None
     if own:
         conn = get_conn()
     try:
         conn.execute(
-            "INSERT INTO admin_audit_log (action, target_type, target_id, detail_json, created_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (action, target_type, target_id, detail_json, created_at),
+            "INSERT INTO admin_audit_log "
+            "(actor_id, actor_email, actor_role, action, target_type, target_id, after_state, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (ACTOR_ID, ACTOR_EMAIL, ACTOR_ROLE, action, target_type, target_id, after_state, created_at),
         )
         if own:
             conn.commit()
