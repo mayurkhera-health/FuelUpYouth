@@ -3,22 +3,49 @@ import { adminFetch, AuthError } from "./adminApi";
 import { C, FONT_DISPLAY } from "./theme";
 import { Card, Button, Skeleton, EmptyState, ErrorRetry } from "./ui";
 
-const TITLES = {
-  bedrock_ping: "Bedrock · ping",
-  bedrock_inference: "Bedrock · inference",
-  gmail_smtp: "Gmail SMTP",
-  db_writable: "Database",
-  disk_space: "Disk",
-  scheduler_notifications: "Notif. scheduler",
-  scheduler_calendar_sync: "Calendar scheduler",
-  calendar_sync_systemic: "Sync feeds",
-  expo_push: "Expo push",
+// Friendly name + a one-line "what this watches" for each sensor, so the page
+// makes sense to a non-engineer. Keyed by backend check_name.
+const META = {
+  bedrock_ping: { title: "AI service", blurb: "Connection to the AI behind coaching & blueprints" },
+  gmail_smtp: { title: "Email delivery", blurb: "Can sign in to the mailbox that sends emails" },
+  db_writable: { title: "Database", blurb: "App database accepts reads & writes" },
+  disk_space: { title: "Storage", blurb: "Free space on the data volume" },
+  scheduler_notifications: { title: "Reminder scheduler", blurb: "The 15-min job that sends fueling reminders" },
+  scheduler_calendar_sync: { title: "Calendar sync job", blurb: "The 6-hour job that refreshes connected calendars" },
+  calendar_sync_systemic: { title: "Calendar feeds", blurb: "BYGA / PlayMetrics feeds importing successfully" },
+  expo_push: { title: "Push notifications", blurb: "Recent push sends to phones are landing" },
+  bedrock_inference: { title: "AI responses", blurb: "The AI can generate a reply · checked once a day" },
 };
+
+// Human-readable detail — reassuring copy for the not-yet-run (pending) states,
+// which otherwise read like failures. Green/red details from the backend are
+// already clear, so they pass through.
+const PENDING_COPY = {
+  scheduler_notifications: "Waiting for first run — within 15 min of a deploy",
+  scheduler_calendar_sync: "Waiting for first run — within 6 hours",
+  calendar_sync_systemic: "No connected calendars to check yet",
+  expo_push: "No push notifications sent recently",
+  bedrock_inference: "Runs automatically once a day (09:00 UTC)",
+};
+
+function humanDetail(c) {
+  if (c.status === "unknown") return PENDING_COPY[c.check_name] || "Waiting for first check";
+  return c.detail || "—";
+}
+
+// Status → chip. Disk gets an amber "Watch" at ≥70% even while technically green.
+function statusChip(c) {
+  if (c.status === "red") return { label: "Down", fg: C.danger, bg: C.dangerBg, border: C.dangerBorder, dot: C.danger };
+  if (c.check_name === "disk_space" && c.status === "green" && (c.metric_value ?? 0) >= 70)
+    return { label: "Watch", fg: "#9a6a1e", bg: C.warmLight, border: "#f0d9a8", dot: C.warm };
+  if (c.status === "green") return { label: "Healthy", fg: C.brand, bg: C.brandGhost, border: C.brandLight, dot: C.brandMid };
+  return { label: "Pending", fg: C.text3, bg: C.surface2, border: C.border, dot: C.text3 };
+}
 
 function parseUtc(iso) {
   if (!iso) return null;
   let s = iso.replace(" ", "T");
-  if (!/[zZ]|[+-]\d\d:?\d\d$/.test(s)) s += "Z"; // stored values are UTC-naive
+  if (!/[zZ]|[+-]\d\d:?\d\d$/.test(s)) s += "Z";
   const d = new Date(s);
   return isNaN(d) ? null : d;
 }
@@ -34,20 +61,17 @@ function timeAgo(iso) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-// Status → color. Disk gets amber early-warning at ≥70% even while still green.
-function dotColor(check) {
-  if (check.status === "red") return C.danger;
-  if (check.status === "unknown") return C.text3;
-  if (check.check_name === "disk_space" && (check.metric_value ?? 0) >= 70) return C.warm;
-  return C.brandMid;
-}
-function overallMeta(overall, redCount) {
-  if (overall === "red") return { color: C.danger, label: `${redCount} ${redCount === 1 ? "issue" : "issues"}` };
-  if (overall === "unknown") return { color: C.text3, label: "Starting up" };
-  return { color: C.brandMid, label: "All systems green" };
+// Overall reads from the founder's POV: is anything actually broken? Pending
+// checks are informational, not a problem — they never turn the banner red.
+function overallMeta(checks) {
+  const red = checks.filter((c) => c.status === "red").length;
+  const pending = checks.filter((c) => c.status === "unknown").length;
+  if (red > 0) return { color: C.danger, label: `${red} ${red === 1 ? "issue needs" : "issues need"} attention` };
+  if (pending > 0) return { color: C.brandMid, label: `All healthy · ${pending} still checking in` };
+  return { color: C.brandMid, label: "All systems healthy" };
 }
 
-function Dot({ color, size = 12 }) {
+function Dot({ color, size = 11 }) {
   return <span style={{ display: "inline-block", width: size, height: size, borderRadius: "50%", background: color, flexShrink: 0 }} />;
 }
 
@@ -62,7 +86,7 @@ export default function AdminHealth({ onLoggedOut }) {
 
   useEffect(() => {
     load();
-    return () => clearTimeout(timerRef.current);
+    return () => clearInterval(timerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -92,13 +116,9 @@ export default function AdminHealth({ onLoggedOut }) {
       setData(snap);
       const inc = await adminFetch("/health/incidents?limit=50");
       setIncidents(inc.items || []);
-      // disable for 60s
       setCooldown(60);
       timerRef.current = setInterval(() => {
-        setCooldown((n) => {
-          if (n <= 1) { clearInterval(timerRef.current); return 0; }
-          return n - 1;
-        });
+        setCooldown((n) => { if (n <= 1) { clearInterval(timerRef.current); return 0; } return n - 1; });
       }, 1000);
     } catch (err) {
       if (err instanceof AuthError) return onLoggedOut();
@@ -111,80 +131,99 @@ export default function AdminHealth({ onLoggedOut }) {
   if (loading) return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <Skeleton height={28} width={200} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
-        {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} height={92} />)}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
+        {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} height={110} />)}
       </div>
     </div>
   );
   if (error) return <ErrorRetry message={error} onRetry={load} />;
   if (!data) return null;
 
-  const redCount = data.checks.filter((c) => c.status === "red").length;
-  const om = overallMeta(data.overall, redCount);
+  const om = overallMeta(data.checks);
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 12 }}>
         <h1 style={{ font: `800 24px ${FONT_DISPLAY}`, color: C.text1, margin: 0 }}>System Health</h1>
         <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center", font: `700 14px ${FONT_DISPLAY}`, color: om.color }}>
-            <Dot color={om.color} /> Overall: {om.label}
+            <Dot color={om.color} /> {om.label}
           </span>
           <Button variant="ghost" onClick={checkNow} disabled={running || cooldown > 0}>
             {running ? "Checking…" : cooldown > 0 ? `Check now (${cooldown}s)` : "Check now"}
           </Button>
         </div>
       </div>
+      <p style={{ font: `400 13px ${FONT_DISPLAY}`, color: C.text3, margin: "0 0 18px" }}>
+        Live status of the services FuelUp depends on. “Pending” checks simply haven’t run since the last deploy — not a problem.
+      </p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12, marginBottom: 22 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12, marginBottom: 24 }}>
         {data.checks.map((c) => {
-          const color = dotColor(c);
-          const amber = color === C.warm;
+          const meta = META[c.check_name] || { title: c.check_name, blurb: "" };
+          const chip = statusChip(c);
+          const alarm = chip.label === "Down";
+          const watch = chip.label === "Watch";
           return (
             <Card key={c.check_name} style={{
-              padding: 14,
-              borderColor: c.status === "red" ? C.dangerBorder : amber ? "#f0d9a8" : C.border,
-              background: c.status === "red" ? C.dangerBg : amber ? C.warmLight : C.surface,
+              padding: 16,
+              borderColor: alarm ? C.dangerBorder : watch ? "#f0d9a8" : C.border,
+              background: alarm ? C.dangerBg : watch ? C.warmLight : C.surface,
             }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <Dot color={color} />
-                <span style={{ font: `800 14px ${FONT_DISPLAY}`, color: C.text1 }}>
-                  {TITLES[c.check_name] || c.check_name}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <span style={{ font: `800 15px ${FONT_DISPLAY}`, color: C.text1 }}>{meta.title}</span>
+                <span style={{
+                  display: "inline-flex", gap: 5, alignItems: "center", flexShrink: 0,
+                  font: `700 11px ${FONT_DISPLAY}`, color: chip.fg, background: chip.bg,
+                  border: `1px solid ${chip.border}`, borderRadius: 999, padding: "2px 9px",
+                }}>
+                  <Dot color={chip.dot} size={7} /> {chip.label}
                 </span>
               </div>
-              <div style={{ font: `500 13px ${FONT_DISPLAY}`, color: C.text2, marginTop: 6, minHeight: 18 }}>
-                {c.detail || (c.status === "unknown" ? "not yet checked" : "—")}
+              <div style={{ font: `400 12px ${FONT_DISPLAY}`, color: C.text3, marginTop: 4, minHeight: 30 }}>
+                {meta.blurb}
+              </div>
+              <div style={{ font: `600 13px ${FONT_DISPLAY}`, color: C.text2, marginTop: 8, minHeight: 18 }}>
+                {humanDetail(c)}
               </div>
               <div style={{ font: `500 11px ${FONT_DISPLAY}`, color: C.text3, marginTop: 6 }}>
-                {c.last_checked_at ? timeAgo(c.last_checked_at) : "—"}
+                Last checked {c.last_checked_at ? timeAgo(c.last_checked_at) : "—"}
               </div>
             </Card>
           );
         })}
       </div>
 
-      <h2 style={{ font: `800 18px ${FONT_DISPLAY}`, color: C.text1, margin: "0 0 12px" }}>Incident history</h2>
+      <h2 style={{ font: `800 18px ${FONT_DISPLAY}`, color: C.text1, margin: "0 0 4px" }}>Recent changes</h2>
+      <p style={{ font: `400 13px ${FONT_DISPLAY}`, color: C.text3, margin: "0 0 12px" }}>
+        Every time a sensor changes state it’s logged here.
+      </p>
       <Card style={{ padding: 0 }}>
         {incidents.length === 0 ? (
-          <EmptyState title="No incidents recorded" subtitle="Status transitions will appear here." />
+          <EmptyState title="Nothing to report" subtitle="Status changes will show up here." />
         ) : (
-          incidents.map((i) => (
-            <div key={i.id} style={{
-              display: "flex", gap: 12, alignItems: "baseline", padding: "10px 16px",
-              borderBottom: `1px solid ${C.border}`, font: `500 13px ${FONT_DISPLAY}`, color: C.text1,
-            }}>
-              <span style={{ color: C.text3, minWidth: 96, fontSize: 12 }}>
-                {(i.created_at || "").slice(5, 16).replace("T", " ")}
-              </span>
-              <span style={{ minWidth: 150, fontWeight: 700 }}>{TITLES[i.check_name] || i.check_name}</span>
-              <span style={{ display: "inline-flex", gap: 5, alignItems: "center" }}>
-                <Dot color={i.from_status === "red" ? C.danger : i.from_status === "green" ? C.brandMid : C.text3} size={8} />
-                →
-                <Dot color={i.to_status === "red" ? C.danger : i.to_status === "green" ? C.brandMid : C.text3} size={8} />
-              </span>
-              <span style={{ color: C.text2, flex: 1 }}>{i.detail}</span>
-            </div>
-          ))
+          incidents.map((i) => {
+            const meta = META[i.check_name] || { title: i.check_name };
+            const label = (s) => s === "red" ? "Down" : s === "green" ? "Healthy" : "Pending";
+            const col = (s) => s === "red" ? C.danger : s === "green" ? C.brandMid : C.text3;
+            return (
+              <div key={i.id} style={{
+                display: "flex", gap: 12, alignItems: "baseline", padding: "11px 16px",
+                borderBottom: `1px solid ${C.border}`, font: `500 13px ${FONT_DISPLAY}`, color: C.text1, flexWrap: "wrap",
+              }}>
+                <span style={{ color: C.text3, minWidth: 92, fontSize: 12 }}>
+                  {(i.created_at || "").slice(5, 16).replace("T", " ")}
+                </span>
+                <span style={{ minWidth: 150, fontWeight: 700 }}>{meta.title}</span>
+                <span style={{ display: "inline-flex", gap: 6, alignItems: "center", color: C.text2 }}>
+                  <Dot color={col(i.from_status)} size={8} /> {label(i.from_status)}
+                  <span style={{ color: C.text3 }}>→</span>
+                  <Dot color={col(i.to_status)} size={8} /> {label(i.to_status)}
+                </span>
+                <span style={{ color: C.text3, flex: 1, minWidth: 140, fontSize: 12 }}>{i.detail}</span>
+              </div>
+            );
+          })
         )}
       </Card>
     </div>

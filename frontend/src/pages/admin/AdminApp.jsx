@@ -9,21 +9,20 @@ import AdminHealth from "./AdminHealth";
 
 // Overall health strip — one fetch per admin page load, no polling.
 function HealthStrip({ onOpen }) {
-  const [overall, setOverall] = useState(null);
-  const [redCount, setRedCount] = useState(0);
+  const [snap, setSnap] = useState(null);
   useEffect(() => {
     let alive = true;
     adminFetch("/health")
-      .then((s) => { if (!alive) return; setOverall(s.overall); setRedCount(s.checks.filter((c) => c.status === "red").length); })
+      .then((s) => { if (alive) setSnap(s); })
       .catch(() => {}); // strip is best-effort; never block the page
     return () => { alive = false; };
   }, []);
-  if (!overall) return null;
-  const meta = overall === "red"
-    ? { color: C.danger, bg: C.dangerBg, border: C.dangerBorder, label: `${redCount} ${redCount === 1 ? "issue" : "issues"}` }
-    : overall === "unknown"
-      ? { color: C.text3, bg: C.surface2, border: C.border, label: "Health starting up" }
-      : { color: C.brandMid, bg: C.brandGhost, border: C.brandLight, label: "All systems green" };
+  if (!snap) return null;
+  // Founder view: red = something's actually wrong; pending checks never alarm.
+  const redCount = snap.checks.filter((c) => c.status === "red").length;
+  const meta = redCount > 0
+    ? { color: C.danger, bg: C.dangerBg, border: C.dangerBorder, label: `${redCount} ${redCount === 1 ? "issue needs" : "issues need"} attention` }
+    : { color: C.brandMid, bg: C.brandGhost, border: C.brandLight, label: "All systems healthy" };
   return (
     <button onClick={onOpen} style={{
       display: "flex", gap: 8, alignItems: "center", width: "100%", cursor: "pointer",
