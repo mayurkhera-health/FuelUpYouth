@@ -84,7 +84,8 @@ def test_overview_mixpanel_unavailable_is_graceful(client):
 def test_deleted_parents_excluded_from_metrics(client):
     from api.database import get_conn
     conn = get_conn()
-    conn.execute("ALTER TABLE parents ADD COLUMN account_status TEXT")
+    if "account_status" not in [r[1] for r in conn.execute("PRAGMA table_info(parents)").fetchall()]:
+        conn.execute("ALTER TABLE parents ADD COLUMN account_status TEXT")  # idempotent across shared-DB tests
     # Mark family B (Bob, no calendar) as hard-deleted.
     conn.execute("UPDATE parents SET account_status = 'hard_deleted' WHERE email = 'b@x.com'")
     conn.commit()

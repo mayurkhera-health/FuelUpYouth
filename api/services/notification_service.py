@@ -106,15 +106,31 @@ def already_logged(athlete_id: int, window_key: str, date_str: str, conn) -> boo
 
 # ── Expo push ──────────────────────────────────────────────────────────────────
 
-def send_expo_push(tokens: list[str], title: str, body: str) -> None:
+def send_expo_push(tokens: list[str], title: str, body: str, record: bool = True) -> bool:
+    """Send one Expo push batch. Returns True on a successful POST. `record`
+    (default True) logs the outcome for the System Health passive expo_push check;
+    alert sends pass record=False so they don't pollute that signal. Never raises."""
     if DRY_RUN:
         log.info("[DRY RUN] push → %s | %r | %r", tokens, title, body)
-        return
+        return True
     messages = [{"to": t, "title": title, "body": body, "sound": "default"} for t in tokens]
+    ok = False
+    detail = ""
     try:
-        requests.post(EXPO_PUSH_URL, json=messages, timeout=10)
+        resp = requests.post(EXPO_PUSH_URL, json=messages, timeout=10)
+        ok = resp.status_code == 200
+        if not ok:
+            detail = f"HTTP {resp.status_code}"
     except Exception as exc:
         log.warning("Expo push failed: %s", exc)
+        detail = str(exc)[:120]
+    if record:
+        try:  # lazy import avoids a load-time cycle
+            from api.services.health_service import record_expo_send
+            record_expo_send(ok, detail)
+        except Exception:
+            pass
+    return ok
 
 
 # ── INSERT-before-send dedup ───────────────────────────────────────────────────

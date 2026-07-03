@@ -248,7 +248,8 @@ def test_hard_deleted_parents_excluded_from_list(ctx):
     # Simulate the prod schema: the old FuelUp-Admin soft-delete adds
     # parents.account_status and anonymizes rows to 'hard_deleted'.
     c, ids, ka = ctx
-    ka.execute("ALTER TABLE parents ADD COLUMN account_status TEXT")
+    if "account_status" not in [r[1] for r in ka.execute("PRAGMA table_info(parents)").fetchall()]:
+        ka.execute("ALTER TABLE parents ADD COLUMN account_status TEXT")  # idempotent across shared-DB tests
     ka.execute("UPDATE parents SET account_status = 'hard_deleted' WHERE id = ?", (ids["mike"],))
     ka.commit()
     body = c.get("/api/admin/users").json()

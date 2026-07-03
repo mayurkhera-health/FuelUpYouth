@@ -35,6 +35,7 @@ def run_all():
         _add_calendar_sync_to_athletes(conn)
         _add_source_to_events(conn)
         _create_admin_audit_log(conn)
+        _create_health_tables(conn)
         conn.commit()
     finally:
         conn.close()
@@ -405,6 +406,73 @@ def _create_admin_audit_log(conn):
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_admin_audit_created "
         "ON admin_audit_log(created_at)"
+    )
+
+
+_HEALTH_CHECK_NAMES = [
+    "bedrock_ping", "bedrock_inference", "gmail_smtp", "db_writable", "disk_space",
+    "scheduler_notifications", "scheduler_calendar_sync", "calendar_sync_systemic",
+    "expo_push",
+]
+
+
+def _create_health_tables(conn):
+    # System Health monitoring: current state per check, append-only transition
+    # history, scheduler heartbeats, expo-send outcomes, and a scratch table the
+    # db_writable probe writes/deletes a row in. last_alerted_at powers the alert
+    # cooldown (survives restart). Idempotent — safe every startup.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS health_checks (
+            check_name      TEXT PRIMARY KEY,
+            status          TEXT NOT NULL DEFAULT 'unknown',
+            detail          TEXT,
+            metric_value    REAL,
+            last_checked_at TEXT,
+            last_green_at   TEXT,
+            last_red_at     TEXT,
+            last_alerted_at TEXT
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS health_incidents (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            check_name TEXT NOT NULL,
+            from_status TEXT,
+            to_status  TEXT,
+            detail     TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_health_incidents_created ON health_incidents(created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_health_incidents_check ON health_incidents(check_name, created_at)")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS scheduler_heartbeats (
+            job_name        TEXT PRIMARY KEY,
+            last_run_at     TEXT,
+            last_success_at TEXT,
+            last_error      TEXT,
+            meta            TEXT
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS expo_push_log (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            success    INTEGER NOT NULL,
+            detail     TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_expo_push_log_created ON expo_push_log(created_at)")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS health_scratch (
+            id INTEGER PRIMARY KEY,
+            v  TEXT
+        )
+    """)
+    # Seed a row per check so the admin shows all 9 as 'unknown' before the first run.
+    conn.executemany(
+        "INSERT OR IGNORE INTO health_checks (check_name, status) VALUES (?, 'unknown')",
+        [(n,) for n in _HEALTH_CHECK_NAMES],
     )
 
 

@@ -281,6 +281,7 @@ def run_calendar_sync_tick() -> None:
     """APScheduler entrypoint — sync every athlete that has connected a feed. One DB
     connection for the whole tick (mirrors run_notification_tick)."""
     conn = get_conn()
+    attempted = succeeded = 0
     try:
         rows = conn.execute(
             "SELECT id, competition_level, byga_ics_url, playmetrics_ics_url FROM athletes "
@@ -291,9 +292,19 @@ def run_calendar_sync_tick() -> None:
             urls = {"byga": row["byga_ics_url"], "playmetrics": row["playmetrics_ics_url"]}
             for platform in _PLATFORMS:
                 if urls[platform]:
+                    attempted += 1
                     try:
-                        sync_platform(conn, row["id"], platform, urls[platform], row["competition_level"])
+                        counts = sync_platform(conn, row["id"], platform, urls[platform], row["competition_level"])
+                        if not counts.get("error"):
+                            succeeded += 1
                     except Exception:
                         logger.exception("Calendar sync crashed (athlete %s, %s)", row["id"], platform)
     finally:
         conn.close()
+        # Feed the System Health calendar_sync_systemic check (systemic = a whole-
+        # provider outage). Best-effort; must not affect sync behavior.
+        try:
+            from api.services.health_service import record_calendar_sync_stats
+            record_calendar_sync_stats(attempted, succeeded)
+        except Exception:
+            pass
