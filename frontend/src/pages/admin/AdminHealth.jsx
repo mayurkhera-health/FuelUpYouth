@@ -3,6 +3,10 @@ import { adminFetch, AuthError } from "./adminApi";
 import { C, FONT_DISPLAY } from "./theme";
 import { Card, Button, Skeleton, EmptyState, ErrorRetry } from "./ui";
 
+// Checks whose metric_value is a genuine response time (ms). Only these get a
+// "latency" pill — we never fabricate a latency for checks that don't have one.
+const LATENCY_CHECKS = new Set(["bedrock_ping", "bedrock_inference", "gmail_smtp"]);
+
 // Friendly name + a one-line "what this watches" for each sensor, so the page
 // makes sense to a non-engineer. Keyed by backend check_name.
 const META = {
@@ -40,6 +44,22 @@ function statusChip(c) {
     return { label: "Watch", fg: "#9a6a1e", bg: C.warmLight, border: "#f0d9a8", dot: C.warm };
   if (c.status === "green") return { label: "Healthy", fg: C.brand, bg: C.brandGhost, border: C.brandLight, dot: C.brandMid };
   return { label: "Pending", fg: C.text3, bg: C.surface2, border: C.border, dot: C.text3 };
+}
+
+// Card tone by chip label: a 4px status-color top strip + ultra-light surface
+// ("Infrastructure Pulse" look). Pending stays neutral so it never reads alarming.
+function cardTone(label) {
+  if (label === "Down") return { accent: C.danger, bg: C.dangerBg };
+  if (label === "Watch") return { accent: C.warm, bg: C.warmLight };
+  if (label === "Healthy") return { accent: C.brandMid, bg: C.brandGhost };
+  return { accent: C.border2, bg: C.surface };
+}
+
+// Severity pill for a log row's resulting status (spec's pill-style badges).
+function severityPill(toStatus) {
+  if (toStatus === "red") return { label: "Critical", fg: "#991b1b", bg: C.dangerBg, border: C.dangerBorder };
+  if (toStatus === "green") return { label: "Resolved", fg: C.brand, bg: C.brandGhost, border: C.brandLight };
+  return { label: "Pending", fg: C.text3, bg: C.surface2, border: C.border };
 }
 
 function parseUtc(iso) {
@@ -82,6 +102,7 @@ export default function AdminHealth({ onLoggedOut }) {
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [showAllLogs, setShowAllLogs] = useState(false);
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -158,17 +179,16 @@ export default function AdminHealth({ onLoggedOut }) {
         Live status of the services FuelUp depends on. “Pending” checks simply haven’t run since the last deploy — not a problem.
       </p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14, marginBottom: 24 }}>
         {data.checks.map((c) => {
           const meta = META[c.check_name] || { title: c.check_name, blurb: "" };
           const chip = statusChip(c);
-          const alarm = chip.label === "Down";
-          const watch = chip.label === "Watch";
+          const tone = cardTone(chip.label);
+          const showLatency = LATENCY_CHECKS.has(c.check_name) && c.status === "green" && c.metric_value != null;
           return (
             <Card key={c.check_name} style={{
-              padding: 16,
-              borderColor: alarm ? C.dangerBorder : watch ? "#f0d9a8" : C.border,
-              background: alarm ? C.dangerBg : watch ? C.warmLight : C.surface,
+              padding: 16, borderColor: C.border, background: tone.bg,
+              borderTop: `4px solid ${tone.accent}`,
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                 <span style={{ font: `800 15px ${FONT_DISPLAY}`, color: C.text1 }}>{meta.title}</span>
@@ -183,6 +203,16 @@ export default function AdminHealth({ onLoggedOut }) {
               <div style={{ font: `400 12px ${FONT_DISPLAY}`, color: C.text3, marginTop: 4, minHeight: 30 }}>
                 {meta.blurb}
               </div>
+              {showLatency && (
+                <div style={{
+                  display: "inline-flex", gap: 5, alignItems: "center", marginTop: 8,
+                  font: `700 11px ${FONT_DISPLAY}`, color: C.text2, background: C.surface,
+                  border: `1px solid ${C.border}`, borderRadius: 8, padding: "3px 8px",
+                }}>
+                  ⚡ {Math.round(c.metric_value)} ms
+                  <span style={{ color: C.text3, fontWeight: 500 }}>response</span>
+                </div>
+              )}
               <div style={{ font: `600 13px ${FONT_DISPLAY}`, color: C.text2, marginTop: 8, minHeight: 18 }}>
                 {humanDetail(c)}
               </div>
@@ -202,28 +232,42 @@ export default function AdminHealth({ onLoggedOut }) {
         {incidents.length === 0 ? (
           <EmptyState title="Nothing to report" subtitle="Status changes will show up here." />
         ) : (
-          incidents.map((i) => {
+          (showAllLogs ? incidents : incidents.slice(0, 15)).map((i) => {
             const meta = META[i.check_name] || { title: i.check_name };
             const label = (s) => s === "red" ? "Down" : s === "green" ? "Healthy" : "Pending";
             const col = (s) => s === "red" ? C.danger : s === "green" ? C.brandMid : C.text3;
+            const sev = severityPill(i.to_status);
             return (
               <div key={i.id} style={{
-                display: "flex", gap: 12, alignItems: "baseline", padding: "11px 16px",
+                display: "flex", gap: 12, alignItems: "center", padding: "11px 16px",
                 borderBottom: `1px solid ${C.border}`, font: `500 13px ${FONT_DISPLAY}`, color: C.text1, flexWrap: "wrap",
               }}>
                 <span style={{ color: C.text3, minWidth: 92, fontSize: 12 }}>
                   {(i.created_at || "").slice(5, 16).replace("T", " ")}
                 </span>
                 <span style={{ minWidth: 150, fontWeight: 700 }}>{meta.title}</span>
-                <span style={{ display: "inline-flex", gap: 6, alignItems: "center", color: C.text2 }}>
+                <span style={{ display: "inline-flex", gap: 6, alignItems: "center", color: C.text2, fontSize: 12 }}>
                   <Dot color={col(i.from_status)} size={8} /> {label(i.from_status)}
                   <span style={{ color: C.text3 }}>→</span>
                   <Dot color={col(i.to_status)} size={8} /> {label(i.to_status)}
                 </span>
                 <span style={{ color: C.text3, flex: 1, minWidth: 140, fontSize: 12 }}>{i.detail}</span>
+                <span style={{
+                  flexShrink: 0, font: `700 10px ${FONT_DISPLAY}`, letterSpacing: "0.04em", textTransform: "uppercase",
+                  color: sev.fg, background: sev.bg, border: `1px solid ${sev.border}`, borderRadius: 999, padding: "2px 9px",
+                }}>{sev.label}</span>
               </div>
             );
           })
+        )}
+        {incidents.length > 15 && (
+          <button onClick={() => setShowAllLogs((v) => !v)} style={{
+            display: "block", width: "100%", cursor: "pointer", background: "transparent",
+            border: "none", borderTop: `1px solid ${C.border}`, padding: "12px",
+            font: `700 13px ${FONT_DISPLAY}`, color: C.brand,
+          }}>
+            {showAllLogs ? "Show less" : `Load more logs (${incidents.length - 15} more)`}
+          </button>
         )}
       </Card>
     </div>
