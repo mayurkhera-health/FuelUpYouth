@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { adminFetch, AuthError } from "./adminApi";
 import { C, FONT_DISPLAY } from "./theme";
-import { Card, Button, TextInput, CalendarBadge, Skeleton, ErrorRetry } from "./ui";
+import { Card, Button, TextInput, CalendarBadge, Avatar, Skeleton, ErrorRetry } from "./ui";
 
 const label = { font: `600 12px ${FONT_DISPLAY}`, color: C.text3, textTransform: "uppercase", letterSpacing: "0.03em" };
 const val = { font: `600 15px ${FONT_DISPLAY}`, color: C.text1 };
 
-export default function AdminFamilyDetail({ parentId, onBack, onLoggedOut }) {
+export default function AdminFamilyDetail({ parentId, onBack, onLoggedOut, hideBack }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -45,10 +45,12 @@ export default function AdminFamilyDetail({ parentId, onBack, onLoggedOut }) {
 
   return (
     <div>
-      <button onClick={onBack} style={{
-        font: `600 13px ${FONT_DISPLAY}`, color: C.brand, background: "transparent",
-        border: "none", cursor: "pointer", padding: 0, marginBottom: 14,
-      }}>← Back to Users</button>
+      {!hideBack && (
+        <button onClick={onBack} style={{
+          font: `600 13px ${FONT_DISPLAY}`, color: C.brand, background: "transparent",
+          border: "none", cursor: "pointer", padding: 0, marginBottom: 14,
+        }}>← Back to Users</button>
+      )}
 
       <ParentSection parent={parent} guarded={guarded} onSaved={load}
         onDelete={() => openDelete("parent", parent.id, parent.full_name, guarded, setDeleteTarget)} />
@@ -104,15 +106,19 @@ function ParentSection({ parent, guarded, onSaved, onDelete }) {
 
   return (
     <Card>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ font: `800 20px ${FONT_DISPLAY}`, color: C.text1 }}>Parent</div>
-        {!editing && <Button variant="ghost" onClick={() => setEditing(true)}>Edit</Button>}
-      </div>
       {!editing ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginTop: 12 }}>
-          <div><div style={label}>Name</div><div style={val}>{parent.full_name}</div></div>
-          <div><div style={label}>Email</div><div style={val}>{parent.email}</div></div>
-          <div><div style={label}>Joined</div><div style={val}>{(parent.created_at || "").slice(0, 10)}</div></div>
+        <div style={{ display: "flex", gap: 16, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 16, alignItems: "center", minWidth: 0 }}>
+            <Avatar name={parent.full_name} size={56} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ font: `800 22px ${FONT_DISPLAY}`, color: C.text1 }}>{parent.full_name}</div>
+              <div style={{ font: `400 14px ${FONT_DISPLAY}`, color: C.text3 }}>{parent.email}</div>
+              <div style={{ font: `500 12px ${FONT_DISPLAY}`, color: C.text3, marginTop: 2 }}>
+                Joined {(parent.created_at || "").slice(0, 10)}
+              </div>
+            </div>
+          </div>
+          <Button variant="ghost" onClick={() => setEditing(true)}>Edit profile</Button>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12, maxWidth: 420 }}>
@@ -227,34 +233,41 @@ function AthleteCard({ athlete, guarded, onSaved, onDelete }) {
 }
 
 function ActivitySection({ activity }) {
-  const ideas = activity.feature_ideas || [];
-  const upcoming = activity.upcoming_events || [];
+  const items = [
+    ...(activity.upcoming_events || []).map((e) => ({
+      key: "e" + e.id, date: e.event_date, dot: C.brandMid,
+      title: e.event_name || e.event_type, meta: `Upcoming event · ${e.source || "manual"}`,
+    })),
+    ...(activity.feature_ideas || []).map((f) => ({
+      key: "i" + f.id, date: (f.submitted_at || "").slice(0, 10), dot: C.warm,
+      title: f.suggestion, meta: "Idea submitted",
+    })),
+  ].sort((a, b) => (a.date < b.date ? 1 : -1));
+
   return (
     <>
       <h2 style={{ font: `800 18px ${FONT_DISPLAY}`, color: C.text1, margin: "26px 0 12px" }}>Activity</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
-        <Card>
-          <div style={{ font: `700 14px ${FONT_DISPLAY}`, color: C.text2, marginBottom: 10 }}>Upcoming events</div>
-          {upcoming.length === 0 ? <span style={{ color: C.text3, fontSize: 13 }}>None scheduled.</span> : (
-            upcoming.map((e) => (
-              <div key={e.id} style={{ font: `500 13px ${FONT_DISPLAY}`, color: C.text1, padding: "4px 0", borderBottom: `1px solid ${C.border}` }}>
-                {e.event_date} · {e.event_name || e.event_type} <span style={{ color: C.text3 }}>({e.source || "manual"})</span>
-              </div>
-            ))
-          )}
-        </Card>
-        <Card>
-          <div style={{ font: `700 14px ${FONT_DISPLAY}`, color: C.text2, marginBottom: 10 }}>Feature ideas submitted</div>
-          {ideas.length === 0 ? <span style={{ color: C.text3, fontSize: 13 }}>None.</span> : (
-            ideas.map((f) => (
-              <div key={f.id} style={{ font: `500 13px ${FONT_DISPLAY}`, color: C.text1, padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
-                {f.suggestion}
-                <div style={{ color: C.text3, fontSize: 12 }}>{(f.submitted_at || "").slice(0, 10)}</div>
-              </div>
-            ))
-          )}
-        </Card>
-      </div>
+      {items.length === 0 ? (
+        <Card><span style={{ color: C.text3, fontSize: 13 }}>No recent activity yet.</span></Card>
+      ) : (
+        <div style={{ position: "relative", paddingLeft: 26 }}>
+          <div style={{ position: "absolute", left: 9, top: 10, bottom: 10, width: 2, background: C.border }} />
+          {items.map((it) => (
+            <div key={it.key} style={{ position: "relative", marginBottom: 12 }}>
+              <span style={{
+                position: "absolute", left: -21, top: 12, width: 11, height: 11, borderRadius: "50%",
+                background: it.dot, border: `2px solid ${C.surface}`,
+              }} />
+              <Card style={{ padding: "10px 14px" }}>
+                <div style={{ font: `600 14px ${FONT_DISPLAY}`, color: C.text1 }}>{it.title}</div>
+                <div style={{ font: `500 12px ${FONT_DISPLAY}`, color: C.text3, marginTop: 2 }}>
+                  {it.meta}{it.date ? ` · ${it.date}` : ""}
+                </div>
+              </Card>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }

@@ -1,22 +1,13 @@
 import { useEffect, useState } from "react";
 import { adminFetch, AuthError } from "./adminApi";
 import { C, FONT_DISPLAY } from "./theme";
-import { Card, Chip, CalendarBadge, Select, TextInput, Skeleton, EmptyState, ErrorRetry } from "./ui";
+import { Avatar, Chip, Select, TextInput, Skeleton, EmptyState, ErrorRetry } from "./ui";
 
 const LIMIT = 25;
 
-function timeAgo(iso) {
-  if (!iso) return "—";
-  const then = new Date(iso.replace(" ", "T"));
-  if (isNaN(then)) return "—";
-  const days = Math.floor((Date.now() - then.getTime()) / 86400000);
-  if (days <= 0) return "today";
-  if (days === 1) return "1d ago";
-  if (days < 30) return `${days}d ago`;
-  return `${Math.floor(days / 30)}mo ago`;
-}
-
-export default function AdminUsers({ onOpenFamily, onLoggedOut }) {
+// Master list for the split-pane Users view. Selecting a family highlights the
+// row and loads it in the detail pane (via onSelect).
+export default function AdminUsers({ selectedId, onSelect, onLoggedOut }) {
   const [search, setSearch] = useState("");
   const [calendar, setCalendar] = useState("any");
   const [hasAthletes, setHasAthletes] = useState("any");
@@ -37,9 +28,7 @@ export default function AdminUsers({ onOpenFamily, onLoggedOut }) {
     setLoading(true);
     setError("");
     try {
-      const q = new URLSearchParams({
-        page, limit: LIMIT, search, calendar, has_athletes: hasAthletes, sort,
-      });
+      const q = new URLSearchParams({ page, limit: LIMIT, search, calendar, has_athletes: hasAthletes, sort });
       setData(await adminFetch(`/users?${q}`));
     } catch (err) {
       if (err instanceof AuthError) return onLoggedOut();
@@ -54,100 +43,78 @@ export default function AdminUsers({ onOpenFamily, onLoggedOut }) {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18 }}>
-        <h1 style={{ font: `800 24px ${FONT_DISPLAY}`, color: C.text1, margin: 0 }}>Users</h1>
-        <span style={{ font: `600 14px ${FONT_DISPLAY}`, color: C.text3 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
+        <h1 style={{ font: `800 22px ${FONT_DISPLAY}`, color: C.text1, margin: 0 }}>Users</h1>
+        <span style={{ font: `600 13px ${FONT_DISPLAY}`, color: C.text3 }}>
           {total} {total === 1 ? "family" : "families"}
         </span>
       </div>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-        <TextInput
-          value={search} placeholder="Search parent or athlete name / email…"
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          style={{ flex: 1, minWidth: 220 }}
-        />
+      <TextInput
+        value={search} placeholder="Search name or email…"
+        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+        style={{ marginBottom: 8 }}
+      />
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
         <Select value={calendar} onChange={(e) => { setCalendar(e.target.value); setPage(1); }}
-          options={[
-            { value: "any", label: "Calendar: Any" },
-            { value: "none", label: "Not connected" },
-          ]} />
+          options={[{ value: "any", label: "Calendar: Any" }, { value: "none", label: "Not connected" }]} />
         <Select value={hasAthletes} onChange={(e) => { setHasAthletes(e.target.value); setPage(1); }}
-          options={[
-            { value: "any", label: "Athletes: Any" },
-            { value: "yes", label: "Has athletes" },
-            { value: "no", label: "No athletes" },
-          ]} />
+          options={[{ value: "any", label: "Athletes: Any" }, { value: "yes", label: "Has athletes" }, { value: "no", label: "No athletes" }]} />
         <Select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}
-          options={[
-            { value: "newest", label: "Newest" },
-            { value: "name", label: "Name" },
-            { value: "last_active", label: "Last active" },
-          ]} />
+          options={[{ value: "newest", label: "Newest" }, { value: "name", label: "Name" }, { value: "last_active", label: "Last active" }]} />
       </div>
 
       {error && <ErrorRetry message={error} onRetry={load} />}
 
       {loading && !data && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} height={72} />)}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} height={62} />)}
         </div>
       )}
 
       {!error && data && data.items.length === 0 && (
-        <EmptyState title="No families match these filters" subtitle="Try clearing the search or filters." />
+        <EmptyState title="No families match" subtitle="Try clearing the search or filters." />
       )}
 
       {!error && data && data.items.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, opacity: loading ? 0.5 : 1 }}>
-          {data.items.map((f) => (
-            <Card key={f.id} style={{ padding: "10px 14px", borderRadius: 12, cursor: "pointer" }}>
-              <div onClick={() => onOpenFamily(f.id)}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ font: `800 16px ${FONT_DISPLAY}`, color: C.text1 }}>{f.full_name}</div>
-                    <div style={{ font: `400 13px ${FONT_DISPLAY}`, color: C.text3 }}>{f.email}</div>
+          {data.items.map((f) => {
+            const sel = f.id === selectedId;
+            return (
+              <button key={f.id} onClick={() => onSelect(f.id)} style={{
+                display: "flex", gap: 11, alignItems: "center", width: "100%", textAlign: "left", cursor: "pointer",
+                padding: "10px 12px", borderRadius: 12,
+                border: `1px solid ${sel ? C.brandMid : C.border}`,
+                borderLeft: `4px solid ${sel ? C.brand : "transparent"}`,
+                background: sel ? C.brandPale : C.surface,
+                transition: "background .12s",
+              }}>
+                <Avatar name={f.full_name} size={38} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ font: `700 15px ${FONT_DISPLAY}`, color: C.text1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {f.full_name}
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <div style={{ font: `400 12px ${FONT_DISPLAY}`, color: C.text3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {f.email}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
                     {f.chips.map((c) => <Chip key={c} kind={c} />)}
-                    <span style={{ font: `600 13px ${FONT_DISPLAY}`, color: C.text2 }}>
+                    <span style={{ font: `600 12px ${FONT_DISPLAY}`, color: C.text2 }}>
                       {f.athlete_count} {f.athlete_count === 1 ? "athlete" : "athletes"}
-                    </span>
-                    <span style={{ font: `500 12px ${FONT_DISPLAY}`, color: C.text3 }}>
-                      active {timeAgo(f.last_active)}
                     </span>
                   </div>
                 </div>
-                {f.athletes.length > 0 && (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 7 }}>
-                    {f.athletes.map((a) => (
-                      <span key={a.id} style={{
-                        font: `500 12px ${FONT_DISPLAY}`, color: C.text2, background: C.surface2,
-                        border: `1px solid ${C.border}`, borderRadius: 8, padding: "2px 8px",
-                        display: "inline-flex", gap: 6, alignItems: "center",
-                      }}>
-                        {a.first_name}{a.position ? ` · ${a.position}` : ""}{a.age ? ` · ${a.age}` : ""}
-                        <CalendarBadge kind={a.calendar}
-                          count={a.calendar === "imported" ? a.imported_count : a.event_count} />
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </Card>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
 
       {data && totalPages > 1 && (
-        <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "center", marginTop: 20 }}>
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-            style={pagerStyle(page <= 1)}>← Prev</button>
-          <span style={{ font: `600 13px ${FONT_DISPLAY}`, color: C.text3 }}>
-            Page {page} of {totalPages}
-          </span>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
-            style={pagerStyle(page >= totalPages)}>Next →</button>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "center", marginTop: 16 }}>
+          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} style={pagerStyle(page <= 1)}>← Prev</button>
+          <span style={{ font: `600 12px ${FONT_DISPLAY}`, color: C.text3 }}>Page {page} of {totalPages}</span>
+          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} style={pagerStyle(page >= totalPages)}>Next →</button>
         </div>
       )}
     </div>
@@ -156,8 +123,8 @@ export default function AdminUsers({ onOpenFamily, onLoggedOut }) {
 
 function pagerStyle(disabled) {
   return {
-    font: `600 13px ${FONT_DISPLAY}`, color: disabled ? C.text3 : C.brand,
+    font: `600 12px ${FONT_DISPLAY}`, color: disabled ? C.text3 : C.brand,
     background: C.surface, border: `1px solid ${C.border2}`, borderRadius: 8,
-    padding: "7px 14px", cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
+    padding: "6px 12px", cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
   };
 }

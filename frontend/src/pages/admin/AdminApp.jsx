@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { getToken, clearToken, adminFetch } from "./adminApi";
 import { C, FONT_DISPLAY } from "./theme";
 import AdminLogin from "./AdminLogin";
-import AdminUsers from "./AdminUsers";
-import AdminFamilyDetail from "./AdminFamilyDetail";
+import AdminUsersSplit from "./AdminUsersSplit";
 import AdminAnalytics from "./AdminAnalytics";
 import AdminHealth from "./AdminHealth";
 import AdminOverview from "./AdminOverview";
@@ -41,38 +40,40 @@ export default function AdminApp() {
   const [authed, setAuthed] = useState(!!getToken());
   // Default landing = the plain-language Overview (the hourly reporter's screen).
   const [section, setSection] = useState("overview"); // "overview" | "users" | "analytics" | "health"
-  const [openParentId, setOpenParentId] = useState(null);
 
   // Called by child fetches when a 401 (AuthError) bubbles up.
   function onLoggedOut() {
     clearToken();
     setAuthed(false);
-    setOpenParentId(null);
   }
 
   if (!authed) return <AdminLogin onAuth={() => setAuthed(true)} />;
 
-  const navItem = (key, label) => (
-    <button
-      key={key}
-      onClick={() => { setSection(key); setOpenParentId(null); }}
-      style={{
-        display: "block", width: "100%", textAlign: "left", cursor: "pointer",
-        font: `700 14px ${FONT_DISPLAY}`, padding: "10px 14px", borderRadius: 10,
-        border: "none", marginBottom: 4,
-        background: section === key ? C.brandGhost : "transparent",
-        color: section === key ? C.brand : C.text2,
-      }}
-    >{label}</button>
-  );
+  const navItem = (key, label) => {
+    const active = section === key;
+    return (
+      <button
+        key={key}
+        onClick={() => setSection(key)}
+        style={{
+          display: "block", width: "100%", textAlign: "left", cursor: "pointer",
+          font: `${active ? 700 : 600} 14px ${FONT_DISPLAY}`, padding: "11px 14px 11px 16px",
+          borderRadius: 10, marginBottom: 4,
+          border: "none", borderLeft: `4px solid ${active ? C.sidebarActiveBar : "transparent"}`,
+          background: active ? C.sidebarActiveBg : "transparent",
+          color: active ? C.sidebarText : C.sidebarInactive,
+        }}
+      >{label}</button>
+    );
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", font: `400 14px ${FONT_DISPLAY}` }}>
       <aside style={{
-        width: 210, borderRight: `1px solid ${C.border}`, background: C.surface,
-        padding: "22px 14px", flexShrink: 0, display: "flex", flexDirection: "column",
+        width: 240, background: C.sidebarBg, padding: "22px 12px",
+        flexShrink: 0, display: "flex", flexDirection: "column",
       }}>
-        <div style={{ font: `800 18px ${FONT_DISPLAY}`, color: C.text1, padding: "0 8px 20px" }}>
+        <div style={{ font: `800 18px ${FONT_DISPLAY}`, color: C.sidebarText, padding: "0 12px 22px" }}>
           FuelUp Admin
         </div>
         {navItem("overview", "Overview")}
@@ -81,26 +82,18 @@ export default function AdminApp() {
         {navItem("health", "System Health")}
         <div style={{ flex: 1 }} />
         <button onClick={onLoggedOut} style={{
-          font: `600 13px ${FONT_DISPLAY}`, color: C.text3, background: "transparent",
-          border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", cursor: "pointer",
+          font: `600 13px ${FONT_DISPLAY}`, color: C.sidebarInactive, background: "transparent",
+          border: `1px solid rgba(255,255,255,0.2)`, borderRadius: 8, padding: "9px 12px", cursor: "pointer",
         }}>Log out</button>
       </aside>
 
       <main style={{ flex: 1, padding: "28px 32px", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
         {/* Health strip is redundant on Overview (its own health line) and Health. */}
         {section !== "health" && section !== "overview" && (
-          <HealthStrip onOpen={() => { setSection("health"); setOpenParentId(null); }} />
+          <HealthStrip onOpen={() => setSection("health")} />
         )}
         {section === "overview" && <AdminOverview onLoggedOut={onLoggedOut} />}
-        {section === "users" && (
-          openParentId
-            ? <AdminFamilyDetail
-                parentId={openParentId}
-                onBack={() => setOpenParentId(null)}
-                onLoggedOut={onLoggedOut}
-              />
-            : <AdminUsers onOpenFamily={setOpenParentId} onLoggedOut={onLoggedOut} />
-        )}
+        {section === "users" && <AdminUsersSplit onLoggedOut={onLoggedOut} />}
         {section === "analytics" && <AdminAnalytics onLoggedOut={onLoggedOut} />}
         {section === "health" && <AdminHealth onLoggedOut={onLoggedOut} />}
       </main>

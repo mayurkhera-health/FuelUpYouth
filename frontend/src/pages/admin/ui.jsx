@@ -2,6 +2,22 @@
 // matches the app's existing hand-rolled data-viz convention (WeeklyHeatmap).
 import { C, FONT_DISPLAY, CHIP_META } from "./theme";
 
+// Initials avatar (no parent photos exist) — deterministic color from the name.
+const _AV = ["#065f46", "#0e7490", "#7c3aed", "#b45309", "#be123c", "#1d4ed8", "#047857", "#9333ea"];
+export function Avatar({ name, size = 40 }) {
+  const clean = (name || "").replace(/\[deleted\]/i, "").trim();
+  const initials = (clean.split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("") || "?").toUpperCase();
+  let h = 0;
+  for (const ch of clean) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return (
+    <span style={{
+      width: size, height: size, borderRadius: "50%", background: _AV[h % _AV.length], color: "#fff",
+      display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+      font: `700 ${Math.round(size * 0.4)}px ${FONT_DISPLAY}`, letterSpacing: "0.02em",
+    }}>{initials}</span>
+  );
+}
+
 export function Card({ children, style }) {
   return (
     <div style={{
