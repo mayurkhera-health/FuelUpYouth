@@ -85,22 +85,29 @@ export default function AdminAnalytics({ onLoggedOut }) {
           sub={`${c.sync_adoption.connected}/${c.sync_adoption.total} athletes`} />
       </div>
 
-      <Card style={{ marginBottom: 16 }}>
-        <SectionTitle>Signups over time ({c.signups.window_days}d)</SectionTitle>
-        <LineChart points={overview.signups_over_time.points} />
-      </Card>
+      {/* Charts as a responsive dashboard grid — 2–3 across on wide screens. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(440px,1fr))", gap: 16, alignItems: "start" }}>
+        <Card>
+          <SectionTitle>Signups over time ({c.signups.window_days}d)</SectionTitle>
+          <LineChart points={overview.signups_over_time.points} />
+        </Card>
 
-      <Card style={{ marginBottom: 16 }}>
-        <SectionTitle>Activation funnel <Src>DB</Src></SectionTitle>
-        <FunnelBars steps={funnel.steps} />
-        <div style={{ font: `400 12px ${FONT_DISPLAY}`, color: C.text3, marginTop: 10 }}>{funnel.note}</div>
-      </Card>
+        <Card>
+          <SectionTitle>Activation funnel <Src>DB</Src></SectionTitle>
+          <FunnelBars steps={funnel.steps} />
+          <div style={{ font: `400 12px ${FONT_DISPLAY}`, color: C.text3, marginTop: 10 }}>{funnel.note}</div>
+        </Card>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 16 }}>
+        <Card>
+          <SectionTitle>Weekly active users <Src>{retention.source === "posthog" ? "PostHog" : "DB (WAU)"}</Src></SectionTitle>
+          <Retention retention={retention} />
+        </Card>
+
         <Card>
           <SectionTitle>Top events (30d) <Src>PostHog</Src></SectionTitle>
           <TopEvents events={events} />
         </Card>
+
         <Card>
           <SectionTitle>App health <Src>DB</Src></SectionTitle>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
@@ -111,11 +118,6 @@ export default function AdminAnalytics({ onLoggedOut }) {
           <PieChart data={overview.app_health.event_sources} />
         </Card>
       </div>
-
-      <Card style={{ marginTop: 16 }}>
-        <SectionTitle>Weekly active users <Src>{retention.source === "posthog" ? "PostHog" : "DB (WAU)"}</Src></SectionTitle>
-        <Retention retention={retention} />
-      </Card>
     </div>
   );
 }
