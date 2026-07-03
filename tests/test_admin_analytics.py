@@ -110,6 +110,20 @@ def test_funnel_steps_are_db_derived(client):
     assert values["Built meal plan"] == 1
 
 
+def test_funnel_counts_uploaded_ics_as_connected(client):
+    # Bob has no sync URL but an uploaded .ics event (uid set) → counts as
+    # "Connected calendar", matching the Users-page badge.
+    from api.database import get_conn
+    conn = get_conn()
+    aid = conn.execute("SELECT id FROM athletes WHERE first_name='Bob'").fetchone()[0]
+    conn.execute("INSERT INTO events (athlete_id, event_name, event_type, event_date, uid) "
+                 "VALUES (?, 'M', 'game', date('now'), 'ics-uid-xyz')", (aid,))
+    conn.commit()
+    conn.close()
+    steps = {s["label"]: s["value"] for s in client.get("/api/admin/analytics/funnel").json()["steps"]}
+    assert steps["Connected calendar"] == 2   # Ann (auto-sync) + Bob (uploaded .ics)
+
+
 def test_top_events_unavailable_without_creds(client):
     body = client.get("/api/admin/analytics/events").json()
     assert body["available"] is False

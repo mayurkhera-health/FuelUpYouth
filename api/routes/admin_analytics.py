@@ -135,10 +135,14 @@ def funnel(days: int = 30, _: bool = Depends(require_admin)):
         signed_up = _scalar(conn, f"SELECT COUNT(*) FROM parents WHERE {aw}")
         created_athlete = _scalar(
             conn, f"SELECT COUNT(DISTINCT parent_id) FROM athletes WHERE parent_id IN ({active_ids})")
+        # "Connected calendar" = auto-sync URL OR a one-time uploaded .ics file
+        # (imported events carry a uid). Matches the Users-page calendar badge, so
+        # families who uploaded a file aren't shown as 0.
         connected_calendar = _scalar(conn, f"""
-            SELECT COUNT(DISTINCT parent_id) FROM athletes
-            WHERE (byga_ics_url IS NOT NULL OR playmetrics_ics_url IS NOT NULL)
-              AND parent_id IN ({active_ids})""")
+            SELECT COUNT(DISTINCT a.parent_id) FROM athletes a
+            WHERE a.parent_id IN ({active_ids})
+              AND (a.byga_ics_url IS NOT NULL OR a.playmetrics_ics_url IS NOT NULL
+                OR EXISTS(SELECT 1 FROM events e WHERE e.athlete_id = a.id AND e.uid IS NOT NULL AND e.uid != ''))""")
         # "Built a meal plan" — active parents with an athlete that has any meal-plan row.
         planned = _scalar(conn, f"""
             SELECT COUNT(DISTINCT a.parent_id) FROM athletes a
