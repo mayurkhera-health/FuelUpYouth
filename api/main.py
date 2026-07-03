@@ -44,6 +44,7 @@ async def lifespan(app: FastAPI):
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics
 from api.services import db_migrations
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -114,7 +115,23 @@ def health():
     return {"status": "healthy"}
 
 
+class SPAStaticFiles(StaticFiles):
+    """Serve the built React SPA and fall back to index.html for client-side
+    routes (e.g. /admin, /admin/library) so deep links / refreshes don't 404.
+    The app has no router library — it reads window.location.pathname on boot —
+    so every non-file path must return index.html. Genuine /api/* misses still
+    return a JSON 404 (they are excluded from the fallback)."""
+
+    async def get_response(self, path, scope):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code == 404 and not path.startswith("api"):
+                return await super().get_response("index.html", scope)
+            raise
+
+
 # Serve React frontend — must be last so API routes take precedence
 _static_dir = Path(__file__).parent.parent / "frontend" / "dist"
 if _static_dir.exists():
-    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="static")
+    app.mount("/", SPAStaticFiles(directory=str(_static_dir), html=True), name="static")
