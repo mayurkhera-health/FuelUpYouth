@@ -3,9 +3,15 @@ Phase 1 — Unified auth endpoint.
 Resolves parent OR athlete from a single email.
 Keeps /api/parents/login and /api/athletes/* intact for backward compat.
 """
-from fastapi import APIRouter, HTTPException
+import logging
+from datetime import datetime
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from api.database import get_conn
+from api.services import login_alerts
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -20,11 +26,15 @@ class AthleteCreateLoginRequest(BaseModel):
 
 
 @router.post("/login")
-def unified_login(data: LoginRequest):
+def unified_login(data: LoginRequest, background_tasks: BackgroundTasks):
     """
     Single login for both personas.
     Checks parents first (most common), then athlete_logins.
     Returns { role, ...session_data }.
+
+    This is the explicit parent sign-in path (the Login screen). Silent
+    session-restore on app relaunch uses /api/parents/login, so alerting here
+    fires only on a real, active sign-in — not a background rehydrate.
     """
     email = data.email.strip().lower()
     conn = get_conn()
@@ -35,14 +45,28 @@ def unified_login(data: LoginRequest):
         ).fetchone()
         if parent:
             parent_d = dict(parent)
-            athletes = conn.execute(
+            athletes = [dict(a) for a in conn.execute(
                 "SELECT * FROM athletes WHERE parent_id = ?", (parent_d["id"],)
-            ).fetchall()
-            return {
-                "role": "parent",
-                "parent": parent_d,
-                "athletes": [dict(a) for a in athletes],
-            }
+            ).fetchall()]
+
+            # Beta login alert (best-effort; backgrounded so it never slows the
+            # response, never blocks the login if it fails). A NULL last_login_at
+            # means first-ever login → treated as a new signup.
+            try:
+                is_new = not parent_d.get("last_login_at")
+                conn.execute(
+                    "UPDATE parents SET last_login_at = ? WHERE id = ?",
+                    (datetime.utcnow().isoformat(), parent_d["id"]),
+                )
+                conn.commit()
+                background_tasks.add_task(
+                    login_alerts.notify_login, parent_d,
+                    is_new=is_new, athlete_hint=login_alerts.athlete_hint(athletes),
+                )
+            except Exception:
+                logger.warning("login alert scheduling failed (non-blocking)", exc_info=True)
+
+            return {"role": "parent", "parent": parent_d, "athletes": athletes}
 
         # 2. Athlete?
         al = conn.execute(

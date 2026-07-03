@@ -36,6 +36,7 @@ def run_all():
         _add_source_to_events(conn)
         _create_admin_audit_log(conn)
         _create_health_tables(conn)
+        _add_last_login_to_parents(conn)
         conn.commit()
     finally:
         conn.close()
@@ -376,6 +377,18 @@ def _add_source_to_events(conn):
         "CREATE INDEX IF NOT EXISTS idx_events_athlete_source "
         "ON events(athlete_id, source)"
     )
+
+
+def _add_last_login_to_parents(conn):
+    """Beta login alerts: track each parent's most recent login so we can tell a
+    first-ever login (new signup) from a returning one. Nullable. Existing
+    parents at migration time are backfilled to created_at so they're never
+    mislabeled as brand-new the first time they sign in post-deploy — only rows
+    created afterward start NULL. Idempotent — safe every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(parents)").fetchall()]
+    if "last_login_at" not in cols:
+        conn.execute("ALTER TABLE parents ADD COLUMN last_login_at TEXT")
+        conn.execute("UPDATE parents SET last_login_at = created_at WHERE last_login_at IS NULL")
 
 
 def _create_admin_audit_log(conn):

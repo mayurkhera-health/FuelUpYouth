@@ -14,6 +14,7 @@ from api.services.db_migrations import run_all
 from api.database import get_conn
 from api.services import health_service as H
 from api.services import health_alerts
+from api.services import founder_alerts
 
 
 def _wipe(conn):
@@ -141,32 +142,32 @@ def test_transition_creates_incident_and_alerts_once(conn, monkeypatch):
 
 def test_push_success_no_email(conn, monkeypatch):
     pushed, emailed = [], []
-    monkeypatch.setattr(health_alerts, "_push", lambda c, t, b: (pushed.append(1) or True))
-    monkeypatch.setattr(health_alerts, "_email", lambda t, b: (emailed.append(1) or True))
+    monkeypatch.setattr(founder_alerts, "_push", lambda c, t, b: (pushed.append(1) or True))
+    monkeypatch.setattr(founder_alerts, "_email", lambda t, b: (emailed.append(1) or True))
     note = health_alerts.dispatch(conn, "gmail_smtp", "green", "red", "auth failed")
     assert note == "push ✓" and pushed and not emailed
 
 
 def test_push_fail_falls_back_to_email_once(conn, monkeypatch):
     emailed = []
-    monkeypatch.setattr(health_alerts, "_push", lambda c, t, b: False)
-    monkeypatch.setattr(health_alerts, "_email", lambda t, b: (emailed.append(1) or True))
+    monkeypatch.setattr(founder_alerts, "_push", lambda c, t, b: False)
+    monkeypatch.setattr(founder_alerts, "_email", lambda t, b: (emailed.append(1) or True))
     note = health_alerts.dispatch(conn, "bedrock_ping", "green", "red", "ping failed")
     assert len(emailed) == 1 and "email ✓" in note
 
 
 def test_expo_push_check_uses_email_directly(conn, monkeypatch):
     pushed, emailed = [], []
-    monkeypatch.setattr(health_alerts, "_push", lambda c, t, b: (pushed.append(1) or True))
-    monkeypatch.setattr(health_alerts, "_email", lambda t, b: (emailed.append(1) or True))
+    monkeypatch.setattr(founder_alerts, "_push", lambda c, t, b: (pushed.append(1) or True))
+    monkeypatch.setattr(founder_alerts, "_email", lambda t, b: (emailed.append(1) or True))
     note = health_alerts.dispatch(conn, "expo_push", "green", "red", "all sends failed")
     assert len(emailed) == 1 and not pushed and "push unavailable" in note
 
 
 def test_cooldown_suppresses_repeat_down_but_not_recovery(conn, monkeypatch):
     sent = []
-    monkeypatch.setattr(health_alerts, "_push", lambda c, t, b: (sent.append(1) or True))
-    monkeypatch.setattr(health_alerts, "_email", lambda t, b: True)
+    monkeypatch.setattr(founder_alerts, "_push", lambda c, t, b: (sent.append(1) or True))
+    monkeypatch.setattr(founder_alerts, "_email", lambda t, b: True)
     # first down fires + stamps last_alerted_at
     assert health_alerts.dispatch(conn, "disk_space", "green", "red", "84%") == "push ✓"
     assert len(sent) == 1

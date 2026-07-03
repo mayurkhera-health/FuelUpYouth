@@ -7,6 +7,7 @@ from api.database import get_conn
 from api.services.fueling_targets import normalize_season_phase
 from api.services.email_service import send_email
 from api.services import email_templates
+from api.services import login_alerts
 from api.routes.athletes import generate_blueprint_bg
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,9 @@ def complete_onboarding(data: OnboardingComplete, background_tasks: BackgroundTa
         )
         parent_row = conn.execute("SELECT * FROM parents WHERE email = ?", (p.email,)).fetchone()
         parent_id = parent_row["id"]
+        # Stamp last_login_at now so a later explicit sign-in reads as a returning
+        # login (👋), not another new-signup alert (🎉).
+        conn.execute("UPDATE parents SET last_login_at = ? WHERE id = ?", (ts, parent_id))
         conn.execute(
             """INSERT INTO athletes
                (parent_id, first_name, age, gender, weight_lbs, height_ft, height_in,
@@ -56,6 +60,13 @@ def complete_onboarding(data: OnboardingComplete, background_tasks: BackgroundTa
     parent = dict(parent_row)
     athlete = dict(athlete_row)
     background_tasks.add_task(generate_blueprint_bg, athlete["id"])
+
+    # Beta founder alert: a brand-new signup (🎉). Backgrounded + best-effort so
+    # it never blocks or slows the 201. is_new is always True — this IS the signup.
+    background_tasks.add_task(
+        login_alerts.notify_login, parent,
+        is_new=True, athlete_hint=login_alerts.athlete_hint([athlete]),
+    )
 
     # Best-effort welcome email — must never block or fail the 201.
     try:
