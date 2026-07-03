@@ -87,7 +87,7 @@ export default function AdminApp() {
         }}>Log out</button>
       </aside>
 
-      <main style={{ flex: 1, padding: "28px 32px", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
+      <main style={{ flex: 1, minWidth: 0, padding: "28px 32px", width: "100%" }}>
         {/* Health strip is redundant on Overview (its own health line) and Health. */}
         {section !== "health" && section !== "overview" && (
           <HealthStrip onOpen={() => setSection("health")} />
