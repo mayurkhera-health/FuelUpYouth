@@ -70,8 +70,6 @@ export default function AdminUsers({ onOpenFamily, onLoggedOut }) {
         <Select value={calendar} onChange={(e) => { setCalendar(e.target.value); setPage(1); }}
           options={[
             { value: "any", label: "Calendar: Any" },
-            { value: "byga", label: "BYGA" },
-            { value: "playmetrics", label: "PlayMetrics" },
             { value: "none", label: "Not connected" },
           ]} />
         <Select value={hasAthletes} onChange={(e) => { setHasAthletes(e.target.value); setPage(1); }}
