@@ -102,9 +102,14 @@ def cached(cache_key: str, fetch, force: bool = False) -> dict:
 
     try:
         data = fetch()
-    except Exception as e:  # network error, auth error, rate limit
+    except Exception as e:  # network error, auth error, rate limit, plan gate
         if entry:  # serve stale cache rather than failing the dashboard
             return {"available": True, "data": entry[1], "as_of": _iso(now), "stale": True}
+        resp = getattr(e, "response", None)
+        # 402 = the project's Mixpanel plan doesn't include Query API access.
+        # Surface a clean, actionable reason instead of a raw HTTP error string.
+        if resp is not None and getattr(resp, "status_code", None) == 402:
+            return {"available": False, "plan_gated": True, "reason": "Requires Mixpanel paid plan"}
         return {"available": False, "reason": f"Mixpanel query failed: {e}"}
 
     _cache[cache_key] = (now + _CACHE_TTL, data)

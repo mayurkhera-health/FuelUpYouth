@@ -135,6 +135,35 @@ def test_mixpanel_success_path_mocked(client, monkeypatch):
     assert "Sign Up" in body["data"]["data"]["values"]
 
 
+def test_plan_gated_402_shows_clean_reason(client, monkeypatch):
+    import requests
+    monkeypatch.setenv("MIXPANEL_API_SECRET", "fake-secret")
+    mixpanel_client._cache.clear()
+
+    class _Resp:
+        status_code = 402
+
+    def boom(path, params):
+        e = requests.HTTPError("402 Client Error: Payment Required")
+        e.response = _Resp()
+        raise e
+
+    monkeypatch.setattr(mixpanel_client, "_query", boom)
+
+    ev = client.get("/api/admin/analytics/events").json()
+    assert ev["available"] is False
+    assert ev.get("plan_gated") is True
+    assert ev["reason"] == "Requires Mixpanel paid plan"
+
+    ov = client.get("/api/admin/analytics/overview").json()
+    assert ov["mixpanel_available"] is False
+    assert ov["mixpanel_status"]["plan_gated"] is True
+
+    rt = client.get("/api/admin/analytics/retention").json()
+    assert rt["source"] == "db_wau_fallback"      # still falls back to real DB data
+    assert "paid plan" in rt["note"]
+
+
 def test_discover_endpoint_lists_current_map(client, monkeypatch):
     monkeypatch.setenv("MIXPANEL_API_SECRET", "fake-secret")
     mixpanel_client._cache.clear()

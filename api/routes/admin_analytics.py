@@ -85,12 +85,21 @@ def overview(days: int = 30, force: bool = False, _: bool = Depends(require_admi
             "SELECT COALESCE(source,'manual') AS s, COUNT(*) AS n FROM events GROUP BY s").fetchall()
         event_sources = {r["s"]: r["n"] for r in src_rows}
 
-        # Mixpanel enrichment (optional)
+        # Mixpanel enrichment (optional). One probe query tells us whether the
+        # Query API is actually usable (creds valid AND plan allows it).
         mp_signups = mixpanel_client.signups_over_time(days, force=force)
+        mp_status = {
+            "configured": mixpanel_client.is_configured(),
+            "available": bool(mp_signups.get("available")),
+            "plan_gated": bool(mp_signups.get("plan_gated")),
+            "reason": mp_signups.get("reason"),
+        }
 
         return {
             "as_of": datetime.utcnow().isoformat() + "Z",
-            "mixpanel_available": mixpanel_client.is_configured(),
+            # True only when Mixpanel is configured AND the Query API actually works.
+            "mixpanel_available": mp_status["available"],
+            "mixpanel_status": mp_status,
             "cards": {
                 "signups": {"value": signups_window, "window_days": days, "source": "db"},
                 "active_users_7d": {"value": active_7d, "source": "db"},
@@ -180,9 +189,12 @@ def retention(weeks: int = 8, force: bool = False, _: bool = Depends(require_adm
                     UNION SELECT athlete_id FROM water_logs  WHERE updated_at >= ? AND updated_at < ?
                 ) WHERE athlete_id IN ({active_athletes})""", (start, end, start, end, start, end))
             points.append({"week_start": start[:10], "active": wau})
+        note = ("Retention cohorts require a Mixpanel paid plan — showing weekly active users instead."
+                if mp.get("plan_gated") else
+                "Mixpanel retention unavailable — showing DB weekly-active-users trend instead.")
         return {"source": "db_wau_fallback", "available": True,
-                "reason": mp.get("reason"), "points": points,
-                "note": "Mixpanel retention unavailable — showing DB weekly-active-users trend instead."}
+                "reason": mp.get("reason"), "plan_gated": bool(mp.get("plan_gated")),
+                "points": points, "note": note}
     finally:
         conn.close()
 

@@ -48,7 +48,14 @@ export default function AdminAnalytics({ onLoggedOut }) {
 
   const c = overview.cards;
   const asOf = (overview.as_of || "").slice(11, 16);
-  const mpNote = !overview.mixpanel_available;
+  const mp = overview.mixpanel_status || { configured: overview.mixpanel_available };
+  // Show an info note whenever the Mixpanel Query API isn't usable.
+  const mpNote = !mp.available;
+  const mpNoteText = mp.plan_gated
+    ? "Mixpanel is on the free plan — event-level analytics (top events, retention cohorts) need a paid plan. All database metrics below are live."
+    : mp.configured
+      ? "Mixpanel Query API is unavailable right now — showing database-backed metrics."
+      : "Mixpanel not connected — showing database-backed metrics. Signup, funnel, and health cards are fully available.";
 
   return (
     <div>
@@ -66,7 +73,7 @@ export default function AdminAnalytics({ onLoggedOut }) {
         <div style={{
           font: `500 13px ${FONT_DISPLAY}`, color: C.text2, background: C.warmLight,
           border: `1px solid #f0d9a8`, borderRadius: 10, padding: "8px 14px", marginBottom: 16,
-        }}>Mixpanel not connected — showing database-backed metrics. Signup, funnel, and health cards are fully available.</div>
+        }}>{mpNoteText}</div>
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 16 }}>
@@ -126,11 +133,23 @@ function HealthRow({ label, value }) {
   );
 }
 
+function MixpanelUnavailable({ info, subtitle }) {
+  const gated = info?.plan_gated;
+  return (
+    <div style={{
+      font: `600 13px ${FONT_DISPLAY}`, color: C.text2, background: C.surface2,
+      border: `1px dashed ${C.border2}`, borderRadius: 10, padding: "16px", textAlign: "center",
+    }}>
+      {gated ? "Requires a Mixpanel paid plan" : (info?.reason || "Mixpanel not connected")}
+      <div style={{ font: `400 12px ${FONT_DISPLAY}`, color: C.text3, marginTop: 4 }}>{subtitle}</div>
+    </div>
+  );
+}
+
 function TopEvents({ events }) {
   if (!events || !events.available) {
-    return <div style={{ font: `500 13px ${FONT_DISPLAY}`, color: C.text3 }}>
-      {events?.reason || "Mixpanel not connected."}
-    </div>;
+    return <MixpanelUnavailable info={events}
+      subtitle="Top events by volume come from the Mixpanel Query API." />;
   }
   // Mixpanel events endpoint returns { data: { values: { EventName: {date:count} } } }.
   const values = events.data?.data?.values || events.data?.values || {};
