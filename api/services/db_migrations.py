@@ -34,6 +34,7 @@ def run_all():
         _create_feature_requests(conn)
         _add_calendar_sync_to_athletes(conn)
         _add_source_to_events(conn)
+        _create_admin_audit_log(conn)
         conn.commit()
     finally:
         conn.close()
@@ -373,6 +374,28 @@ def _add_source_to_events(conn):
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_events_athlete_source "
         "ON events(athlete_id, source)"
+    )
+
+
+def _create_admin_audit_log(conn):
+    # Admin Module: every admin mutation (parent/athlete edit + delete) writes one
+    # row here. `detail_json` is a TEXT JSON blob (e.g. cascade counts, changed
+    # fields) — SQLite has no JSON column type so it's stored as text. There is no
+    # parent/athlete FK because rows must survive after the target is hard-deleted.
+    # Idempotent — safe every startup.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS admin_audit_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            action      TEXT NOT NULL,
+            target_type TEXT NOT NULL,
+            target_id   INTEGER,
+            detail_json TEXT,
+            created_at  TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_admin_audit_created "
+        "ON admin_audit_log(created_at)"
     )
 
 

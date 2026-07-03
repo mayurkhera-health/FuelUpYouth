@@ -3,12 +3,18 @@ import Login from "./Login";
 import Onboarding from "./Onboarding";
 import Dashboard from "./Dashboard";
 import LibraryAdmin from "./pages/LibraryAdmin";
+import AdminApp from "./pages/admin/AdminApp";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
 export default function App() {
   if (window.location.pathname === "/admin/library") {
     return <LibraryAdmin />;
+  }
+  // Admin Module (Users + Analytics). Checked before the hooks below, mirroring
+  // the /admin/library early-return above — path is constant per page load.
+  if (window.location.pathname.startsWith("/admin")) {
+    return <AdminApp />;
   }
   const [view, setView] = useState("login"); // "login" | "onboarding" | "dashboard"
   const [session, setSession] = useState(null); // { parent, athletes }

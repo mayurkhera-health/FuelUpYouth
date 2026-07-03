@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar
+from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics
 from api.services import db_migrations
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -89,6 +89,8 @@ app.include_router(support.router,       prefix="/api/support",       tags=["22.
 app.include_router(pantry.router,        prefix="/api/pantry",        tags=["23. Pantry Planner"])
 app.include_router(feedback.router,      prefix="/api/feedback",      tags=["24. Feature Requests"])
 app.include_router(calendar.router,      prefix="/api/athletes",      tags=["25. Calendar Sync"])
+app.include_router(admin.router,           prefix="/api/admin",           tags=["26. Admin"])
+app.include_router(admin_analytics.router, prefix="/api/admin",           tags=["27. Admin Analytics"])
 
 
 _scheduler = BackgroundScheduler()
