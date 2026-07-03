@@ -113,6 +113,20 @@ def test_calendar_warning_boundary(ctx):
     assert cal2["text"] == "1 of 3 families connected their team calendar"
 
 
+def test_metric_gauge_fields(ctx):
+    c, ka = ctx
+    _add_family(ka, "A", "a@x.com", byga="http://x.ics")
+    _add_family(ka, "B", "b@x.com")
+    _add_family(ka, "C", "c@x.com")
+    # Engagement ratios carry value/total/pct → the frontend draws a gauge.
+    cal = _section(_get(c), "Engagement")["lines"][1]
+    assert (cal["value"], cal["total"], cal["pct"]) == (1, 3, 33)
+    assert cal["label"] == "Connected a calendar"
+    # Growth counts are plain stats (no gauge).
+    fam = _section(_get(c), "Growth")["lines"][0]
+    assert fam["value"] == 3 and fam["total"] is None and fam["pct"] is None
+
+
 def test_red_health_check_is_named_plainly(ctx):
     c, ka = ctx
     # The 9 checks are (re)seeded at app startup; flip one to red.

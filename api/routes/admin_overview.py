@@ -51,6 +51,15 @@ def _plural(n: int, singular: str, plural: str) -> str:
     return singular if n == 1 else plural
 
 
+def _metric(icon, label, text, value, total=None, warn=False):
+    """One metric tile. When `total` is given (>0) the frontend draws a gauge
+    (value/total); otherwise it's a plain stat tile. `text` is the full plain
+    sentence (kept for the copyable report). `label` is the short tile caption."""
+    pct = round(100 * value / total) if total else None
+    return {"icon": icon, "label": label, "text": text, "value": value,
+            "total": total, "pct": pct, "warn": warn}
+
+
 def _health_line(snapshot: dict) -> dict:
     """Reuse the health aggregate: red if any check is red, else fine. Names the
     red checks in plain words."""
@@ -113,20 +122,23 @@ def overview_report(force: bool = False, _: bool = Depends(require_admin)):
     ideas_text = (f"{ideas} new {_plural(ideas, 'idea', 'ideas')} suggested this week"
                   if ideas > 0 else "No new ideas suggested this week")
 
-    # Grouped into a structured status report (Growth / Engagement / This Week).
+    athletes_total = m["athletes_total"]
+
+    # Grouped into a structured status report (Growth / Engagement / This week).
+    # Engagement metrics are ratios → gauges; the rest are plain counts → stats.
     sections = [
         {"title": "Growth", "lines": [
-            {"icon": "👨‍👩‍👧", "text": families_text, "warn": False},
-            {"icon": "📈", "text": new_families_text, "warn": False},
+            _metric("👨‍👩‍👧", "Families", families_text, families),
+            _metric("📈", "New this month", new_families_text, new_families),
         ]},
         {"title": "Engagement", "lines": [
-            {"icon": "🏃", "text": active_text, "warn": active_warn},
-            {"icon": "📅", "text": calendar_text, "warn": calendar_warn},
-            {"icon": "🍽️", "text": mealplan_text, "warn": False},
+            _metric("🏃", "Active this week", active_text, active, total=athletes_total, warn=active_warn),
+            _metric("📅", "Connected a calendar", calendar_text, connected, total=families, warn=calendar_warn),
+            _metric("🍽️", "Used a meal plan", mealplan_text, planned, total=families),
         ]},
         {"title": "This week", "lines": [
-            {"icon": "🐛", "text": problems_text, "warn": False},
-            {"icon": "💡", "text": ideas_text, "warn": False},
+            _metric("🐛", "Problem reports", problems_text, problems),
+            _metric("💡", "New ideas", ideas_text, ideas),
         ]},
     ]
 

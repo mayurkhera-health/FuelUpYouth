@@ -77,28 +77,69 @@ export default function AdminOverview({ onLoggedOut }) {
         </div>
 
         {/* Grouped status sections */}
-        <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 22 }}>
           {data.sections.map((sec) => (
             <div key={sec.title}>
               <div style={{
                 font: `800 11px ${FONT_DISPLAY}`, color: C.text3, letterSpacing: "0.07em",
-                textTransform: "uppercase", marginBottom: 10,
+                textTransform: "uppercase", marginBottom: 12,
               }}>{sec.title}</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                {sec.lines.map((ln, i) => (
-                  <div key={i} style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    <span style={{ fontSize: 19, width: 26, textAlign: "center" }}>{ln.icon}</span>
-                    <span style={{ font: `700 16px ${FONT_DISPLAY}`, color: ln.warn ? "#9a6a1e" : C.text1 }}>
-                      {ln.text}{ln.warn ? " ⚠️" : ""}
-                    </span>
-                  </div>
-                ))}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+                {sec.lines.map((ln, i) => <Tile key={i} m={ln} />)}
               </div>
             </div>
           ))}
         </div>
 
       </div>
+    </div>
+  );
+}
+
+// Donut gauge — hand-rolled SVG, colored amber when the metric is in warning.
+function Gauge({ pct, warn, size = 62 }) {
+  const stroke = 7;
+  const r = (size - stroke) / 2;
+  const c = size / 2;
+  const circ = 2 * Math.PI * r;
+  const filled = circ * (Math.max(0, Math.min(100, pct)) / 100);
+  const color = warn ? C.warm : C.brandMid;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={c} cy={c} r={r} fill="none" stroke={C.surface2} strokeWidth={stroke} />
+      <circle cx={c} cy={c} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={`${filled} ${circ}`} strokeLinecap="round" transform={`rotate(-90 ${c} ${c})`} />
+      <text x={c} y={c} textAnchor="middle" dominantBaseline="central"
+        style={{ font: `800 15px ${FONT_DISPLAY}`, fill: warn ? "#9a6a1e" : C.text1 }}>{pct}%</text>
+    </svg>
+  );
+}
+
+// One metric: a gauge tile when it's a ratio (has a total), else a stat tile.
+function Tile({ m }) {
+  const isGauge = m.total != null && m.pct != null;
+  const card = {
+    background: m.warn ? C.warmLight : C.surface,
+    border: `1px solid ${m.warn ? "#f0d9a8" : C.border}`, borderRadius: 14,
+    padding: "14px 12px", display: "flex", flexDirection: "column",
+    alignItems: "center", gap: 8, textAlign: "center",
+  };
+  if (isGauge) {
+    return (
+      <div style={card}>
+        <Gauge pct={m.pct} warn={m.warn} />
+        <div>
+          <div style={{ font: `700 13px ${FONT_DISPLAY}`, color: C.text1 }}>{m.icon} {m.label}{m.warn ? " ⚠️" : ""}</div>
+          <div style={{ font: `600 12px ${FONT_DISPLAY}`, color: C.text3, marginTop: 2 }}>{m.value} of {m.total}</div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={card}>
+      <div style={{ fontSize: 22, lineHeight: 1 }}>{m.icon}</div>
+      <div style={{ font: `800 30px ${FONT_DISPLAY}`, color: C.text1, lineHeight: 1 }}>{m.value}</div>
+      <div style={{ font: `600 13px ${FONT_DISPLAY}`, color: C.text3 }}>{m.label}</div>
     </div>
   );
 }
