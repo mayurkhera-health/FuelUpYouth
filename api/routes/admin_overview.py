@@ -97,19 +97,15 @@ def overview_report(force: bool = False, _: bool = Depends(require_admin)):
     calendar_warn = families > 0 and (connected / families) < CALENDAR_WARN_BELOW_RATE
 
     hl = _health_line(health)
+    new_families = m["signups_window"]
 
     # Plain sentences (single source of wording) ------------------------------
     families_text = f"{families} {_plural(families, 'family', 'families')} using the app"
+    new_families_text = (f"{new_families} new {_plural(new_families, 'family', 'families')} in the last 30 days"
+                         if new_families > 0 else "No new families in the last 30 days")
     active_text = (f"{active} {_plural(active, 'athlete', 'athletes')} active in the last 7 days"
                    if active > 0 else "No athletes active in the last 7 days")
-    not_connected = families - connected
     calendar_text = f"{connected} of {families} {_plural(families, 'family', 'families')} connected their team calendar"
-    if not_connected <= 0:
-        calendar_sub = "Every family has connected a calendar"
-    else:
-        _havent = "hasn't" if not_connected == 1 else "haven't"
-        _fam = _plural(not_connected, "family", "families")
-        calendar_sub = f"{not_connected} {_fam} {_havent} connected yet"
     mealplan_text = (f"{planned} {_plural(planned, 'family has', 'families have')} used a meal plan"
                      if planned > 0 else "No families have used a meal plan yet")
     problems_text = (f"{problems} {_plural(problems, 'problem report', 'problem reports')} this week"
@@ -117,16 +113,25 @@ def overview_report(force: bool = False, _: bool = Depends(require_admin)):
     ideas_text = (f"{ideas} new {_plural(ideas, 'idea', 'ideas')} suggested this week"
                   if ideas > 0 else "No new ideas suggested this week")
 
-    lines = [
-        {"icon": "👨‍👩‍👧", "text": families_text, "sub": active_text, "warn": active_warn},
-        {"icon": "📅", "text": calendar_text, "sub": calendar_sub, "warn": calendar_warn},
-        {"icon": "🍽️", "text": mealplan_text, "sub": None, "warn": False},
-        {"icon": "🐛", "text": problems_text, "sub": None, "warn": False},
-        {"icon": "💡", "text": ideas_text, "sub": None, "warn": False},
+    # Grouped into a structured status report (Growth / Engagement / This Week).
+    sections = [
+        {"title": "Growth", "lines": [
+            {"icon": "👨‍👩‍👧", "text": families_text, "warn": False},
+            {"icon": "📈", "text": new_families_text, "warn": False},
+        ]},
+        {"title": "Engagement", "lines": [
+            {"icon": "🏃", "text": active_text, "warn": active_warn},
+            {"icon": "📅", "text": calendar_text, "warn": calendar_warn},
+            {"icon": "🍽️", "text": mealplan_text, "warn": False},
+        ]},
+        {"title": "This week", "lines": [
+            {"icon": "🐛", "text": problems_text, "warn": False},
+            {"icon": "💡", "text": ideas_text, "warn": False},
+        ]},
     ]
 
     # Paste-ready report (no timestamp header — the frontend prepends the reader's
-    # local time). Warnings shown per the thresholds above.
+    # local time). Section headers + warnings per the thresholds above.
     def _w(cond, s):
         return f"⚠️ {s}" if cond else s
 
@@ -134,14 +139,15 @@ def overview_report(force: bool = False, _: bool = Depends(require_admin)):
     if hl["status"] == "red":
         health_report += f" — {hl['detail']}"
     report_body = "\n".join([
-        health_report,
-        "",
+        health_report, "",
+        "GROWTH",
         families_text,
+        new_families_text, "",
+        "ENGAGEMENT",
         _w(active_warn, active_text),
-        "",
         _w(calendar_warn, calendar_text),
-        mealplan_text,
-        "",
+        mealplan_text, "",
+        "THIS WEEK",
         problems_text,
         ideas_text,
     ])
@@ -149,6 +155,6 @@ def overview_report(force: bool = False, _: bool = Depends(require_admin)):
     return {
         "as_of": datetime.utcnow().isoformat() + "Z",
         "health": hl,
-        "lines": lines,
+        "sections": sections,
         "report_body": report_body,
     }

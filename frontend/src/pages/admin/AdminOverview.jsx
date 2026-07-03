@@ -89,20 +89,23 @@ export default function AdminOverview({ onLoggedOut }) {
           </div>
         </div>
 
-        {/* Metric lines */}
-        <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 16 }}>
-          {data.lines.map((ln, i) => (
-            <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-              <span style={{ fontSize: 20, lineHeight: 1.2, width: 26, textAlign: "center" }}>{ln.icon}</span>
-              <div>
-                <div style={{ font: `700 16px ${FONT_DISPLAY}`, color: C.text1 }}>
-                  {ln.text}{ln.warn && !ln.sub ? " ⚠️" : ""}
-                </div>
-                {ln.sub && (
-                  <div style={{ font: `500 14px ${FONT_DISPLAY}`, color: ln.warn ? "#9a6a1e" : C.text3, marginTop: 2 }}>
-                    {ln.sub}{ln.warn ? " ⚠️" : ""}
+        {/* Grouped status sections */}
+        <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 20 }}>
+          {data.sections.map((sec) => (
+            <div key={sec.title}>
+              <div style={{
+                font: `800 11px ${FONT_DISPLAY}`, color: C.text3, letterSpacing: "0.07em",
+                textTransform: "uppercase", marginBottom: 10,
+              }}>{sec.title}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                {sec.lines.map((ln, i) => (
+                  <div key={i} style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <span style={{ fontSize: 19, width: 26, textAlign: "center" }}>{ln.icon}</span>
+                    <span style={{ font: `700 16px ${FONT_DISPLAY}`, color: ln.warn ? "#9a6a1e" : C.text1 }}>
+                      {ln.text}{ln.warn ? " ⚠️" : ""}
+                    </span>
                   </div>
-                )}
+                ))}
               </div>
             </div>
           ))}

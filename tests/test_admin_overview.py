@@ -54,6 +54,10 @@ def _get(c):
     return c.get("/api/admin/overview").json()
 
 
+def _section(body, title):
+    return next(s for s in body["sections"] if s["title"] == title)
+
+
 def test_requires_token():
     with TestClient(app) as anon:
         assert anon.get("/api/admin/overview").status_code == 401
@@ -64,23 +68,34 @@ def test_families_zero_and_all_healthy(ctx):
     body = _get(c)
     assert body["health"]["status"] == "green"
     assert body["health"]["headline"] == "App is working normally"
-    assert body["lines"][0]["text"] == "0 families using the app"
+    assert [s["title"] for s in body["sections"]] == ["Growth", "Engagement", "This week"]
+    assert _section(body, "Growth")["lines"][0]["text"] == "0 families using the app"
+
+
+def test_growth_section_new_families(ctx):
+    c, ka = ctx
+    _add_family(ka, "A", "a@x.com")
+    _add_family(ka, "B", "b@x.com")
+    growth = _section(_get(c), "Growth")
+    assert growth["lines"][0]["text"] == "2 families using the app"
+    # families created just now → both count as new in the last 30 days
+    assert growth["lines"][1]["text"] == "2 new families in the last 30 days"
 
 
 def test_active_users_warning_toggles(ctx):
     c, ka = ctx
     _add_family(ka, "A", "a@x.com")
-    # no activity → ⚠️ on the active line
-    fam_line = _get(c)["lines"][0]
-    assert fam_line["warn"] is True
-    assert fam_line["sub"] == "No athletes active in the last 7 days"
+    # no activity → ⚠️ on the Engagement active line
+    active_line = _section(_get(c), "Engagement")["lines"][0]
+    assert active_line["warn"] is True
+    assert active_line["text"] == "No athletes active in the last 7 days"
     # log activity today → warning clears
     aid = ka.execute("SELECT id FROM athletes LIMIT 1").fetchone()[0]
     ka.execute("INSERT INTO meal_logs (athlete_id, log_method) VALUES (?, 'text')", (aid,))
     ka.commit()
-    fam_line2 = _get(c)["lines"][0]
-    assert fam_line2["warn"] is False
-    assert "1 athlete active" in fam_line2["sub"]
+    active_line2 = _section(_get(c), "Engagement")["lines"][0]
+    assert active_line2["warn"] is False
+    assert "1 athlete active" in active_line2["text"]
 
 
 def test_calendar_warning_boundary(ctx):
@@ -88,12 +103,12 @@ def test_calendar_warning_boundary(ctx):
     # 2 families, 1 connected → exactly 50% → NOT below 0.5 → no warning
     _add_family(ka, "A", "a@x.com", byga="http://x.ics")
     _add_family(ka, "B", "b@x.com")
-    cal = _get(c)["lines"][1]
+    cal = _section(_get(c), "Engagement")["lines"][1]
     assert cal["text"] == "1 of 2 families connected their team calendar"
     assert cal["warn"] is False
     # add a 3rd unconnected family → 1/3 = 33% → below 0.5 → warning
     _add_family(ka, "C", "c@x.com")
-    cal2 = _get(c)["lines"][1]
+    cal2 = _section(_get(c), "Engagement")["lines"][1]
     assert cal2["warn"] is True
     assert cal2["text"] == "1 of 3 families connected their team calendar"
 
@@ -120,12 +135,14 @@ def test_report_body_is_paste_ready(ctx):
     rb = _get(c)["report_body"]
     # No timestamp header (frontend adds local time); starts with the health line.
     assert rb.startswith("✅ App is working normally")
+    assert "GROWTH" in rb and "ENGAGEMENT" in rb and "THIS WEEK" in rb
     assert "2 families using the app" in rb
+    assert "2 new families in the last 30 days" in rb
     assert "⚠️ No athletes active in the last 7 days" in rb
     assert "1 of 2 families connected their team calendar" in rb  # 50% → no warning
     assert "No families have used a meal plan yet" in rb
     assert "1 problem report this week" in rb
     assert "1 new idea suggested this week" in rb
     # zero jargon
-    for banned in ("HogQL", "PostHog", "DB", "endpoint", "sync adoption", "funnel"):
+    for banned in ("HogQL", "PostHog", "endpoint", "sync adoption", "funnel", " DB "):
         assert banned not in rb
