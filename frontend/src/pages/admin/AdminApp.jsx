@@ -112,9 +112,8 @@ export default function AdminApp() {
       <div style={{ minHeight: "100vh", background: C.bg, font: `400 14px ${FONT_DISPLAY}` }}>
         <header style={{
           position: "sticky", top: 0, zIndex: 20, background: C.sidebarBg,
-          display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px",
+          display: "flex", alignItems: "center", gap: 14, padding: "12px 16px",
         }}>
-          <span style={{ font: `800 17px ${FONT_DISPLAY}`, color: C.sidebarText }}>FuelUp Admin</span>
           <button
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
@@ -125,6 +124,7 @@ export default function AdminApp() {
               padding: "6px 13px", cursor: "pointer",
             }}
           >{menuOpen ? "✕" : "☰"}</button>
+          <span style={{ font: `800 17px ${FONT_DISPLAY}`, color: C.sidebarText }}>FuelUp Admin</span>
         </header>
         {menuOpen && (
           <nav style={{
