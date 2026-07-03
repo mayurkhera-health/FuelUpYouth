@@ -213,6 +213,37 @@ def test_delete_athlete_preview_and_cascade(ctx):
                       (ids["ava"],)).fetchone()[0] == 1
 
 
+def test_calendar_badge_distinguishes_import_manual_empty(ctx):
+    c, ids, ka = ctx
+    # Ben (no sync URL): hand-entered event (uid NULL) -> "manual"
+    ka.execute("INSERT INTO events (athlete_id, event_name, event_type, event_date) "
+               "VALUES (?, 'M', 'game', date('now'))", (ids["ben"],))
+    # Leo (no sync URL): imported .ics event (uid set) -> "imported"
+    ka.execute("INSERT INTO events (athlete_id, event_name, event_type, event_date, uid) "
+               "VALUES (?, 'M', 'game', date('now'), 'ics-uid-1')", (ids["leo"],))
+    ka.commit()
+    items = {f["id"]: f for f in c.get("/api/admin/users").json()["items"]}
+
+    ava = next(a for a in items[ids["sarah"]]["athletes"] if a["id"] == ids["ava"])
+    ben = next(a for a in items[ids["sarah"]]["athletes"] if a["id"] == ids["ben"])
+    leo = next(a for a in items[ids["mike"]]["athletes"] if a["id"] == ids["leo"])
+    assert ava["calendar"] == "byga"                       # recurring auto-sync
+    assert ben["calendar"] == "manual" and ben["event_count"] == 1
+    assert leo["calendar"] == "imported" and leo["imported_count"] == 1
+
+    # Mike uploaded a calendar file (Leo's import) -> no longer "never connected"
+    assert "never_connected" not in items[ids["mike"]]["chips"]
+
+
+def test_empty_schedule_is_none_status(ctx):
+    c, ids, _ = ctx
+    # Nora has no athletes; check an athlete with zero events reads "none".
+    items = {f["id"]: f for f in c.get("/api/admin/users").json()["items"]}
+    # Ben currently has no events in the base fixture -> "none".
+    ben = next(a for a in items[ids["sarah"]]["athletes"] if a["id"] == ids["ben"])
+    assert ben["calendar"] == "none"
+
+
 def test_hard_deleted_parents_excluded_from_list(ctx):
     # Simulate the prod schema: the old FuelUp-Admin soft-delete adds
     # parents.account_status and anonymizes rows to 'hard_deleted'.

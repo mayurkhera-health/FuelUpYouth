@@ -95,6 +95,25 @@ def _has_col(conn, table: str, col: str) -> bool:
     return any(r[1] == col for r in conn.execute(f"PRAGMA table_info({table})").fetchall())
 
 
+def _calendar_status(byga_url, playmetrics_url, imported_count, event_count) -> str:
+    """Derive the athlete's calendar state for the admin badge:
+      byga / playmetrics — recurring auto-sync connected (an .ics subscription URL)
+      imported           — parent uploaded a one-time .ics file (events carry a uid)
+      manual             — has events but all hand-entered (uid NULL)
+      none               — no schedule at all
+    `source` can't be used — it was backfilled to 'manual' for every pre-existing
+    row — so the .ics-import signal is the iCalendar uid on the event."""
+    if byga_url:
+        return "byga"
+    if playmetrics_url:
+        return "playmetrics"
+    if (imported_count or 0) > 0:
+        return "imported"
+    if (event_count or 0) > 0:
+        return "manual"
+    return "none"
+
+
 def _active_parent_clause(conn, alias: str) -> str:
     """Exclude anonymized tombstones left by the old FuelUp-Admin soft-delete
     (parents.account_status = 'hard_deleted'). The column only exists in
@@ -242,6 +261,8 @@ def list_families(
                SUM(CASE WHEN a.playmetrics_ics_url IS NOT NULL THEN 1 ELSE 0 END) AS playmetrics_count,
                (SELECT COUNT(*) FROM events e JOIN athletes aa ON aa.id = e.athlete_id
                  WHERE aa.parent_id = p.id AND e.synced_at IS NOT NULL AND e.synced_at > ?) AS recent_synced_count,
+               (SELECT COUNT(*) FROM events e2 JOIN athletes ab ON ab.id = e2.athlete_id
+                 WHERE ab.parent_id = p.id AND e2.uid IS NOT NULL AND e2.uid != '') AS imported_count,
                (SELECT MAX(ts) FROM (
                     SELECT MAX(ml.logged_at) AS ts FROM meal_logs ml JOIN athletes aa ON aa.id = ml.athlete_id WHERE aa.parent_id = p.id
                     UNION ALL
@@ -272,17 +293,25 @@ def list_families(
             d = dict(r)
             athlete_count = d["athlete_count"] or 0
             connected = d["connected_count"] or 0
-            # Nested athlete summaries for the row (name, sport/position, age)
+            imported = d["imported_count"] or 0
+            # Nested athlete summaries for the row (name, sport/position, age).
+            # event_count/imported_count drive the smarter calendar badge.
             aths = conn.execute(
-                "SELECT id, first_name, age, position, competition_level, "
-                "byga_ics_url, playmetrics_ics_url FROM athletes WHERE parent_id = ? ORDER BY id",
+                "SELECT a.id, a.first_name, a.age, a.position, a.competition_level, "
+                "a.byga_ics_url, a.playmetrics_ics_url, "
+                "(SELECT COUNT(*) FROM events e WHERE e.athlete_id = a.id) AS event_count, "
+                "(SELECT COUNT(*) FROM events e WHERE e.athlete_id = a.id AND e.uid IS NOT NULL AND e.uid != '') AS imported_count "
+                "FROM athletes a WHERE a.parent_id = ? ORDER BY a.id",
                 (d["id"],),
             ).fetchall()
             chips = []
             if athlete_count == 0:
                 chips.append("no_athletes")
             else:
-                if connected == 0 and d["created_at"] and d["created_at"] < cutoff_3d:
+                # "never connected" now means no auto-sync AND no uploaded .ics file
+                # (manual-only or empty). Families who uploaded a calendar file count
+                # as connected and are not flagged.
+                if connected == 0 and imported == 0 and d["created_at"] and d["created_at"] < cutoff_3d:
                     chips.append("never_connected")
                 if connected > 0 and (d["recent_synced_count"] or 0) == 0:
                     chips.append("sync_stale")
@@ -299,8 +328,10 @@ def list_families(
                     {
                         "id": a["id"], "first_name": a["first_name"], "age": a["age"],
                         "position": a["position"], "competition_level": a["competition_level"],
-                        "calendar": ("byga" if a["byga_ics_url"] else
-                                     "playmetrics" if a["playmetrics_ics_url"] else "none"),
+                        "calendar": _calendar_status(a["byga_ics_url"], a["playmetrics_ics_url"],
+                                                     a["imported_count"], a["event_count"]),
+                        "event_count": a["event_count"] or 0,
+                        "imported_count": a["imported_count"] or 0,
                     } for a in aths
                 ],
                 "chips": chips,
@@ -339,10 +370,17 @@ def family_detail(parent_id: int, _: bool = Depends(require_admin)):
                 "SELECT MAX(synced_at) FROM events WHERE athlete_id = ? AND synced_at IS NOT NULL",
                 (ad["id"],),
             ).fetchone()[0]
+            imported_events = conn.execute(
+                "SELECT COUNT(*) FROM events WHERE athlete_id = ? AND uid IS NOT NULL AND uid != ''",
+                (ad["id"],),
+            ).fetchone()[0]
             ad["event_stats"] = {
                 "total": total_events, "upcoming": upcoming_events, "by_source": by_source,
+                "imported": imported_events, "manual": total_events - imported_events,
             }
             ad["last_synced_at"] = last_synced
+            ad["calendar"] = _calendar_status(
+                ad.get("byga_ics_url"), ad.get("playmetrics_ics_url"), imported_events, total_events)
             athletes.append(ad)
 
         athlete_ids = [a["id"] for a in athletes]

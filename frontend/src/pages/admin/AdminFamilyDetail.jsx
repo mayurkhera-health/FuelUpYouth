@@ -170,7 +170,8 @@ function AthleteCard({ athlete, guarded, onSaved, onDelete }) {
           </span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <CalendarBadge kind={athlete.byga_ics_url ? "byga" : athlete.playmetrics_ics_url ? "playmetrics" : "none"} />
+          <CalendarBadge kind={athlete.calendar}
+            count={athlete.calendar === "imported" ? stats.imported : stats.total} />
         </div>
       </div>
 
@@ -179,8 +180,9 @@ function AthleteCard({ athlete, guarded, onSaved, onDelete }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, marginTop: 12 }}>
             <div><div style={label}>Total events</div><div style={val}>{stats.total}</div></div>
             <div><div style={label}>Upcoming</div><div style={val}>{stats.upcoming}</div></div>
-            <div><div style={label}>By source</div><div style={{ ...val, fontSize: 13 }}>
-              {Object.entries(stats.by_source).map(([k, v]) => `${k}:${v}`).join("  ") || "—"}</div></div>
+            <div><div style={label}>Schedule source</div><div style={{ ...val, fontSize: 13 }}>
+              {stats.total === 0 ? "—"
+                : `${stats.imported || 0} from file · ${stats.manual ?? (stats.total - (stats.imported || 0))} manual`}</div></div>
             <div><div style={label}>Last synced</div><div style={{ ...val, fontSize: 13 }}>
               {athlete.last_synced_at ? athlete.last_synced_at.slice(0, 16).replace("T", " ") : "—"}</div></div>
           </div>

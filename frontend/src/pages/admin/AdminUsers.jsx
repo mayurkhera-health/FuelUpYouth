@@ -127,7 +127,8 @@ export default function AdminUsers({ onOpenFamily, onLoggedOut }) {
                         display: "inline-flex", gap: 6, alignItems: "center",
                       }}>
                         {a.first_name}{a.position ? ` · ${a.position}` : ""}{a.age ? ` · ${a.age}` : ""}
-                        <CalendarBadge kind={a.calendar} />
+                        <CalendarBadge kind={a.calendar}
+                          count={a.calendar === "imported" ? a.imported_count : a.event_count} />
                       </span>
                     ))}
                   </div>

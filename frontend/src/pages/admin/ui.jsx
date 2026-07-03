@@ -61,18 +61,24 @@ export function Chip({ kind }) {
   );
 }
 
+// Smarter calendar state. Distinguishes recurring auto-sync (BYGA / PlayMetrics),
+// a one-time uploaded .ics file, hand-entered events, and a truly empty schedule.
+// `count` is the imported-event count for "imported", total-event count for "manual".
 export function CalendarBadge({ kind, count }) {
+  const n = count || 0;
   const map = {
-    byga: { label: "BYGA", fg: C.brand, bg: C.brandGhost, border: C.brandLight },
-    playmetrics: { label: "PlayMetrics", fg: "#4a8fc4", bg: "#eef5fb", border: "#b8d8ef" },
-    none: { label: "No calendar", fg: C.text3, bg: C.surface2, border: C.border },
+    byga: { label: "BYGA ✓", fg: C.brand, bg: C.brandGhost, border: C.brandLight },
+    playmetrics: { label: "PlayMetrics ✓", fg: "#4a8fc4", bg: "#eef5fb", border: "#b8d8ef" },
+    imported: { label: n ? `Calendar file · ${n}` : "Calendar file ✓", fg: C.brand, bg: C.brandGhost, border: C.brandLight },
+    manual: { label: n ? `Manual · ${n}` : "Manual", fg: C.text2, bg: C.surface2, border: C.border2 },
+    none: { label: "No schedule ⚠", fg: "#9a6a1e", bg: C.warmLight, border: "#f0d9a8" },
   };
   const m = map[kind] || map.none;
   return (
     <span style={{
       font: `700 11px ${FONT_DISPLAY}`, color: m.fg, background: m.bg,
       border: `1px solid ${m.border}`, borderRadius: 6, padding: "2px 8px",
-    }}>{m.label}{count > 1 ? ` ×${count}` : ""}{kind !== "none" ? " ✓" : " ⚠"}</span>
+    }}>{m.label}</span>
   );
 }
 
