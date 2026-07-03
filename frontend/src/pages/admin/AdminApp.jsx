@@ -6,6 +6,7 @@ import AdminUsersSplit from "./AdminUsersSplit";
 import AdminAnalytics from "./AdminAnalytics";
 import AdminHealth from "./AdminHealth";
 import AdminOverview from "./AdminOverview";
+import AdminActionHub from "./AdminActionHub";
 
 // Overall health strip — one fetch per admin page load, no polling.
 function HealthStrip({ onOpen }) {
@@ -39,12 +40,19 @@ function HealthStrip({ onOpen }) {
 export default function AdminApp() {
   const [authed, setAuthed] = useState(!!getToken());
   // Default landing = the plain-language Overview (the hourly reporter's screen).
-  const [section, setSection] = useState("overview"); // "overview" | "users" | "analytics" | "health"
+  const [section, setSection] = useState("overview"); // overview|actionhub|users|analytics|health
+  const [pendingUserId, setPendingUserId] = useState(null); // deep-link a family from the Action Hub
 
   // Called by child fetches when a 401 (AuthError) bubbles up.
   function onLoggedOut() {
     clearToken();
     setAuthed(false);
+  }
+
+  // Action Hub "View" buttons navigate to a section (and optionally a family).
+  function navigate(toSection, id) {
+    if (id != null) setPendingUserId(id);
+    setSection(toSection);
   }
 
   if (!authed) return <AdminLogin onAuth={() => setAuthed(true)} />;
@@ -77,6 +85,7 @@ export default function AdminApp() {
           FuelUp Admin
         </div>
         {navItem("overview", "Overview")}
+        {navItem("actionhub", "Action Hub")}
         {navItem("users", "Users")}
         {navItem("analytics", "Analytics")}
         {navItem("health", "System Health")}
@@ -88,12 +97,13 @@ export default function AdminApp() {
       </aside>
 
       <main style={{ flex: 1, minWidth: 0, padding: "28px 32px", width: "100%" }}>
-        {/* Health strip is redundant on Overview (its own health line) and Health. */}
-        {section !== "health" && section !== "overview" && (
+        {/* Health strip is redundant where a page has its own health line. */}
+        {section !== "health" && section !== "overview" && section !== "actionhub" && (
           <HealthStrip onOpen={() => setSection("health")} />
         )}
         {section === "overview" && <AdminOverview onLoggedOut={onLoggedOut} />}
-        {section === "users" && <AdminUsersSplit onLoggedOut={onLoggedOut} />}
+        {section === "actionhub" && <AdminActionHub onLoggedOut={onLoggedOut} onNavigate={navigate} />}
+        {section === "users" && <AdminUsersSplit onLoggedOut={onLoggedOut} initialSelectedId={pendingUserId} />}
         {section === "analytics" && <AdminAnalytics onLoggedOut={onLoggedOut} />}
         {section === "health" && <AdminHealth onLoggedOut={onLoggedOut} />}
       </main>

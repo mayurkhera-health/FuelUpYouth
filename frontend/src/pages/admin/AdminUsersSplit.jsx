@@ -16,9 +16,15 @@ function useNarrow(bp = 900) {
   return narrow;
 }
 
-export default function AdminUsersSplit({ onLoggedOut }) {
-  const [selectedId, setSelectedId] = useState(null);
+export default function AdminUsersSplit({ onLoggedOut, initialSelectedId }) {
+  const [selectedId, setSelectedId] = useState(initialSelectedId ?? null);
   const narrow = useNarrow();
+
+  // Deep-link from the Action Hub ("View family" → open this family).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (initialSelectedId != null) setSelectedId(initialSelectedId);
+  }, [initialSelectedId]);
 
   const master = <AdminUsers selectedId={selectedId} onSelect={setSelectedId} onLoggedOut={onLoggedOut} />;
   const detail = selectedId
