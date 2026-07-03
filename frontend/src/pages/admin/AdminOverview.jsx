@@ -51,7 +51,7 @@ export default function AdminOverview({ onLoggedOut }) {
   const healthBorder = h.status === "red" ? C.dangerBorder : C.brandLight;
 
   return (
-    <div style={{ maxWidth: 620, margin: "0 auto" }}>
+    <div>
       <div style={{
         background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18,
         boxShadow: C.shadowMd, overflow: "hidden",
@@ -76,15 +76,18 @@ export default function AdminOverview({ onLoggedOut }) {
           </div>
         </div>
 
-        {/* Grouped status sections */}
-        <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 22 }}>
+        {/* Grouped status sections — laid out as columns to fill the page width. */}
+        <div style={{
+          padding: "22px", display: "grid", alignItems: "start", gap: 24,
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+        }}>
           {data.sections.map((sec) => (
             <div key={sec.title}>
               <div style={{
                 font: `800 11px ${FONT_DISPLAY}`, color: C.text3, letterSpacing: "0.07em",
                 textTransform: "uppercase", marginBottom: 12,
               }}>{sec.title}</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
                 {sec.lines.map((ln, i) => <Tile key={i} m={ln} />)}
               </div>
             </div>
