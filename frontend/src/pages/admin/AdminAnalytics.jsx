@@ -8,12 +8,15 @@ export default function AdminAnalytics({ onLoggedOut }) {
   const [funnel, setFunnel] = useState(null);
   const [events, setEvents] = useState(null);
   const [retention, setRetention] = useState(null);
+  const [activity, setActivity] = useState(null);
+  const [activityRefreshing, setActivityRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     load(false);
+    loadActivity(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -33,6 +36,19 @@ export default function AdminAnalytics({ onLoggedOut }) {
       if (err instanceof AuthError) return onLoggedOut();
       setError(err.message);
     } finally { setLoading(false); setRefreshing(false); }
+  }
+
+  // The activity feed refreshes on its own (short-cached, "live") so its Refresh
+  // never reloads the whole dashboard. No polling — manual refresh only.
+  async function loadActivity(force) {
+    if (force) setActivityRefreshing(true);
+    try {
+      const a = await adminFetch(`/analytics/activity?limit=20${force ? "&force=true" : ""}`);
+      setActivity(a);
+    } catch (err) {
+      if (err instanceof AuthError) return onLoggedOut();
+      setActivity({ error: true });
+    } finally { setActivityRefreshing(false); }
   }
 
   if (loading) return (
@@ -88,6 +104,10 @@ export default function AdminAnalytics({ onLoggedOut }) {
       {/* Charts as a responsive dashboard grid — 2–3 across on wide screens,
           single column on phones (min() keeps the 440px track from overflowing). */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(440px,100%),1fr))", gap: 16, alignItems: "start" }}>
+        <RecentActivity activity={activity} onRefresh={() => loadActivity(true)} refreshing={activityRefreshing} />
+
+        <CalendarPlatform data={overview.calendar_platform} />
+
         <Card>
           <SectionTitle>Signups over time ({c.signups.window_days}d)</SectionTitle>
           <LineChart points={overview.signups_over_time.points} />
@@ -170,6 +190,100 @@ function FounderSummary({ overview, funnel }) {
             <span>{r.text}</span>
           </div>
         ))}
+      </div>
+    </Card>
+  );
+}
+
+// Plain-language labels for the activity feed (canonical event → "did what").
+const EVENT_LABELS = {
+  signup_completed: "signed up",
+  athlete_created: "added an athlete",
+  calendar_connected: "connected calendar",
+  meal_plan_viewed: "viewed meal plan",
+  event_added_manual: "added an event",
+  problem_reported: "reported a problem",
+  feature_idea_submitted: "suggested a feature",
+};
+
+// Relative time — small helper, no date library.
+function relTime(iso) {
+  if (!iso) return "";
+  let s = String(iso).replace(" ", "T");
+  if (!/[zZ]|[+-]\d\d:?\d\d$/.test(s)) s += "Z";
+  const t = new Date(s).getTime();
+  if (isNaN(t)) return "";
+  const secs = Math.floor((Date.now() - t) / 1000);
+  if (secs < 60) return "just now";
+  const m = Math.floor(secs / 60); if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function RecentActivity({ activity, onRefresh, refreshing }) {
+  let body;
+  if (!activity) {
+    body = <Skeleton height={120} />;
+  } else if (activity.error) {
+    body = <div style={{ color: C.text3, fontSize: 13 }}>Couldn’t load recent activity.</div>;
+  } else if (activity.available === false) {
+    body = <PostHogUnavailable info={activity} subtitle="The live feed comes from PostHog." />;
+  } else if (!activity.rows || activity.rows.length === 0) {
+    body = <div style={{ color: C.text3, fontSize: 13 }}>No recent activity yet.</div>;
+  } else {
+    body = (
+      <div>
+        {activity.rows.map((r, i) => (
+          <div key={i} style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "6px 0",
+            borderBottom: `1px solid ${C.border}`, font: `500 13px ${FONT_DISPLAY}`,
+          }}>
+            <span style={{
+              fontWeight: 700, color: C.text1, flex: "0 0 auto", maxWidth: 120,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>{r.parent_first}</span>
+            <span style={{ color: C.text2, flex: 1, minWidth: 0 }}>{EVENT_LABELS[r.event] || r.event}</span>
+            <span style={{ color: C.text3, flex: "0 0 auto", fontSize: 12 }}>{relTime(r.timestamp)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <Card>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <span style={{ font: `700 15px ${FONT_DISPLAY}`, color: C.text1, display: "flex", gap: 8, alignItems: "center" }}>
+          Recent activity <Src>PostHog</Src>
+        </span>
+        <Button variant="ghost" onClick={onRefresh} disabled={refreshing}>{refreshing ? "…" : "Refresh"}</Button>
+      </div>
+      {body}
+    </Card>
+  );
+}
+
+function CalendarPlatform({ data }) {
+  if (!data) return null;
+  const rows = [
+    { label: "BYGA", n: data.byga || 0 },
+    { label: "PlayMetrics", n: data.playmetrics || 0 },
+    { label: "Not connected", n: data.not_connected || 0 },
+  ];
+  return (
+    <Card>
+      <SectionTitle>Calendar platform <Src>DB</Src></SectionTitle>
+      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+        {rows.map((r) => (
+          <div key={r.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", font: `600 14px ${FONT_DISPLAY}`, color: C.text2 }}>
+            <span>{r.label}</span>
+            <span style={{ font: `800 15px ${FONT_DISPLAY}`, color: C.text1 }}>
+              {r.n} {r.n === 1 ? "family" : "families"}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div style={{ font: `400 12px ${FONT_DISPLAY}`, color: C.text3, marginTop: 10 }}>
+        Current connections, counted per family.
       </div>
     </Card>
   );

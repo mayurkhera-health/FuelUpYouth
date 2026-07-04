@@ -112,12 +112,35 @@ def funnel_steps(conn) -> list:
     ]
 
 
+def calendar_platform_breakdown(conn) -> dict:
+    """Per-family calendar platform, current-state, DB-sourced (exact, no PostHog,
+    no cache staleness). A family is counted once with BYGA-priority: BYGA if any
+    of its athletes has a byga_ics_url, else PlayMetrics if any has a
+    playmetrics_ics_url, else Not connected. Buckets sum to total families.
+
+    Tiebreak: save_sync_url never clears the other platform's column, so an
+    athlete/family can have both — BYGA wins, matching the Users-list
+    _calendar_status priority, so each family lands in exactly one bucket."""
+    aw = _active_where(conn)
+    active_ids = f"SELECT id FROM parents WHERE {aw}"
+    byga = _scalar(conn, f"SELECT COUNT(DISTINCT parent_id) FROM athletes "
+                         f"WHERE parent_id IN ({active_ids}) AND byga_ics_url IS NOT NULL")
+    playmetrics = _scalar(conn,
+        f"SELECT COUNT(DISTINCT parent_id) FROM athletes "
+        f"WHERE parent_id IN ({active_ids}) AND playmetrics_ics_url IS NOT NULL "
+        f"AND parent_id NOT IN (SELECT parent_id FROM athletes WHERE byga_ics_url IS NOT NULL)")
+    total = _scalar(conn, f"SELECT COUNT(*) FROM parents WHERE {aw}")
+    return {"source": "db", "byga": byga, "playmetrics": playmetrics,
+            "not_connected": max(0, total - byga - playmetrics), "total_families": total}
+
+
 # ── Overview ─────────────────────────────────────────────────────────────────
 @router.get("/analytics/overview")
 def overview(days: int = 30, force: bool = False, _: bool = Depends(require_admin)):
     conn = get_conn()
     try:
         m = db_metrics(conn, days)
+        calendar_platform = calendar_platform_breakdown(conn)
     finally:
         conn.close()
 
@@ -140,6 +163,7 @@ def overview(days: int = 30, force: bool = False, _: bool = Depends(require_admi
             "sync_adoption": {"percent": m["sync_pct"], "connected": m["athletes_connected"],
                               "total": m["athletes_total"], "source": "db"},
         },
+        "calendar_platform": calendar_platform,
         "signups_over_time": {"source": "db", "points": m["signup_series"], "posthog": ph_signups},
         "app_health": {"problem_reports_7d": m["problem_reports_7d"],
                        "feature_ideas_7d": m["feature_ideas_7d"], "event_sources": m["event_sources"]},
@@ -193,6 +217,45 @@ def retention(weeks: int = 8, force: bool = False, _: bool = Depends(require_adm
 @router.get("/analytics/events")
 def top_events(days: int = 30, force: bool = False, _: bool = Depends(require_admin)):
     return posthog_client.top_events(days, force=force)
+
+
+# ── Live activity feed (PostHog events + batched DB name resolution) ──────────
+def _as_int(v):
+    """parent_id from PostHog properties can arrive as int, float, or str."""
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        return None
+
+
+@router.get("/analytics/activity")
+def activity(limit: int = 20, force: bool = False, _: bool = Depends(require_admin)):
+    """Newest ~20 canonical actions, with parent_id resolved to a first name via a
+    SINGLE batched DB query (no N+1). Unresolvable ids show 'Unknown'. Degrades to
+    {available: false, reason} when PostHog is unreachable, like the other cards."""
+    limit = max(1, min(50, limit))
+    ph = posthog_client.recent_activity(limit, force=force)
+    if not ph.get("available"):
+        return ph
+    rows = ph.get("data", {}).get("rows", [])
+
+    ids = {pid for r in rows if (pid := _as_int(r.get("parent_id")))}
+    names = {}
+    if ids:
+        conn = get_conn()
+        try:
+            placeholders = ",".join("?" * len(ids))
+            for pid, full in conn.execute(
+                    f"SELECT id, full_name FROM parents WHERE id IN ({placeholders})",
+                    tuple(ids)).fetchall():
+                parts = (full or "").strip().split()
+                names[pid] = parts[0] if parts else None
+        finally:
+            conn.close()
+
+    out = [{"event": r["event"], "timestamp": r["timestamp"],
+            "parent_first": names.get(_as_int(r.get("parent_id"))) or "Unknown"} for r in rows]
+    return {"available": True, "as_of": ph.get("as_of"), "rows": out}
 
 
 # ── Event-name discovery (verify mobile events are landing in PostHog) ────────
