@@ -43,6 +43,23 @@ def register_expo_token(data: ExpoTokenPayload):
                updated_at=datetime('now')""",
             (data.athlete_id, data.parent_id, data.token, data.platform, data.timezone),
         )
+        # Prune stale tokens for this profile (older than 30 days, different token).
+        # Prevents duplicate notifications when the same device gets a new token after
+        # a reinstall — the old token stays in DB otherwise and every alert fires twice.
+        if data.parent_id:
+            conn.execute(
+                """DELETE FROM expo_push_tokens
+                   WHERE parent_id = ? AND token != ?
+                   AND datetime(COALESCE(updated_at, created_at)) < datetime('now', '-30 days')""",
+                (data.parent_id, data.token),
+            )
+        if data.athlete_id:
+            conn.execute(
+                """DELETE FROM expo_push_tokens
+                   WHERE athlete_id = ? AND token != ?
+                   AND datetime(COALESCE(updated_at, created_at)) < datetime('now', '-30 days')""",
+                (data.athlete_id, data.token),
+            )
         conn.commit()
         return {"message": "Token registered."}
     finally:
