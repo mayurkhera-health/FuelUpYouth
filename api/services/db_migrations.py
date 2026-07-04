@@ -37,6 +37,7 @@ def run_all():
         _create_admin_audit_log(conn)
         _create_health_tables(conn)
         _add_last_login_to_parents(conn)
+        _add_blueprint_viewed_to_parents(conn)
         conn.commit()
     finally:
         conn.close()
@@ -389,6 +390,14 @@ def _add_last_login_to_parents(conn):
     if "last_login_at" not in cols:
         conn.execute("ALTER TABLE parents ADD COLUMN last_login_at TEXT")
         conn.execute("UPDATE parents SET last_login_at = created_at WHERE last_login_at IS NULL")
+
+
+def _add_blueprint_viewed_to_parents(conn):
+    """Track the first time a parent opens the Blueprint screen so we can send a
+    one-time onboarding summary email. Nullable — NULL means never viewed. Idempotent."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(parents)").fetchall()]
+    if "blueprint_first_viewed_at" not in cols:
+        conn.execute("ALTER TABLE parents ADD COLUMN blueprint_first_viewed_at TEXT")
 
 
 def _create_admin_audit_log(conn):

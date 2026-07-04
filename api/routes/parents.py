@@ -1,10 +1,13 @@
 import hashlib
+import logging
 import random
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from api.models import ParentCreate, ParentResponse, OTPRequest, OTPVerify
 from api.database import get_conn
 from api.services.email import send_otp_email
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -193,3 +196,102 @@ def get_parent(parent_id: int):
         return dict(row)
     finally:
         conn.close()
+
+
+@router.post("/{parent_id}/blueprint-viewed")
+def blueprint_viewed(parent_id: int, background_tasks: BackgroundTasks):
+    """Called once when a parent first opens the Blueprint screen.
+    Idempotent: stamps blueprint_first_viewed_at only on the first call,
+    then sends a one-time onboarding summary email to the founder."""
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM parents WHERE id = ?", (parent_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Parent not found.")
+        parent = dict(row)
+
+        # Already recorded — no-op
+        if parent.get("blueprint_first_viewed_at"):
+            return {"ok": True, "first_view": False}
+
+        now = datetime.utcnow().isoformat()
+        conn.execute(
+            "UPDATE parents SET blueprint_first_viewed_at = ? WHERE id = ?",
+            (now, parent_id),
+        )
+        conn.commit()
+
+        athletes = [dict(a) for a in conn.execute(
+            "SELECT * FROM athletes WHERE parent_id = ? ORDER BY id", (parent_id,)
+        ).fetchall()]
+
+        background_tasks.add_task(_send_blueprint_summary, parent, athletes, now)
+        return {"ok": True, "first_view": True}
+    finally:
+        conn.close()
+
+
+def _send_blueprint_summary(parent: dict, athletes: list, viewed_at: str) -> None:
+    """Assemble and email the onboarding summary to the founder. Best-effort."""
+    try:
+        from api.services.email_service import send_email
+
+        first = (parent.get("full_name") or "Someone").split()[0]
+        email = parent.get("email", "—")
+        signed_up = parent.get("created_at", "—")
+
+        lines = [
+            f"🎯 Blueprint First View — {first}",
+            "",
+            f"Parent:     {parent.get('full_name', '—')}",
+            f"Email:      {email}",
+            f"Signed up:  {signed_up}",
+            f"Blueprint:  {viewed_at}",
+            "",
+        ]
+
+        if not athletes:
+            lines.append("Athletes:   (none linked yet)")
+        else:
+            for a in athletes:
+                name = a.get("first_name", "—")
+                age = a.get("age", "—")
+                gender = a.get("gender", "—")
+                comp = a.get("competition_level") or "—"
+                phase = a.get("season_phase") or "—"
+                sport = a.get("sport") or "—"
+                lines.append(f"Athlete:    {name}, age {age}, {gender}")
+                lines.append(f"            Sport: {sport} | Level: {comp} | Phase: {phase}")
+
+                # Event stats
+                conn = get_conn()
+                try:
+                    stats = conn.execute(
+                        "SELECT COUNT(*) as total, "
+                        "MIN(event_date) as first_date, MAX(event_date) as last_date, "
+                        "source FROM events WHERE athlete_id = ? GROUP BY source",
+                        (a["id"],),
+                    ).fetchall()
+                    total_events = sum(s[0] for s in stats)
+                    if total_events == 0:
+                        lines.append("            Calendar: No events imported yet")
+                    else:
+                        for s in stats:
+                            sd = dict(s)
+                            src = sd.get("source") or "manual"
+                            cnt = sd["total"]
+                            d1, d2 = sd.get("first_date", "?"), sd.get("last_date", "?")
+                            platform = "BYGA" if src == "byga" else "PlayMetrics" if src == "playmetrics" else src.title()
+                            lines.append(f"            {platform}: {cnt} events ({d1} → {d2})")
+                finally:
+                    conn.close()
+                lines.append("")
+
+        body = "\n".join(lines)
+        send_email(
+            subject=f"🎯 FuelUp Blueprint View — {first} ({email})",
+            body=body,
+            to=["mayurkhera@gmail.com"],
+        )
+    except Exception:
+        log.warning("blueprint summary email failed", exc_info=True)
