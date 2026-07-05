@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from api.database import get_conn
-from api.services import admin_auth
+from api.services import admin_auth, streak_service
 from api.services.admin_auth import require_admin, write_audit
 
 router = APIRouter()
@@ -342,6 +342,49 @@ def list_families(
 
 
 # ── Family detail ────────────────────────────────────────────────────────────
+def _athlete_engagement(athlete: dict, conn) -> dict:
+    """Is the app actually being used by / reaching this athlete? All reads come
+    from tables the app already writes — no new instrumentation."""
+    aid = athlete["id"]
+    meals = conn.execute(
+        "SELECT COUNT(*) AS n, MAX(logged_at) AS last FROM meal_logs WHERE athlete_id = ?",
+        (aid,)).fetchone()
+    water = conn.execute(
+        "SELECT COUNT(*) AS n, MAX(log_date) AS last FROM water_logs WHERE athlete_id = ?",
+        (aid,)).fetchone()
+    pantry = conn.execute(
+        "SELECT week_start, COUNT(*) AS n, SUM(checked) AS done FROM pantry_list_items "
+        "WHERE athlete_id = ? GROUP BY week_start ORDER BY week_start DESC LIMIT 1",
+        (aid,)).fetchone()
+    login = conn.execute(
+        "SELECT email, created_at FROM athlete_logins WHERE athlete_id = ?", (aid,)).fetchone()
+    push_tokens = conn.execute(
+        "SELECT COUNT(*) FROM expo_push_tokens WHERE athlete_id = ?", (aid,)).fetchone()[0]
+    last_push = conn.execute(
+        "SELECT MAX(sent_at) FROM notification_log WHERE athlete_id = ?", (aid,)).fetchone()[0]
+    try:
+        streak = streak_service.compute_current_streak(aid, conn)["current"]
+    except Exception:   # engagement is informational — never fail the page over it
+        streak = None
+    return {
+        "meal_logs":  {"total": meals["n"], "last_at": meals["last"]},
+        "water_logs": {"total": water["n"], "last_date": water["last"]},
+        "streak": streak,
+        "pantry": {
+            "latest_week_start": pantry["week_start"] if pantry else None,
+            "item_count":        pantry["n"] if pantry else 0,
+            "checked_count":     int(pantry["done"] or 0) if pantry else 0,
+        },
+        "blueprint_generated": bool(athlete.get("blueprint_json")),
+        "athlete_login": {
+            "exists": login is not None,
+            "email": login["email"] if login else None,
+            "created_at": login["created_at"] if login else None,
+        },
+        "push": {"tokens": push_tokens, "last_push_at": last_push},
+    }
+
+
 @router.get("/users/{parent_id}")
 def family_detail(parent_id: int, _: bool = Depends(require_admin)):
     conn = get_conn()
@@ -350,6 +393,8 @@ def family_detail(parent_id: int, _: bool = Depends(require_admin)):
         if not prow:
             raise HTTPException(404, "Parent not found.")
         parent = dict(prow)
+        parent["push_tokens"] = conn.execute(
+            "SELECT COUNT(*) FROM expo_push_tokens WHERE parent_id = ?", (parent_id,)).fetchone()[0]
 
         athletes = []
         for a in conn.execute("SELECT * FROM athletes WHERE parent_id = ? ORDER BY id", (parent_id,)).fetchall():
@@ -381,6 +426,7 @@ def family_detail(parent_id: int, _: bool = Depends(require_admin)):
             ad["last_synced_at"] = last_synced
             ad["calendar"] = _calendar_status(
                 ad.get("byga_ics_url"), ad.get("playmetrics_ics_url"), imported_events, total_events)
+            ad["engagement"] = _athlete_engagement(ad, conn)
             athletes.append(ad)
 
         athlete_ids = [a["id"] for a in athletes]

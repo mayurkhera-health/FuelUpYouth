@@ -6,6 +6,46 @@ import { Card, Button, TextInput, CalendarBadge, Avatar, Skeleton, ErrorRetry } 
 const label = { font: `600 12px ${FONT_DISPLAY}`, color: C.text3, textTransform: "uppercase", letterSpacing: "0.03em" };
 const val = { font: `600 15px ${FONT_DISPLAY}`, color: C.text1 };
 
+const NONE_VALUES = new Set(["", "none", "n/a", "na", "no", "not specified"]);
+const isSet = (v) => v != null && !NONE_VALUES.has(String(v).trim().toLowerCase());
+const dash = (v) => (isSet(v) ? v : "—");
+
+function parseUtc(iso) {
+  if (!iso) return null;
+  let s = String(iso).replace(" ", "T");
+  if (!/[zZ]|[+-]\d\d:?\d\d$/.test(s)) s += "Z";
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+function timeAgo(iso) {
+  const d = parseUtc(iso);
+  if (!d) return "—";
+  const secs = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (secs < 60) return "just now";
+  const m = Math.floor(secs / 60);
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+function heightStr(a) {
+  if (a.height_ft == null && a.height_in == null) return "—";
+  return `${a.height_ft ?? 0}' ${Math.round(a.height_in ?? 0)}"`;
+}
+
+// Nutrition-safety values get an amber highlight when set — these are exactly
+// the fields worth a second look before answering a support email.
+function SafetyVal({ children }) {
+  const set = isSet(children);
+  if (!set) return <div style={{ ...val, fontSize: 13 }}>—</div>;
+  return (
+    <div style={{
+      display: "inline-block", font: `700 13px ${FONT_DISPLAY}`, color: "#92400e",
+      background: C.warmLight, border: "1px solid #fde68a", borderRadius: 8, padding: "2px 8px",
+    }}>{children}</div>
+  );
+}
+
 export default function AdminFamilyDetail({ parentId, onBack, onLoggedOut, hideBack }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -120,7 +160,24 @@ function ParentSection({ parent, guarded, onSaved, onDelete }) {
           </div>
           <Button variant="ghost" onClick={() => setEditing(true)}>Edit profile</Button>
         </div>
-      ) : (
+      ) : null}
+      {!editing && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+          <div><div style={label}>Phone</div><div style={{ ...val, fontSize: 13 }}>{dash(parent.phone)}</div></div>
+          <div><div style={label}>Consent</div><div style={{ ...val, fontSize: 13 }}>
+            {parent.consent_confirmed ? `Confirmed · ${(parent.consent_timestamp || "").slice(0, 10) || "—"}` : "Not confirmed"}</div></div>
+          <div><div style={label}>Last login</div><div style={{ ...val, fontSize: 13 }}>
+            {parent.last_login_at ? timeAgo(parent.last_login_at) : "never"}</div></div>
+          <div><div style={label}>Blueprint viewed</div><div style={{ ...val, fontSize: 13 }}>
+            {parent.blueprint_first_viewed_at ? `Yes · ${(parent.blueprint_first_viewed_at || "").slice(0, 10)}` : "not yet"}</div></div>
+          <div><div style={label}>Push devices</div><div style={{ ...val, fontSize: 13 }}>
+            {parent.push_tokens > 0 ? `${parent.push_tokens} registered` : "none — unreachable"}</div></div>
+          {isSet(parent.account_status) && parent.account_status !== "active" && (
+            <div><div style={label}>Account status</div><SafetyVal>{parent.account_status}</SafetyVal></div>
+          )}
+        </div>
+      )}
+      {editing && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12, maxWidth: 420 }}>
           <div><div style={label}>Name</div><TextInput value={fullName} onChange={(e) => setFullName(e.target.value)} /></div>
           <div><div style={label}>Email</div><TextInput value={email} onChange={(e) => setEmail(e.target.value)} /></div>
@@ -192,6 +249,8 @@ function AthleteCard({ athlete, guarded, onSaved, onDelete }) {
             <div><div style={label}>Last synced</div><div style={{ ...val, fontSize: 13 }}>
               {athlete.last_synced_at ? athlete.last_synced_at.slice(0, 16).replace("T", " ") : "—"}</div></div>
           </div>
+          <ProfileSection athlete={athlete} />
+          <EngagementSection engagement={athlete.engagement} />
           {(athlete.byga_ics_url || athlete.playmetrics_ics_url) && (
             <div style={{ marginTop: 10 }}>
               <button onClick={() => setShowUrls((s) => !s)} style={{
@@ -229,6 +288,74 @@ function AthleteCard({ athlete, guarded, onSaved, onDelete }) {
         </div>
       )}
     </Card>
+  );
+}
+
+function SubHeader({ children }) {
+  return <div style={{ font: `800 12px ${FONT_DISPLAY}`, color: C.text3, letterSpacing: "0.06em", textTransform: "uppercase", margin: "16px 0 8px", paddingTop: 12, borderTop: `1px solid ${C.border}` }}>{children}</div>;
+}
+
+// Tier 1 — the full profile the app already captures. Nutrition-safety fields
+// (allergies / restrictions / preferences) are highlighted when set.
+function ProfileSection({ athlete: a }) {
+  return (
+    <>
+      <SubHeader>Nutrition profile</SubHeader>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>
+        <div><div style={label}>Allergies</div><SafetyVal>{a.allergies}</SafetyVal></div>
+        <div><div style={label}>Dietary restrictions</div><SafetyVal>{a.dietary_restrictions}</SafetyVal></div>
+        <div><div style={label}>Diet</div><div style={{ ...val, fontSize: 13 }}>{dash(a.diet_pref)}</div></div>
+        <div><div style={label}>Supplements</div><div style={{ ...val, fontSize: 13 }}>{dash(a.supplement_use)}</div></div>
+      </div>
+      {isSet(a.food_preferences) && (
+        <div style={{ marginTop: 10 }}>
+          <div style={label}>Food likes / notes</div>
+          <div style={{ font: `500 13px ${FONT_DISPLAY}`, color: C.text2, marginTop: 2 }}>{a.food_preferences}</div>
+        </div>
+      )}
+      <SubHeader>Physical & sport</SubHeader>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 12 }}>
+        <div><div style={label}>Date of birth</div><div style={{ ...val, fontSize: 13 }}>{dash(a.date_of_birth)}</div></div>
+        <div><div style={label}>Height</div><div style={{ ...val, fontSize: 13 }}>{heightStr(a)}</div></div>
+        <div><div style={label}>Weight</div><div style={{ ...val, fontSize: 13 }}>{a.weight_lbs ? `${a.weight_lbs} lbs` : "—"}</div></div>
+        <div><div style={label}>Gender</div><div style={{ ...val, fontSize: 13 }}>{dash(a.gender)}</div></div>
+        <div><div style={label}>Level</div><div style={{ ...val, fontSize: 13 }}>{dash(a.competition_level)}</div></div>
+        <div><div style={label}>Season</div><div style={{ ...val, fontSize: 13 }}>{dash(a.season_phase)}</div></div>
+        <div><div style={label}>Sweat profile</div><div style={{ ...val, fontSize: 13 }}>{dash(a.sweat_profile)}</div></div>
+        <div><div style={label}>Lifestyle activity</div><div style={{ ...val, fontSize: 13 }}>{dash(a.lifestyle_activity)}</div></div>
+      </div>
+    </>
+  );
+}
+
+// Tier 2 — is the family actually using (and reachable by) the app?
+function EngagementSection({ engagement: e }) {
+  if (!e) return null;
+  const pantry = e.pantry || {};
+  return (
+    <>
+      <SubHeader>Engagement</SubHeader>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>
+        <div><div style={label}>Meals logged</div><div style={{ ...val, fontSize: 13 }}>
+          {e.meal_logs.total > 0 ? `${e.meal_logs.total} · last ${timeAgo(e.meal_logs.last_at)}` : "never"}</div></div>
+        <div><div style={label}>Water logged</div><div style={{ ...val, fontSize: 13 }}>
+          {e.water_logs.total > 0 ? `${e.water_logs.total} days · last ${e.water_logs.last_date}` : "never"}</div></div>
+        <div><div style={label}>Fuel streak</div><div style={{ ...val, fontSize: 13 }}>
+          {e.streak != null ? `${e.streak} day${e.streak === 1 ? "" : "s"}` : "—"}</div></div>
+        <div><div style={label}>Grocery list</div><div style={{ ...val, fontSize: 13 }}>
+          {pantry.latest_week_start
+            ? `wk ${pantry.latest_week_start} · ${pantry.checked_count}/${pantry.item_count} checked`
+            : "never generated"}</div></div>
+        <div><div style={label}>Blueprint</div><div style={{ ...val, fontSize: 13 }}>
+          {e.blueprint_generated ? "generated" : "not generated"}</div></div>
+        <div><div style={label}>Athlete login</div><div style={{ ...val, fontSize: 13 }}>
+          {e.athlete_login.exists ? `claimed · ${e.athlete_login.email}` : "not claimed"}</div></div>
+        <div><div style={label}>Push (athlete)</div><div style={{ ...val, fontSize: 13 }}>
+          {e.push.tokens > 0
+            ? `${e.push.tokens} device${e.push.tokens === 1 ? "" : "s"}${e.push.last_push_at ? ` · last push ${timeAgo(e.push.last_push_at)}` : ""}`
+            : "no device registered"}</div></div>
+      </div>
+    </>
   );
 }
 
