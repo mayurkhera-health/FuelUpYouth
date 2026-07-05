@@ -362,7 +362,6 @@ function ProfileSection({ athlete: a }) {
         <div><div style={label}>Allergies</div><SafetyVal>{a.allergies}</SafetyVal></div>
         <div><div style={label}>Dietary restrictions</div><SafetyVal>{a.dietary_restrictions}</SafetyVal></div>
         <div><div style={label}>Diet</div><div style={{ ...val, fontSize: 13 }}>{dash(a.diet_pref)}</div></div>
-        <div><div style={label}>Supplements</div><div style={{ ...val, fontSize: 13 }}>{dash(a.supplement_use)}</div></div>
       </div>
       {isSet(a.food_preferences) && (
         <div style={{ marginTop: 10 }}>
