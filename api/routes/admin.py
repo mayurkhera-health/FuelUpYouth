@@ -393,8 +393,10 @@ def family_detail(parent_id: int, _: bool = Depends(require_admin)):
         if not prow:
             raise HTTPException(404, "Parent not found.")
         parent = dict(prow)
-        parent["push_tokens"] = conn.execute(
-            "SELECT COUNT(*) FROM expo_push_tokens WHERE parent_id = ?", (parent_id,)).fetchone()[0]
+        parent["push_devices"] = [dict(r) for r in conn.execute(
+            "SELECT platform, timezone, created_at FROM expo_push_tokens "
+            "WHERE parent_id = ? ORDER BY created_at DESC", (parent_id,)).fetchall()]
+        parent["push_tokens"] = len(parent["push_devices"])
 
         athletes = []
         for a in conn.execute("SELECT * FROM athletes WHERE parent_id = ? ORDER BY id", (parent_id,)).fetchall():

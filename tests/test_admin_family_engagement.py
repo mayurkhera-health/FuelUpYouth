@@ -100,6 +100,16 @@ def test_family_detail_parent_push_tokens(ctx):
     assert d["parent"]["push_tokens"] == 1
 
 
+def test_family_detail_parent_push_devices_detail(ctx):
+    c, pid, aid = ctx
+    d = c.get(f"/api/admin/users/{pid}").json()
+    devices = d["parent"]["push_devices"]
+    assert len(devices) == 1
+    assert devices[0]["platform"] == "ios"
+    assert "created_at" in devices[0]
+    assert "token" not in devices[0]   # never expose the raw push token
+
+
 def test_engagement_empty_for_fresh_athlete(ctx):
     c, pid, _ = ctx
     ka = get_conn()

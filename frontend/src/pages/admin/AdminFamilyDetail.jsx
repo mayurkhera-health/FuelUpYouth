@@ -92,7 +92,7 @@ export default function AdminFamilyDetail({ parentId, onBack, onLoggedOut, hideB
         }}>← Back to Users</button>
       )}
 
-      <ParentSection parent={parent} guarded={guarded} onSaved={load}
+      <ParentSection parent={parent} athletes={athletes} guarded={guarded} onSaved={load}
         onDelete={() => openDelete("parent", parent.id, parent.full_name, guarded, setDeleteTarget)} />
 
       <h2 style={{ font: `800 18px ${FONT_DISPLAY}`, color: C.text1, margin: "26px 0 12px" }}>
@@ -127,7 +127,47 @@ async function openDelete(type, id, name, guarded, setDeleteTarget) {
   }
 }
 
-function ParentSection({ parent, guarded, onSaved, onDelete }) {
+// The family's onboarding funnel, derived from data already in the response.
+// Order mirrors the real activation path — the first unchecked step is where
+// this family is stuck.
+function activationSteps(parent, athletes) {
+  const any = (f) => athletes.some(f);
+  return [
+    { label: "Consent confirmed", done: !!parent.consent_confirmed },
+    { label: "Athlete added", done: athletes.length > 0 },
+    { label: "Calendar connected", done: any((a) => a.byga_ics_url || a.playmetrics_ics_url || (a.event_stats?.imported || 0) > 0) },
+    { label: "Blueprint generated", done: any((a) => a.engagement?.blueprint_generated) },
+    { label: "Blueprint viewed", done: !!parent.blueprint_first_viewed_at },
+    { label: "Grocery list generated", done: any((a) => a.engagement?.pantry?.latest_week_start) },
+    { label: "First meal logged", done: any((a) => (a.engagement?.meal_logs?.total || 0) > 0) },
+    { label: "Push registered", done: (parent.push_tokens || 0) > 0 || any((a) => (a.engagement?.push?.tokens || 0) > 0) },
+  ];
+}
+
+// Most recent sign of life across the whole family: parent login or any
+// athlete meal log.
+function familyLastSeen(parent, athletes) {
+  const stamps = [parent.last_login_at, ...athletes.map((a) => a.engagement?.meal_logs?.last_at)]
+    .map(parseUtc).filter(Boolean);
+  if (!stamps.length) return null;
+  return new Date(Math.max(...stamps.map((d) => d.getTime()))).toISOString();
+}
+
+function StepChip({ step }) {
+  return (
+    <span style={{
+      display: "inline-flex", gap: 6, alignItems: "center", borderRadius: 999, padding: "3px 10px",
+      font: `600 12px ${FONT_DISPLAY}`,
+      color: step.done ? C.brand : C.text3,
+      background: step.done ? C.brandGhost : C.surface2,
+      border: `1px solid ${step.done ? C.brandLight : C.border}`,
+    }}>
+      {step.done ? "✓" : "○"} {step.label}
+    </span>
+  );
+}
+
+function ParentSection({ parent, athletes, guarded, onSaved, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(parent.full_name);
   const [email, setEmail] = useState(parent.email);
@@ -168,15 +208,32 @@ function ParentSection({ parent, guarded, onSaved, onDelete }) {
             {parent.consent_confirmed ? `Confirmed · ${(parent.consent_timestamp || "").slice(0, 10) || "—"}` : "Not confirmed"}</div></div>
           <div><div style={label}>Last login</div><div style={{ ...val, fontSize: 13 }}>
             {parent.last_login_at ? timeAgo(parent.last_login_at) : "never"}</div></div>
+          <div><div style={label}>Family last seen</div><div style={{ ...val, fontSize: 13 }}>
+            {(() => { const t = familyLastSeen(parent, athletes); return t ? timeAgo(t) : "no activity yet"; })()}</div></div>
           <div><div style={label}>Blueprint viewed</div><div style={{ ...val, fontSize: 13 }}>
             {parent.blueprint_first_viewed_at ? `Yes · ${(parent.blueprint_first_viewed_at || "").slice(0, 10)}` : "not yet"}</div></div>
           <div><div style={label}>Push devices</div><div style={{ ...val, fontSize: 13 }}>
-            {parent.push_tokens > 0 ? `${parent.push_tokens} registered` : "none — unreachable"}</div></div>
+            {(parent.push_devices || []).length === 0 ? "none — unreachable"
+              : parent.push_devices.map((d, i) => (
+                  <div key={i}>{d.platform || "device"}{d.timezone ? ` · ${d.timezone}` : ""}{d.created_at ? ` · added ${d.created_at.slice(0, 10)}` : ""}</div>
+                ))}</div></div>
           {isSet(parent.account_status) && parent.account_status !== "active" && (
             <div><div style={label}>Account status</div><SafetyVal>{parent.account_status}</SafetyVal></div>
           )}
         </div>
       )}
+      {!editing && (() => {
+        const steps = activationSteps(parent, athletes);
+        const done = steps.filter((s) => s.done).length;
+        return (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ ...label, marginBottom: 8 }}>Activation · {done} of {steps.length}</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {steps.map((s) => <StepChip key={s.label} step={s} />)}
+            </div>
+          </div>
+        );
+      })()}
       {editing && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12, maxWidth: 420 }}>
           <div><div style={label}>Name</div><TextInput value={fullName} onChange={(e) => setFullName(e.target.value)} /></div>
