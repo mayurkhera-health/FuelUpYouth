@@ -258,6 +258,33 @@ def activity(limit: int = 20, force: bool = False, _: bool = Depends(require_adm
     return {"available": True, "as_of": ph.get("as_of"), "rows": out}
 
 
+# ── Problem reports list (DB-derived — the actual reported text) ─────────────
+@router.get("/analytics/problem-reports")
+def problem_reports(days: int = 7, limit: int = 50, _: bool = Depends(require_admin)):
+    """The individual problem reports behind the App-health count. Newest first.
+    `days` defaults to 7 to match the "reported this week" figure; `days=0` returns
+    all recent reports (up to `limit`). Empty list if the table doesn't exist yet."""
+    limit = max(1, min(200, limit))
+    conn = get_conn()
+    try:
+        if not _table_exists(conn, "problem_reports"):
+            return {"reports": [], "count": 0, "days": days}
+        where, params = "", []
+        if days and days > 0:
+            where = "WHERE created_at >= ?"
+            params.append(_iso_days_ago(days))
+        rows = conn.execute(
+            f"SELECT id, description, app_version, platform, role_hint, created_at "
+            f"FROM problem_reports {where} ORDER BY datetime(created_at) DESC LIMIT ?",
+            (*params, limit)).fetchall()
+    finally:
+        conn.close()
+    reports = [{"id": r["id"], "description": r["description"], "app_version": r["app_version"],
+                "platform": r["platform"], "role_hint": r["role_hint"], "created_at": r["created_at"]}
+               for r in rows]
+    return {"reports": reports, "count": len(reports), "days": days}
+
+
 # ── Event-name discovery (verify mobile events are landing in PostHog) ────────
 @router.get("/analytics/discover")
 def discover(force: bool = False, _: bool = Depends(require_admin)):

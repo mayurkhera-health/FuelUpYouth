@@ -129,15 +129,7 @@ export default function AdminAnalytics({ onLoggedOut }) {
           <TopEvents events={events} />
         </Card>
 
-        <Card>
-          <SectionTitle>App health <Src>DB</Src></SectionTitle>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-            <HealthRow label="Problem reports (7d)" value={overview.app_health.problem_reports_7d} />
-            <HealthRow label="Feature ideas (7d)" value={overview.app_health.feature_ideas_7d} />
-          </div>
-          <div style={{ font: `600 13px ${FONT_DISPLAY}`, color: C.text2, marginBottom: 8 }}>Events: synced vs manual</div>
-          <PieChart data={overview.app_health.event_sources} />
-        </Card>
+        <AppHealth appHealth={overview.app_health} onLoggedOut={onLoggedOut} />
       </div>
     </div>
   );
@@ -299,6 +291,92 @@ function HealthRow({ label, value }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", font: `500 14px ${FONT_DISPLAY}`, color: C.text2 }}>
       <span>{label}</span><span style={{ font: `800 15px ${FONT_DISPLAY}`, color: C.text1 }}>{value}</span>
+    </div>
+  );
+}
+
+// App-health card. The "Problem reports (7d)" row is expandable so the team can
+// read the actual reported problems (fetched lazily on first open), not just the
+// count. Reports come from our own DB (the /support/report submissions).
+function AppHealth({ appHealth, onLoggedOut }) {
+  const bugs = appHealth.problem_reports_7d;
+  const [open, setOpen] = useState(false);
+  const [reports, setReports] = useState(null);   // null = not loaded, [] = loaded-empty
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next && reports === null && !loading) {
+      setLoading(true); setErr("");
+      try {
+        const data = await adminFetch(`/analytics/problem-reports?days=7`);
+        setReports(data.reports || []);
+      } catch (e) {
+        if (e instanceof AuthError) return onLoggedOut();
+        setErr(e.message);
+      } finally { setLoading(false); }
+    }
+  }
+
+  const expandable = bugs > 0;
+  return (
+    <Card>
+      <SectionTitle>App health <Src>DB</Src></SectionTitle>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+        <div
+          onClick={expandable ? toggle : undefined}
+          role={expandable ? "button" : undefined}
+          tabIndex={expandable ? 0 : undefined}
+          onKeyDown={expandable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } } : undefined}
+          style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            font: `500 14px ${FONT_DISPLAY}`, color: C.text2,
+            cursor: expandable ? "pointer" : "default",
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            Problem reports (7d)
+            {expandable && (
+              <span style={{ font: `700 11px ${FONT_DISPLAY}`, color: C.brand }}>
+                {open ? "Hide" : "View"}
+              </span>
+            )}
+          </span>
+          <span style={{ font: `800 15px ${FONT_DISPLAY}`, color: C.text1 }}>{bugs}</span>
+        </div>
+        {open && (
+          <div style={{ marginTop: 2, marginBottom: 4 }}>
+            {loading && <Skeleton height={70} />}
+            {err && <div style={{ font: `500 13px ${FONT_DISPLAY}`, color: C.text3 }}>Couldn’t load reports: {err}</div>}
+            {reports && reports.length === 0 && !loading && (
+              <div style={{ font: `500 13px ${FONT_DISPLAY}`, color: C.text3 }}>No problem reports in the last 7 days.</div>
+            )}
+            {reports && reports.map((r) => <ProblemReport key={r.id} report={r} />)}
+          </div>
+        )}
+        <HealthRow label="Feature ideas (7d)" value={appHealth.feature_ideas_7d} />
+      </div>
+      <div style={{ font: `600 13px ${FONT_DISPLAY}`, color: C.text2, marginBottom: 8 }}>Events: synced vs manual</div>
+      <PieChart data={appHealth.event_sources} />
+    </Card>
+  );
+}
+
+function ProblemReport({ report }) {
+  const meta = [
+    report.role_hint,
+    report.platform,
+    report.app_version ? `v${report.app_version}` : null,
+    relTime(report.created_at),
+  ].filter(Boolean).join(" · ");
+  return (
+    <div style={{ padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ font: `500 13px ${FONT_DISPLAY}`, color: C.text1, whiteSpace: "pre-wrap", lineHeight: 1.4 }}>
+        {report.description}
+      </div>
+      {meta && <div style={{ font: `500 11px ${FONT_DISPLAY}`, color: C.text3, marginTop: 3 }}>{meta}</div>}
     </div>
   );
 }
