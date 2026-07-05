@@ -28,13 +28,16 @@ async def lifespan(app: FastAPI):
     # ignored by Starlette when a lifespan handler is set.
     try:
         from api.services.notification_service import run_notification_tick
-        from api.services.ics_sync import run_calendar_sync_tick
+        from api.services.ics_sync import build_calendar_sync_job, configure_calendar_sync_startup
         from api.services.health_service import instrument_job, run_health_tick, run_health_daily
         # Wrap the two existing jobs so they record scheduler heartbeats — no change
         # to the jobs' own logic; the wrapper only stamps last_run/last_success.
         _scheduler.add_job(instrument_job("notifications", run_notification_tick), "interval", minutes=15,
                            id="notifications", replace_existing=True)
-        _scheduler.add_job(instrument_job("calendar_sync", run_calendar_sync_tick), "interval", hours=6,
+        # calendar_sync is registered via build_calendar_sync_job() (instrument + skip-
+        # if-running lock); configure_calendar_sync_startup() then handles Option B
+        # (catch-up if stale/initial, re-anchor next run if fresh) — see ics_sync.py.
+        _scheduler.add_job(build_calendar_sync_job(), "interval", hours=6,
                            id="calendar_sync", replace_existing=True)
         # System Health: active probes every 15 min, one daily inference probe.
         _scheduler.add_job(run_health_tick, "interval", minutes=15,
@@ -43,6 +46,7 @@ async def lifespan(app: FastAPI):
                            id="health_daily", replace_existing=True)
         if not _scheduler.running:
             _scheduler.start()
+        configure_calendar_sync_startup(_scheduler)
         logger.info("Schedulers started (notifications 15-min, calendar sync 6-hr, health 15-min + daily).")
     except Exception:
         logger.exception("Scheduler failed to start")

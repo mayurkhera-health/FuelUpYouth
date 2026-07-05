@@ -16,7 +16,7 @@ import shutil
 import smtplib
 import ssl
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import boto3
 from botocore.config import Config
@@ -35,7 +35,8 @@ CHECK_ORDER = [
 
 DISK_RED_PCT = 80.0
 NOTIF_STALE_MIN = 20        # 15-min job + tolerance
-CALSYNC_STALE_MIN = 7 * 60  # 6-h job + tolerance
+CALSYNC_STALE_MIN = 7 * 60  # 6-h job + tolerance (alert threshold — do not change)
+CALSYNC_CADENCE_MIN = 6 * 60  # the job's own cadence; drives the startup catch-up decision
 EXPO_WINDOW = 10            # last N sends define the passive expo signal
 
 
@@ -328,3 +329,46 @@ def record_calendar_sync_stats(attempted: int, succeeded: int):
             conn.close()
     except Exception:
         log.debug("calendar sync stats write failed", exc_info=True)
+
+
+# ── Startup catch-up support (Option B) ──────────────────────────────────────
+def calendar_sync_freshness(conn, cadence_min: int = CALSYNC_CADENCE_MIN):
+    """Read-only startup classification for the calendar_sync job. Returns a tuple:
+        ('initial', None, None)  — no prior successful run recorded
+        ('stale',   mins, iso)   — last success older than the 6-h cadence
+        ('fresh',   mins, iso)   — last success within the cadence
+    Keyed on last_success_at (a job that keeps *running* but never *succeeds* stays
+    'stale', so it keeps being retried)."""
+    row = conn.execute(
+        "SELECT last_success_at FROM scheduler_heartbeats WHERE job_name = 'calendar_sync'"
+    ).fetchone()
+    last = row[0] if row else None
+    if not last:
+        return "initial", None, None
+    mins = _minutes_since(last)
+    if mins is None:                       # unparseable → treat as no prior run (run once)
+        return "initial", None, None
+    return ("stale" if mins > cadence_min else "fresh"), mins, last
+
+
+def claim_calendar_sync_catchup(conn, cadence_min: int = CALSYNC_CADENCE_MIN) -> bool:
+    """Atomically claim the single startup catch-up run for calendar_sync. Returns
+    True iff THIS caller won the claim (heartbeat NULL, or stale by > cadence).
+
+    Multi-instance safe: the claim stamps last_run_at as the lock token AND gates on it,
+    so a second instance that boots together sees last_run_at already bumped and gets
+    False — only one catch-up runs. Gating on last_run_at (not just last_success_at,
+    which the claim does not update) is what makes the CAS single-winner. The actual run
+    re-stamps last_run/last_success via instrument_job."""
+    now = _now()
+    cutoff = (datetime.utcnow() - timedelta(minutes=cadence_min)).isoformat()
+    conn.execute("INSERT OR IGNORE INTO scheduler_heartbeats (job_name) VALUES ('calendar_sync')")
+    cur = conn.execute(
+        "UPDATE scheduler_heartbeats SET last_run_at = ? "
+        "WHERE job_name = 'calendar_sync' "
+        "  AND (last_success_at IS NULL OR last_success_at <= ?) "  # stale/never succeeded
+        "  AND (last_run_at     IS NULL OR last_run_at     <= ?)",   # and not just claimed
+        (now, cutoff, cutoff),
+    )
+    conn.commit()
+    return cur.rowcount == 1

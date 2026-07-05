@@ -21,6 +21,7 @@ event classifies identically to a hand-imported one, with two server-only guards
 """
 
 import logging
+import threading
 from datetime import datetime, timedelta, timezone, date
 
 import httpx
@@ -308,3 +309,85 @@ def run_calendar_sync_tick() -> None:
             record_calendar_sync_stats(attempted, succeeded)
         except Exception:
             pass
+
+
+# ── Startup catch-up (Option B) ──────────────────────────────────────────────
+# In-memory APScheduler timers reset on every deploy/restart, so a mid-cycle restart
+# otherwise pushes the next 6-h run up to 6 h past schedule and trips the 420-min
+# calendar-sync alert. On startup we either run one catch-up (stale/initial) or
+# re-anchor the interval's first run to last_success + 6h (fresh). Notifications
+# (15-min cadence) is unaffected and untouched.
+
+_CALSYNC_LOCK = threading.Lock()
+
+
+def _with_calsync_lock(fn):
+    """Wrap a job callable in a non-blocking skip-if-running lock so the startup
+    catch-up and the 6-h interval can never execute concurrently (they share the same
+    underlying tick). The lock sits OUTSIDE instrument_job, so a skipped trigger stamps
+    no heartbeat."""
+    def wrapper():
+        if not _CALSYNC_LOCK.acquire(blocking=False):
+            logger.info("calendar_sync already running — skipping this trigger")
+            return
+        try:
+            fn()
+        finally:
+            _CALSYNC_LOCK.release()
+    wrapper.__name__ = getattr(fn, "__name__", "calendar_sync") + "_locked"
+    return wrapper
+
+
+def build_calendar_sync_job():
+    """The callable registered as the 6-h interval AND reused for the startup catch-up:
+    instrument_job (stamps heartbeats) wrapped in the skip-if-running lock."""
+    from api.services.health_service import instrument_job
+    return _with_calsync_lock(instrument_job("calendar_sync", run_calendar_sync_tick))
+
+
+def configure_calendar_sync_startup(scheduler) -> None:
+    """Option B startup handling for calendar_sync ONLY. Call once, after the 6-h
+    interval job is registered and the scheduler is started.
+
+      • initial (no prior successful run): claim + run ONE immediate sync;
+        log 'no prior run — running initial sync'.
+      • stale (> 6 h since last success): claim + run ONE immediate catch-up.
+      • fresh (<= 6 h): re-anchor the interval's FIRST run to last_success + 6h so a
+        sub-cadence restart resumes the original schedule instead of restarting the
+        6-h clock. Re-anchor is applied ONLY here — a past-dated next_run_time in the
+        initial/stale branches would make APScheduler fire the interval immediately
+        alongside the catch-up (a double run)."""
+    from api.services import health_service as hs
+    conn = get_conn()
+    try:
+        branch, mins, last_success = hs.calendar_sync_freshness(conn)
+
+        if branch == "fresh":
+            anchor = datetime.fromisoformat(last_success).replace(tzinfo=timezone.utc) + timedelta(hours=6)
+            try:
+                scheduler.modify_job("calendar_sync", next_run_time=anchor)
+                logger.info("calendar_sync fresh (%.0fm ago) — next run anchored to "
+                            "last_success + 6h (%s)", mins, anchor.isoformat())
+            except Exception:
+                logger.exception("calendar_sync: failed to re-anchor next_run_time — "
+                                 "leaving default interval schedule")
+            return
+
+        # initial or stale → claim exactly one catch-up (multi-instance safe)
+        if not hs.claim_calendar_sync_catchup(conn):
+            logger.info("calendar_sync %s but a run was already claimed/in progress — skipping catch-up", branch)
+            return
+
+        scheduler.add_job(
+            build_calendar_sync_job(), "date",
+            run_date=datetime.now(timezone.utc),
+            id="calendar_sync_catchup", replace_existing=True,
+            max_instances=1, coalesce=True,
+        )
+        if branch == "initial":
+            logger.info("calendar_sync: no prior run — running initial sync")
+        else:
+            logger.info("calendar_sync stale (%.0fm > %dm) — running catch-up now",
+                        mins, hs.CALSYNC_CADENCE_MIN)
+    finally:
+        conn.close()
