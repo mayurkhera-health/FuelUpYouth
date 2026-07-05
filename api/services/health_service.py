@@ -262,6 +262,86 @@ def get_health_snapshot(conn) -> dict:
     return {"overall": overall, "checks": rows}
 
 
+# ── Per-check drill-down (admin detail drawer) ────────────────────────────────
+ALL_CHECKS = dict(CHECKS_15MIN + CHECKS_DAILY)
+
+# What the metric means and where it goes red, so the UI can spell out
+# "443 min vs 420 allowed" instead of making the founder decode the detail string.
+THRESHOLDS = {
+    "disk_space":              {"metric": "% of data volume used", "red_above": DISK_RED_PCT, "unit": "%"},
+    "scheduler_notifications": {"metric": "minutes since last run", "red_above": NOTIF_STALE_MIN, "unit": "min"},
+    "scheduler_calendar_sync": {"metric": "minutes since last run", "red_above": CALSYNC_STALE_MIN, "unit": "min"},
+}
+
+# Which heartbeat row backs each scheduler-derived check.
+_HEARTBEAT_JOB = {
+    "scheduler_notifications": "notifications",
+    "scheduler_calendar_sync": "calendar_sync",
+    "calendar_sync_systemic":  "calendar_sync",
+}
+
+
+def _heartbeat_evidence(conn, job_name):
+    row = conn.execute(
+        "SELECT job_name, last_run_at, last_success_at, last_error, meta "
+        "FROM scheduler_heartbeats WHERE job_name = ?", (job_name,)).fetchone()
+    if not row:
+        return {"kind": "heartbeat", "job_name": job_name, "last_run_at": None,
+                "last_success_at": None, "last_error": None, "meta": None}
+    ev = dict(row)
+    ev["kind"] = "heartbeat"
+    try:
+        ev["meta"] = json.loads(ev["meta"]) if ev["meta"] else None
+    except Exception:
+        ev["meta"] = None
+    return ev
+
+
+def get_check_detail(name: str, conn) -> dict | None:
+    """Everything the drawer needs for one sensor, or None for an unknown name."""
+    if name not in ALL_CHECKS:
+        return None
+    check = conn.execute("SELECT * FROM health_checks WHERE check_name = ?", (name,)).fetchone()
+    incidents = conn.execute(
+        "SELECT * FROM health_incidents WHERE check_name = ? ORDER BY id DESC LIMIT 20",
+        (name,)).fetchall()
+
+    evidence = None
+    if name in _HEARTBEAT_JOB:
+        evidence = _heartbeat_evidence(conn, _HEARTBEAT_JOB[name])
+        if name == "calendar_sync_systemic":
+            evidence["feeds_connected"] = conn.execute(
+                "SELECT COUNT(*) FROM athletes WHERE COALESCE(byga_ics_url,'') != '' "
+                "OR COALESCE(playmetrics_ics_url,'') != ''").fetchone()[0]
+    elif name == "expo_push":
+        rows = conn.execute(
+            "SELECT success, detail, created_at FROM expo_push_log ORDER BY id DESC LIMIT ?",
+            (EXPO_WINDOW,)).fetchall()
+        evidence = {"kind": "push_log",
+                    "sends": [{"success": bool(r["success"]), "detail": r["detail"],
+                               "created_at": r["created_at"]} for r in rows]}
+
+    return {
+        "check":     dict(check) if check else {"check_name": name, "status": "unknown"},
+        "threshold": THRESHOLDS.get(name),
+        "incidents": [dict(r) for r in incidents],
+        "evidence":  evidence,
+    }
+
+
+def run_single_check(name: str) -> bool:
+    """Re-run one check on demand. Returns False for an unknown name."""
+    fn = ALL_CHECKS.get(name)
+    if fn is None:
+        return False
+    conn = get_conn()
+    try:
+        _run_checks(conn, [(name, fn)])
+    finally:
+        conn.close()
+    return True
+
+
 # ── Instrumentation of the existing scheduler jobs (no logic change inside) ───
 def instrument_job(job_name, fn):
     """Wrap an existing scheduler job so it upserts a heartbeat at start
