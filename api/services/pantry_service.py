@@ -1,4 +1,6 @@
 # api/services/pantry_service.py
+import re
+
 from api.services.food_db import FOOD_DATABASE, get_food_by_id
 
 MEAL_CONTEXT_ORDER = [
@@ -33,20 +35,66 @@ def cue_label_for(food: dict) -> str:
 
 _NO_VALUE = {"", "none", "n/a", "na", "no", "not specified"}
 
+# Both allergies and dietary_restrictions are free text ("Red meat", "Egg-Free",
+# "lactose intolerant", "wheat"). Recognized keywords map onto allergen exclusions
+# and diet_tags; unrecognized text is left for the AI prompt to honor softly —
+# a hard filter must never zero out the whole database.
+_DIET_TAG_KEYWORDS = [
+    ("vegan", "vegan"),
+    ("vegetarian", "vegetarian"),
+    ("gluten", "gluten_free"),
+    ("celiac", "gluten_free"),
+    ("wheat", "gluten_free"),
+    ("dairy", "dairy_free"),
+    ("lactose", "dairy_free"),
+]
+_ALLERGEN_KEYWORDS = [
+    ("shellfish", "shellfish"),
+    ("fish", "fish"),
+    ("peanut", "peanuts"),
+    ("nut", "tree_nuts"),
+    ("nut", "peanuts"),
+    ("egg", "eggs"),
+    ("soy", "soy"),
+    ("sesame", "sesame"),
+    ("dairy", "dairy"),
+    ("milk", "dairy"),
+    ("lactose", "dairy"),
+    ("wheat", "gluten"),
+    ("gluten", "gluten"),
+]
+_ALLERGEN_KEYS = {a for f in FOOD_DATABASE for a in f.get("allergens", [])}
+
+
+def _keyword_matches(text: str, pairs: list[tuple[str, str]]) -> set[str]:
+    # \b so "shellfish" doesn't trigger "fish" and "peanut" doesn't trigger "nut"
+    return {v for kw, v in pairs if re.search(rf"\b{kw}", text)}
+
+
 def safe_foods_for_athlete(athlete: dict) -> list[dict]:
     """Return FOOD_DATABASE entries that pass allergen + dietary filter for this athlete."""
-    raw_allergies = athlete.get("allergies") or ""
-    allergies = [
-        a.lower().strip() for a in raw_allergies.split(",")
-        if a.strip() and a.lower().strip() not in _NO_VALUE
-    ]
+    avoid_allergens: set[str] = set()
+
+    raw_allergies = (athlete.get("allergies") or "").lower()
+    for tok in raw_allergies.split(","):
+        tok = tok.strip()
+        if not tok or tok in _NO_VALUE:
+            continue
+        if tok in _ALLERGEN_KEYS:
+            avoid_allergens.add(tok)
+        else:
+            avoid_allergens |= _keyword_matches(tok, _ALLERGEN_KEYWORDS)
+
+    required_tags: set[str] = set()
     raw_diet = (athlete.get("dietary_restrictions") or "").lower().strip()
-    diet = "omnivore" if raw_diet in _NO_VALUE else raw_diet
+    if raw_diet not in _NO_VALUE:
+        required_tags = _keyword_matches(raw_diet, _DIET_TAG_KEYWORDS)
+        avoid_allergens |= _keyword_matches(raw_diet, _ALLERGEN_KEYWORDS)
 
     return [
         f for f in FOOD_DATABASE
-        if not any(a in f.get("allergens", []) for a in allergies)
-        and (diet == "omnivore" or diet in f.get("diet_tags", []))
+        if not (avoid_allergens & set(f.get("allergens", [])))
+        and required_tags <= set(f.get("diet_tags", []))
     ]
 
 

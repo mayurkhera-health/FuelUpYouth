@@ -138,9 +138,10 @@ def generate_list(athlete_id: int = Query(...), week_start: str = Query(...)):
         targets_by_day = [calc_daily_targets(athlete, event_type=d["event_type"]) for d in week_schedule]
         slot_plan = compute_slot_plan(week_schedule, targets_by_day, athlete)
 
+        safe_ids = {f["food_id"] for f in safe}
         ai_result = claude_ai.prompt8_pantry_plan(athlete, week_schedule, slot_plan, safe)
         raw_items = [it for it in ai_result.get("items", [])
-                     if isinstance(it, dict) and get_food_by_id(it.get("food_id"))]
+                     if isinstance(it, dict) and it.get("food_id") in safe_ids]
         if not raw_items:
             raw_items = fallback_select(slot_plan, safe, athlete)
 
@@ -455,9 +456,10 @@ def regenerate_unchecked(athlete_id: int = Query(...), week_start: str = Query(.
         targets_by_day = [calc_daily_targets(athlete, event_type=d["event_type"]) for d in week_schedule]
         slot_plan = compute_slot_plan(week_schedule, targets_by_day, athlete)
 
+        safe_ids = {f["food_id"] for f in safe}
         ai_result = claude_ai.prompt8_pantry_plan(athlete, week_schedule, slot_plan, safe)
         raw_items = [it for it in ai_result.get("items", [])
-                     if isinstance(it, dict) and get_food_by_id(it.get("food_id"))]
+                     if isinstance(it, dict) and it.get("food_id") in safe_ids]
         if not raw_items:
             raw_items = fallback_select(slot_plan, safe, athlete)
 

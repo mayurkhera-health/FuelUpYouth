@@ -555,11 +555,13 @@ def prompt8_pantry_plan(athlete: dict, week_schedule: list, slot_plan: dict, saf
         for s in slot_plan["slots"]
     ]
     likes = athlete.get("food_preferences") or "none specified"
+    restrictions = athlete.get("dietary_restrictions") or "none"
     try:
         result = _json_completion(f"""Build a youth athlete's weekly grocery list by FILLING these slots.
 
 ATHLETE: {athlete.get('first_name')}, age {athlete.get('age')}, {athlete.get('gender')}, season {athlete.get('season_phase')}
 FOOD LIKES / NOTES: {likes}
+DIETARY RESTRICTIONS (never pick a food that conflicts with these): {restrictions}
 WEEK SUMMARY: {slot_plan.get('week_summary')}
 
 SLOTS TO FILL (choose exactly `count` distinct foods per slot, matching its roles/gi_tier):
