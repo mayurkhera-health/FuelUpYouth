@@ -22,3 +22,4 @@ db.sqlite3
 .DS_Store
 frontend/.env.local.verify
 .superpowers/
+api/data/recipes.json.bak
