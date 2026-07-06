@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics, admin_health, admin_overview, admin_action_hub
+from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics, admin_health, admin_overview, admin_action_hub, plate
 from api.services import db_migrations
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -97,6 +97,7 @@ app.include_router(library.router,      prefix="/api/library",      tags=["17. C
 app.include_router(fuel_report.router,  prefix="/api/athletes",     tags=["18. Fuel Report v2"])
 app.include_router(report_config.router, prefix="/api/report-config", tags=["19. Report Config"])
 app.include_router(coach.router,         prefix="/api/coach",         tags=["20. Nutrition Coach"])
+app.include_router(plate.router,         prefix="/api/plate",         tags=["20b. Performance Plate"])
 app.include_router(shopping.router,      prefix="/api/shopping",      tags=["21. Shopping"])
 app.include_router(support.router,       prefix="/api/support",       tags=["22. Support"])
 app.include_router(pantry.router,        prefix="/api/pantry",        tags=["23. Pantry Planner"])
