@@ -16,6 +16,14 @@ later be replaced with the athlete's real per-window macro targets so the plate
 chip matches the window card. Flagged; not wired yet.
 """
 import json
+import os
+
+
+def performance_plate_enabled() -> bool:
+    """Feature flag — ships dark. Flip PERFORMANCE_PLATE_ENABLED=true (Fly secret)
+    only after RDN sign-off on allergen tags + the window→plate mapping."""
+    return os.environ.get("PERFORMANCE_PLATE_ENABLED", "false").lower() == "true"
+
 
 # Spec-locked palette (do not change — plate + dots share these).
 COLORS = {"carbs": "#E8B84B", "protein": "#D96B4A", "veg": "#5FA83C", "fat": "#5B8FD9"}

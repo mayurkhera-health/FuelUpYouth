@@ -1,6 +1,7 @@
 """Integration tests for the Performance Plate route (GET /api/plate/window)."""
 import os
 os.environ["DB_PATH"] = ":memory:"
+os.environ["PERFORMANCE_PLATE_ENABLED"] = "true"  # flag ships dark; on for these tests
 
 import json
 import pytest
@@ -14,11 +15,14 @@ from api.main import app
 
 @pytest.fixture
 def client():
-    keepalive = get_conn()
+    keepalive = get_conn()  # keep the shared in-memory DB alive across requests
     init_db()
     run_all()
-    with TestClient(app) as c:
-        yield c
+    # NOTE: plain TestClient (no `with`) — we deliberately skip the app lifespan
+    # startup, whose embedding backfill races on the :memory: connection and
+    # intermittently 500s with "database table is locked". Routes register at
+    # import, so no lifespan is needed for these tests.
+    yield TestClient(app)
     keepalive.close()
 
 
@@ -97,3 +101,14 @@ def test_allergy_filters_options(client):
 def test_unknown_athlete_404(client):
     r = client.get("/api/plate/window", params={"athlete_id": 999999, "window_key": "everyday_dinner"})
     assert r.status_code == 404
+
+
+def test_flag_off_returns_empty(client, monkeypatch):
+    """With PERFORMANCE_PLATE_ENABLED off, the endpoint is dark (no plate/options)."""
+    aid = _make_athlete(client)
+    monkeypatch.setenv("PERFORMANCE_PLATE_ENABLED", "false")
+    r = client.get("/api/plate/window", params={"athlete_id": aid, "window_key": "everyday_breakfast"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["plate"] is None
+    assert body["options"] == []

@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Query
 from api.database import get_conn
 from api.services import recipe_db
 from api.services.plate_config import (
+    performance_plate_enabled,
     plate_for_window,
     recipe_profile_for_window,
     parse_restrictions,
@@ -27,6 +28,11 @@ def get_window_plate(
     athlete_id: int = Query(...),
     window_key: str = Query(...),
 ):
+    # Feature flag — ships dark. When off, no DB work: return an empty payload so
+    # the client renders nothing (and does no per-window plate fetch overhead).
+    if not performance_plate_enabled():
+        return {"window_key": window_key, "plate": None, "options": []}
+
     plate = plate_for_window(window_key)
     if plate is None:
         # Nudge/hydration window — no plate, no options.

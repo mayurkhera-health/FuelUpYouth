@@ -1168,6 +1168,17 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
         "streak":         get_streak(athlete_id, conn, today_str),
     }
 
+    # Performance Plate — flag gate. ADDITIVE like the gauge: the field is added
+    # ONLY when the flag is on, so a flag-off payload stays byte-identical to
+    # production. The client reads absent/false as "off" (no plate expander, no
+    # per-window fetch).
+    try:
+        from api.services.plate_config import performance_plate_enabled
+        if performance_plate_enabled():
+            result["performance_plate_enabled"] = True
+    except Exception:
+        pass
+
     # Fuel Gauge — ADDITIVE and flag-gated. When FUEL_GAUGE_ENABLED is off, the
     # block is never added, so the payload is byte-identical to production. No
     # gauges without a schedule (T4). Wrapped so a gauge fault can never break the
