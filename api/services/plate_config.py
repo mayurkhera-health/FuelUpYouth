@@ -17,6 +17,7 @@ chip matches the window card. Flagged; not wired yet.
 """
 import json
 import os
+import re
 
 
 def performance_plate_enabled() -> bool:
@@ -71,6 +72,7 @@ WINDOW_TO_PLATE = {
     "fuel_before":        ("carb_forward_meal", "Pre-game meal — ~3 hrs before", "More carbs · moderate protein · good fat · colorful veg", "pre_game"),
     "pre_event_meal":     ("carb_forward_meal", "Pre-game meal — ~3 hrs before", "More carbs · moderate protein · good fat · colorful veg", "pre_game"),
     "quick_snack":        ("fast_carb_snack",   "Quick top-up — ~1 hr before",   "Fast carbs · light protein · easy to digest",           "pre_game_snack"),
+    "top_up_snack":       ("fast_carb_snack",   "Top-up — before your event",    "Fast carbs · light protein · easy to digest",           "pre_game_snack"),
     "fuel_after":         ("recovery",          "Recovery — within 30 min after","Equal carbs + protein · anti-inflammatory",             "post_game"),
     "fuel_after_primary": ("recovery",          "Recovery — within 30 min after","Equal carbs + protein · anti-inflammatory",             "post_game"),
     "fuel_after_second":  ("recovery",          "Recovery meal",                 "Rebuild with protein · steady carbs",                   "post_game"),
@@ -131,9 +133,20 @@ def normalize_allergens(terms: list[str]) -> list[str]:
     return seen
 
 
+def _resolve(window_key: str):
+    """Match a window key, tolerating tournament/double-session numeric suffixes
+    (fuel_after_primary_1, top_up_snack_2, between_games_1_2 → base key)."""
+    if not window_key:
+        return None
+    entry = WINDOW_TO_PLATE.get(window_key)
+    if entry:
+        return entry
+    return WINDOW_TO_PLATE.get(re.sub(r"(_\d+)+$", "", window_key))
+
+
 def plate_for_window(window_key: str) -> dict | None:
     """Assemble the plate payload for a window, or None if the window gets no plate."""
-    entry = WINDOW_TO_PLATE.get(window_key)
+    entry = _resolve(window_key)
     if not entry:
         return None
     shape_key, title, subtitle, _profile = entry
@@ -153,7 +166,7 @@ def plate_for_window(window_key: str) -> dict | None:
 
 
 def recipe_profile_for_window(window_key: str) -> str | None:
-    entry = WINDOW_TO_PLATE.get(window_key)
+    entry = _resolve(window_key)
     return entry[3] if entry else None
 
 
