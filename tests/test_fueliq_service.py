@@ -422,3 +422,23 @@ def test_list_badges_marks_earned_badges():
     assert badges["first_whistle"]["earned_at"] is not None
     assert badges["myth_slayer"]["earned"] is False
     conn.close()
+
+
+# ── Streak integration ───────────────────────────────────────────────────────
+
+def test_complete_lesson_registers_streak_activity():
+    conn = _fueliq_db()
+    lesson_id = _insert_lesson(conn)
+    result = fq.complete_lesson(1, lesson_id, conn)
+    assert result["streak"]["current"] == 1
+    assert fq.get_progress(1, conn)["current_streak"] == 1
+    conn.close()
+
+
+def test_submit_myth_verdict_registers_streak_activity():
+    conn = _fueliq_db()
+    myth_id = _insert_myth(conn)
+    result = fq.submit_myth_verdict(1, myth_id, "myth", conn)
+    assert result["streak"]["current"] == 1
+    assert fq.get_progress(1, conn)["current_streak"] == 1
+    conn.close()

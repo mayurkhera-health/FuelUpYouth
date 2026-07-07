@@ -174,11 +174,14 @@ def complete_lesson(athlete_id: int, lesson_id: int, conn, perfect_quiz: bool = 
     )
     conn.commit()
     _award_points(athlete_id, points_earned, conn)
+    from api.services import fueliq_streak  # local import — avoids a circular import
+    streak = fueliq_streak.register_activity(athlete_id, conn)
     return {
         "already_completed": False,
         "points_earned": points_earned,
         "progress": get_progress(athlete_id, conn),
         "newly_earned_badges": check_and_award_badges(athlete_id, conn),
+        "streak": streak,
     }
 
 
@@ -211,6 +214,8 @@ def submit_myth_verdict(athlete_id: int, lesson_id: int, guess: str, conn) -> di
     )
     conn.commit()
     _award_points(athlete_id, points_earned, conn)
+    from api.services import fueliq_streak  # local import — avoids a circular import
+    streak = fueliq_streak.register_activity(athlete_id, conn)
     return {
         "already_answered": False,
         "correct": correct,
@@ -218,6 +223,7 @@ def submit_myth_verdict(athlete_id: int, lesson_id: int, guess: str, conn) -> di
         "points_earned": points_earned,
         "progress": get_progress(athlete_id, conn),
         "newly_earned_badges": check_and_award_badges(athlete_id, conn),
+        "streak": streak,
     }
 
 
