@@ -57,6 +57,6 @@ def get_window_plate(
     recipes = recipe_db.get_valid_recipes(
         profile, allergies=allergens, dietary_restrictions=dietary
     )
-    options = select_options(recipes, n=5)
+    options = select_options(recipes, n=8)
 
     return {"window_key": window_key, "plate": plate, "options": options}
