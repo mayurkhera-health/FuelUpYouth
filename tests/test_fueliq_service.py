@@ -29,13 +29,13 @@ def _fueliq_db():
     return conn
 
 
-def _insert_lesson(conn, points=10, level=1):
+def _insert_lesson(conn, points=10, level=1, order_in_level=1, category=None, title="Test Lesson"):
     cur = conn.execute(
         "INSERT INTO fueliq_lessons "
         "(level, order_in_level, is_myth, title, hook, fact_body, takeaway, "
-        " source_citation, points, review_status) "
-        "VALUES (?, 1, 0, 'Test Lesson', 'hook', 'fact', 'takeaway', 'cite', ?, 'approved')",
-        (level, points),
+        " source_citation, points, review_status, category) "
+        "VALUES (?, ?, 0, ?, 'hook', 'fact', 'takeaway', 'cite', ?, 'approved', ?)",
+        (level, order_in_level, title, points, category),
     )
     conn.commit()
     return cur.lastrowid
@@ -285,4 +285,140 @@ def test_submit_quiz_answer_incorrect_has_no_penalty():
     # Wrong answers cost nothing (spec §3.5) — score is untouched by quiz answers,
     # only by lesson completion.
     assert fq.get_progress(1, conn)["score"] == 50
+    conn.close()
+
+
+# ── Badges ───────────────────────────────────────────────────────────────────
+
+def test_first_whistle_awarded_on_first_lesson_completion():
+    conn = _fueliq_db()
+    lesson_id = _insert_lesson(conn)
+    assert fq.check_and_award_badges(1, conn) == []  # nothing completed yet
+    # complete_lesson awards inline, so the badge shows up in ITS return value —
+    # a second explicit check afterward correctly finds nothing new to award.
+    result = fq.complete_lesson(1, lesson_id, conn)
+    assert result["newly_earned_badges"] == ["first_whistle"]
+    conn.close()
+
+
+def test_badge_award_is_idempotent():
+    conn = _fueliq_db()
+    lesson_id = _insert_lesson(conn)
+    fq.complete_lesson(1, lesson_id, conn)
+    fq.check_and_award_badges(1, conn)
+    assert fq.check_and_award_badges(1, conn) == []  # already earned, not re-awarded
+    earned = conn.execute(
+        "SELECT COUNT(*) AS c FROM fueliq_badges_earned WHERE athlete_id = 1 AND badge_key = 'first_whistle'"
+    ).fetchone()["c"]
+    assert earned == 1
+    conn.close()
+
+
+def test_hydration_hero_requires_all_hydration_lessons_complete():
+    conn = _fueliq_db()
+    l1 = _insert_lesson(conn, category="hydration", title="Water Is a Skill", order_in_level=1)
+    l2 = _insert_lesson(conn, category="hydration", title="Hydration Timing", order_in_level=2)
+    result1 = fq.complete_lesson(1, l1, conn)
+    assert "hydration_hero" not in result1["newly_earned_badges"]
+    result2 = fq.complete_lesson(1, l2, conn)
+    assert "hydration_hero" in result2["newly_earned_badges"]
+    conn.close()
+
+
+def test_myth_slayer_requires_five_myths_busted():
+    conn = _fueliq_db()
+    myth_ids = [_insert_myth(conn, verdict="myth") for _ in range(5)]
+    for myth_id in myth_ids[:4]:
+        result = fq.submit_myth_verdict(1, myth_id, "myth", conn)
+        assert "myth_slayer" not in result["newly_earned_badges"]
+    final = fq.submit_myth_verdict(1, myth_ids[4], "myth", conn)
+    assert "myth_slayer" in final["newly_earned_badges"]
+    conn.close()
+
+
+def test_perfect_week_from_best_streak():
+    conn = _fueliq_db()
+    fq.get_progress(1, conn)  # ensure the progress row exists
+    assert "perfect_week" not in fq.check_and_award_badges(1, conn)
+    conn.execute("UPDATE fueliq_athlete_progress SET best_streak = 7 WHERE athlete_id = 1")
+    conn.commit()
+    assert "perfect_week" in fq.check_and_award_badges(1, conn)
+    conn.close()
+
+
+def test_game_day_ready_requires_all_level_2_lessons_complete():
+    conn = _fueliq_db()
+    l1 = _insert_lesson(conn, level=2, order_in_level=1)
+    l2 = _insert_lesson(conn, level=2, order_in_level=2, title="Lesson Two")
+    result1 = fq.complete_lesson(1, l1, conn)
+    assert "game_day_ready" not in result1["newly_earned_badges"]
+    result2 = fq.complete_lesson(1, l2, conn)
+    assert "game_day_ready" in result2["newly_earned_badges"]
+    conn.close()
+
+
+def test_full_tank_requires_perfect_quiz_on_every_lesson_in_a_level():
+    conn = _fueliq_db()
+    l1 = _insert_lesson(conn, level=1, order_in_level=1)
+    l2 = _insert_lesson(conn, level=1, order_in_level=2, title="Lesson Two")
+    fq.complete_lesson(1, l1, conn, perfect_quiz=True)
+    fq.complete_lesson(1, l2, conn, perfect_quiz=False)
+    assert "full_tank" not in fq.check_and_award_badges(1, conn)
+    conn.execute(
+        "UPDATE fueliq_lesson_completions SET perfect_quiz = 1 WHERE athlete_id = 1 AND lesson_id = ?",
+        (l2,),
+    )
+    conn.commit()
+    assert "full_tank" in fq.check_and_award_badges(1, conn)
+    conn.close()
+
+
+def test_team_player_is_never_awarded_pending_team_challenges():
+    """Team Challenges are explicitly Post-MVP (spec §12) — this badge is
+    defined but structurally unearnable until that feature ships."""
+    conn = _fueliq_db()
+    lesson_id = _insert_lesson(conn)
+    fq.complete_lesson(1, lesson_id, conn)
+    assert "team_player" not in fq.check_and_award_badges(1, conn)
+    conn.close()
+
+
+def test_complete_lesson_surfaces_newly_earned_badges():
+    conn = _fueliq_db()
+    lesson_id = _insert_lesson(conn)
+    result = fq.complete_lesson(1, lesson_id, conn)
+    assert result["newly_earned_badges"] == ["first_whistle"]
+    conn.close()
+
+
+def test_submit_myth_verdict_surfaces_newly_earned_badges():
+    conn = _fueliq_db()
+    myth_ids = [_insert_myth(conn, verdict="myth") for _ in range(5)]
+    for myth_id in myth_ids[:4]:
+        fq.submit_myth_verdict(1, myth_id, "myth", conn)
+    result = fq.submit_myth_verdict(1, myth_ids[4], "myth", conn)
+    assert result["newly_earned_badges"] == ["myth_slayer"]
+    conn.close()
+
+
+def test_list_badges_returns_every_defined_badge():
+    conn = _fueliq_db()
+    badges = fq.list_badges(1, conn)
+    assert len(badges) == 7
+    assert all(b["earned"] is False for b in badges)
+    assert all(b["earned_at"] is None for b in badges)
+    keys = {b["key"] for b in badges}
+    assert "first_whistle" in keys
+    assert "team_player" in keys
+    conn.close()
+
+
+def test_list_badges_marks_earned_badges():
+    conn = _fueliq_db()
+    lesson_id = _insert_lesson(conn)
+    fq.complete_lesson(1, lesson_id, conn)  # earns first_whistle
+    badges = {b["key"]: b for b in fq.list_badges(1, conn)}
+    assert badges["first_whistle"]["earned"] is True
+    assert badges["first_whistle"]["earned_at"] is not None
+    assert badges["myth_slayer"]["earned"] is False
     conn.close()

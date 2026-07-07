@@ -189,3 +189,21 @@ def test_myths_list_and_verdict_flow(client, monkeypatch):
     listed_again = client.get(f"/api/athletes/{aid}/myths").json()
     assert listed_again["myths"][0]["answered"] is True
     assert listed_again["myths"][0]["correct"] is True
+
+
+def test_badges_lists_all_defined_badges_locked_until_earned(client, monkeypatch):
+    monkeypatch.setenv("FUELIQ_ENABLED", "true")
+    aid = _make_athlete(client)
+    conn = get_conn()
+    lesson_id = _seed_lesson(conn)
+    conn.close()
+
+    before = client.get(f"/api/athletes/{aid}/badges").json()
+    assert len(before["badges"]) == 7
+    assert all(b["earned"] is False for b in before["badges"])
+
+    client.post(f"/api/athletes/{aid}/lessons/{lesson_id}/complete", json={"perfect_quiz": False})
+
+    after = client.get(f"/api/athletes/{aid}/badges").json()
+    first_whistle = next(b for b in after["badges"] if b["key"] == "first_whistle")
+    assert first_whistle["earned"] is True

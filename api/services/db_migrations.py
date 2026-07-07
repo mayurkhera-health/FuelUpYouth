@@ -583,6 +583,7 @@ def _create_fueliq_tables(conn):
             takeaway        TEXT,
             verdict         TEXT,
             science_text    TEXT,
+            category        TEXT,
             source_citation TEXT NOT NULL,
             points          INTEGER NOT NULL DEFAULT 10,
             review_status   TEXT NOT NULL DEFAULT 'draft',

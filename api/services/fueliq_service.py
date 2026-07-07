@@ -153,7 +153,12 @@ def complete_lesson(athlete_id: int, lesson_id: int, conn, perfect_quiz: bool = 
         (athlete_id, lesson_id),
     ).fetchone()
     if existing:
-        return {"already_completed": True, "points_earned": 0, "progress": get_progress(athlete_id, conn)}
+        return {
+            "already_completed": True,
+            "points_earned": 0,
+            "progress": get_progress(athlete_id, conn),
+            "newly_earned_badges": [],
+        }
 
     lesson_points = int(
         conn.execute("SELECT points FROM fueliq_lessons WHERE id = ?", (lesson_id,)).fetchone()["points"]
@@ -173,6 +178,7 @@ def complete_lesson(athlete_id: int, lesson_id: int, conn, perfect_quiz: bool = 
         "already_completed": False,
         "points_earned": points_earned,
         "progress": get_progress(athlete_id, conn),
+        "newly_earned_badges": check_and_award_badges(athlete_id, conn),
     }
 
 
@@ -190,6 +196,7 @@ def submit_myth_verdict(athlete_id: int, lesson_id: int, guess: str, conn) -> di
             "correct": bool(existing["correct"]),
             "points_earned": 0,
             "progress": get_progress(athlete_id, conn),
+            "newly_earned_badges": [],
         }
 
     lesson = conn.execute(
@@ -210,6 +217,7 @@ def submit_myth_verdict(athlete_id: int, lesson_id: int, guess: str, conn) -> di
         "science_text": lesson["science_text"],
         "points_earned": points_earned,
         "progress": get_progress(athlete_id, conn),
+        "newly_earned_badges": check_and_award_badges(athlete_id, conn),
     }
 
 
@@ -234,3 +242,150 @@ def submit_quiz_answer(athlete_id: int, question_id: int, selected_option: str, 
         "explanation": question["explanation"],
         "misconception_tag": question["misconception_tag"],
     }
+
+
+# ── Badges (spec §7.1) ───────────────────────────────────────────────────────
+# Collect-don't-grind: small, permanent set. Earned-never-lost, same as score.
+
+def _has_first_whistle(athlete_id: int, conn) -> bool:
+    row = conn.execute(
+        "SELECT COUNT(*) AS c FROM fueliq_lesson_completions WHERE athlete_id = ?",
+        (athlete_id,),
+    ).fetchone()
+    return row["c"] >= 1
+
+
+def _has_hydration_hero(athlete_id: int, conn) -> bool:
+    total = conn.execute(
+        "SELECT COUNT(*) AS c FROM fueliq_lessons "
+        "WHERE is_myth = 0 AND review_status = 'approved' AND category = 'hydration'"
+    ).fetchone()["c"]
+    if total == 0:
+        return False
+    done = conn.execute(
+        "SELECT COUNT(*) AS c FROM fueliq_lesson_completions lc "
+        "JOIN fueliq_lessons l ON l.id = lc.lesson_id "
+        "WHERE lc.athlete_id = ? AND l.category = 'hydration'",
+        (athlete_id,),
+    ).fetchone()["c"]
+    return done >= total
+
+
+def _has_myth_slayer(athlete_id: int, conn) -> bool:
+    row = conn.execute(
+        "SELECT COUNT(*) AS c FROM fueliq_myth_verdicts WHERE athlete_id = ?",
+        (athlete_id,),
+    ).fetchone()
+    return row["c"] >= 5
+
+
+def _has_perfect_week(athlete_id: int, conn) -> bool:
+    row = conn.execute(
+        "SELECT best_streak FROM fueliq_athlete_progress WHERE athlete_id = ?",
+        (athlete_id,),
+    ).fetchone()
+    return bool(row) and row["best_streak"] >= 7
+
+
+def _level_complete(athlete_id: int, level: int, conn) -> bool:
+    total = conn.execute(
+        "SELECT COUNT(*) AS c FROM fueliq_lessons WHERE is_myth = 0 AND review_status = 'approved' AND level = ?",
+        (level,),
+    ).fetchone()["c"]
+    if total == 0:
+        return False
+    done = conn.execute(
+        "SELECT COUNT(*) AS c FROM fueliq_lesson_completions lc "
+        "JOIN fueliq_lessons l ON l.id = lc.lesson_id "
+        "WHERE lc.athlete_id = ? AND l.level = ?",
+        (athlete_id, level),
+    ).fetchone()["c"]
+    return done >= total
+
+
+def _has_game_day_ready(athlete_id: int, conn) -> bool:
+    return _level_complete(athlete_id, 2, conn)
+
+
+def _has_full_tank(athlete_id: int, conn) -> bool:
+    for level in _LEVEL_THRESHOLDS:
+        total = conn.execute(
+            "SELECT COUNT(*) AS c FROM fueliq_lessons WHERE is_myth = 0 AND review_status = 'approved' AND level = ?",
+            (level,),
+        ).fetchone()["c"]
+        if total == 0:
+            continue
+        perfect = conn.execute(
+            "SELECT COUNT(*) AS c FROM fueliq_lesson_completions lc "
+            "JOIN fueliq_lessons l ON l.id = lc.lesson_id "
+            "WHERE lc.athlete_id = ? AND l.level = ? AND lc.perfect_quiz = 1",
+            (athlete_id, level),
+        ).fetchone()["c"]
+        if perfect >= total:
+            return True
+    return False
+
+
+def _has_team_player(athlete_id: int, conn) -> bool:
+    """Team Challenges are Post-MVP (spec §12) — no data source exists yet, so
+    this badge is defined but permanently unearnable until that feature ships."""
+    return False
+
+
+BADGE_CHECKS = {
+    "first_whistle": _has_first_whistle,
+    "hydration_hero": _has_hydration_hero,
+    "myth_slayer": _has_myth_slayer,
+    "perfect_week": _has_perfect_week,
+    "game_day_ready": _has_game_day_ready,
+    "full_tank": _has_full_tank,
+    "team_player": _has_team_player,
+}
+
+# Display metadata for the Badge Gallery — order matches spec §7.1.
+BADGE_DEFINITIONS = [
+    {"key": "first_whistle", "name": "First Whistle", "hint": "Complete your first lesson"},
+    {"key": "hydration_hero", "name": "Hydration Hero", "hint": "Complete all water lessons"},
+    {"key": "myth_slayer", "name": "Myth Slayer", "hint": "Bust 5 myths"},
+    {"key": "perfect_week", "name": "Perfect Week", "hint": "Hit a 7-day streak"},
+    {"key": "game_day_ready", "name": "Game Day Ready", "hint": "Complete Level 2"},
+    {"key": "team_player", "name": "Team Player", "hint": "Complete your first Team Challenge"},
+    {"key": "full_tank", "name": "Full Tank", "hint": "100% of a level with perfect quizzes"},
+]
+
+
+def list_badges(athlete_id: int, conn) -> list[dict]:
+    """Badge Gallery read path — every defined badge, earned or locked."""
+    earned_at = {
+        r["badge_key"]: r["earned_at"]
+        for r in conn.execute(
+            "SELECT badge_key, earned_at FROM fueliq_badges_earned WHERE athlete_id = ?",
+            (athlete_id,),
+        ).fetchall()
+    }
+    return [
+        {**b, "earned": b["key"] in earned_at, "earned_at": earned_at.get(b["key"])}
+        for b in BADGE_DEFINITIONS
+    ]
+
+
+def check_and_award_badges(athlete_id: int, conn) -> list[str]:
+    """Runs every badge check and awards any newly-qualifying badge. Idempotent
+    — a badge already in fueliq_badges_earned is never re-awarded or re-returned."""
+    already = {
+        r["badge_key"]
+        for r in conn.execute(
+            "SELECT badge_key FROM fueliq_badges_earned WHERE athlete_id = ?", (athlete_id,)
+        ).fetchall()
+    }
+    newly_earned = [
+        key for key, check in BADGE_CHECKS.items() if key not in already and check(athlete_id, conn)
+    ]
+    for key in newly_earned:
+        conn.execute(
+            "INSERT OR IGNORE INTO fueliq_badges_earned (athlete_id, badge_key) VALUES (?, ?)",
+            (athlete_id, key),
+        )
+    if newly_earned:
+        conn.commit()
+    return newly_earned

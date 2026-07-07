@@ -8,6 +8,7 @@ POST /api/{athlete_id}/fueliq/lessons/{lesson_id}/complete
 POST /api/{athlete_id}/fueliq/questions/{question_id}/answer
 GET  /api/{athlete_id}/fueliq/myths
 POST /api/{athlete_id}/fueliq/myths/{lesson_id}/verdict
+GET  /api/{athlete_id}/fueliq/badges
 
 Feature-flagged (FUELIQ_ENABLED) — ships dark, mirroring plate.py/fueling_targets.py.
 When off, every endpoint returns a minimal `{"enabled": False}`-shaped payload
@@ -194,3 +195,17 @@ def submit_myth_verdict(athlete_id: int, lesson_id: int, body: FuelIQMythVerdict
         conn.close()
 
     return {"enabled": True, **result}
+
+
+@router.get("/{athlete_id}/badges")
+def get_badges(athlete_id: int):
+    if not fq.fueliq_enabled():
+        return {"enabled": False}
+
+    conn = get_conn()
+    try:
+        badges = fq.list_badges(athlete_id, conn)
+    finally:
+        conn.close()
+
+    return {"enabled": True, "badges": badges}
