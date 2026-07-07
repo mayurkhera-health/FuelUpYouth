@@ -126,7 +126,7 @@ _PLACEHOLDER_LESSONS = [
         "One palm of protein, one fist of carbs, every meal — no scale required.",
         [
             (
-                "Using the Palm & Fist Rule, how much protein should be on your plate?",
+                "Using the Palm & Fist Rule, how much protein fits on your plate?",
                 "A portion the size of your palm", "As much as you can fit",
                 "Half a protein shake", "a",
                 "A palm-sized portion of protein is enough to support muscle "
