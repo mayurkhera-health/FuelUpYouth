@@ -30,12 +30,20 @@ _TIMEOUT = 20
 CANONICAL_EVENTS = [
     "signup_completed", "athlete_created", "calendar_connected", "meal_plan_viewed",
     "event_added_manual", "problem_reported", "feature_idea_submitted", "app_opened",
+    # Fuel IQ (spec §13)
+    "fuel_iq_viewed", "fuel_iq_lesson_start", "fuel_iq_lesson_complete",
+    "fuel_iq_quiz_answer", "fuel_iq_perfect_quiz", "fuel_iq_myth_verdict",
+    "fuel_iq_streak_day", "fuel_iq_streak_milestone", "fuel_iq_badge_earned",
 ]
 
-# Events shown in the live activity feed: the "who did what" actions only. Excludes
-# app_opened — a high-frequency lifecycle ping with no parent_id that would flood
-# the feed with anonymous rows. Derived from CANONICAL_EVENTS (single source).
-ACTIVITY_EVENTS = [e for e in CANONICAL_EVENTS if e != "app_opened"]
+# Events shown in the live activity feed: the "who did what" actions only.
+# Excludes high-frequency, low-signal pings that would flood the feed with
+# anonymous/noisy rows — app_opened (no parent_id), fuel_iq_viewed (fires on
+# every tab visit), fuel_iq_quiz_answer (up to 3/lesson), and fuel_iq_streak_day
+# (fires on every qualifying activity, redundant with the milestone event).
+# Derived from CANONICAL_EVENTS (single source).
+_ACTIVITY_EXCLUDED = {"app_opened", "fuel_iq_viewed", "fuel_iq_quiz_answer", "fuel_iq_streak_day"}
+ACTIVITY_EVENTS = [e for e in CANONICAL_EVENTS if e not in _ACTIVITY_EXCLUDED]
 
 # In-process cache: cache_key → (expires_at_epoch, data). 15-min TTL so dashboard
 # refreshes never hammer the Query API. The live activity feed passes a shorter
