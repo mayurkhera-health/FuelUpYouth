@@ -368,7 +368,10 @@ def _event_cycle(
             # (has_recovery_meal stays False when this card isn't generated).
             second_open  = end + timedelta(hours=1)
             second_close = end + timedelta(hours=2)
-            if second_open.time() < SECOND_RECOVERY_CUTOFF:
+            # Suppress the second recovery meal at/after the 22:30 cutoff — INCLUDING
+            # when it wraps past midnight after a late-evening event. Comparing .time()
+            # alone wrapped 00:30 back under 22:30 and wrongly kept a ~1 AM "Rebuild Meal".
+            if second_open.date() == start.date() and second_open.time() < SECOND_RECOVERY_CUTOFF:
                 cards.append(WindowCard(
                     window_key     = f"fuel_after_second{s}",
                     label          = "Rebuild Meal",
