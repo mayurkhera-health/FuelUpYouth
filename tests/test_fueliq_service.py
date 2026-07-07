@@ -202,6 +202,47 @@ def test_seed_placeholder_content_is_idempotent():
     fq.seed_placeholder_content(conn)
     count = conn.execute("SELECT COUNT(*) AS c FROM fueliq_lessons").fetchone()["c"]
     assert count == 3
+    question_count = conn.execute("SELECT COUNT(*) AS c FROM fueliq_questions").fetchone()["c"]
+    assert question_count == 6  # 3 per lesson, not doubled by the second seed call
+    conn.close()
+
+
+def test_seed_placeholder_content_gives_each_lesson_three_questions():
+    conn = _fueliq_db()
+    fq.seed_placeholder_content(conn)
+    lessons = conn.execute(
+        "SELECT id, order_in_level FROM fueliq_lessons WHERE is_myth = 0 ORDER BY order_in_level"
+    ).fetchall()
+    # Each of the 2 lessons gets its own order_in_level (1, 2) — not both hardcoded to 1.
+    assert [r["order_in_level"] for r in lessons] == [1, 2]
+    for lesson in lessons:
+        questions = conn.execute(
+            "SELECT correct_option FROM fueliq_questions WHERE lesson_id = ?", (lesson["id"],)
+        ).fetchall()
+        assert len(questions) == 3
+        assert all(q["correct_option"] in ("a", "b", "c") for q in questions)
+    conn.close()
+
+
+def test_seed_placeholder_content_questions_are_answerable_end_to_end():
+    """The seeded quiz must actually work through submit_quiz_answer /
+    complete_lesson — not just exist as rows."""
+    conn = _fueliq_db()
+    fq.seed_placeholder_content(conn)
+    lesson = conn.execute(
+        "SELECT id FROM fueliq_lessons WHERE is_myth = 0 AND order_in_level = 1"
+    ).fetchone()
+    questions = conn.execute(
+        "SELECT id, correct_option FROM fueliq_questions WHERE lesson_id = ? ORDER BY order_in_lesson",
+        (lesson["id"],),
+    ).fetchall()
+    assert len(questions) == 3  # guards against the empty-list-passes-vacuously bug
+    answers = [fq.submit_quiz_answer(1, q["id"], q["correct_option"], conn) for q in questions]
+    assert all(a["correct"] is True for a in answers)
+
+    result = fq.complete_lesson(1, lesson["id"], conn, perfect_quiz=True)
+    assert result["already_completed"] is False
+    assert result["points_earned"] == 15  # 10 lesson points + 5 perfect-quiz bonus
     conn.close()
 
 

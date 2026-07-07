@@ -75,20 +75,81 @@ def get_progress(athlete_id: int, conn) -> dict:
 
 
 _PLACEHOLDER_LESSONS = [
-    # (title, hook, fact_body, takeaway) — structural placeholders ONLY.
-    # NOT RDN-approved copy (spec §11.1) — review_status stays 'draft' until a
-    # dietitian signs off; do not flip to 'approved' as part of a content seed.
+    # (title, hook, fact_body, takeaway, questions) — EXAMPLE content for local
+    # testing of the full lesson+quiz flow ONLY. NOT RDN-approved copy (spec
+    # §11.1) — review_status stays 'draft' until a dietitian signs off; do not
+    # flip to 'approved' as part of a content seed.
+    #
+    # questions: (question_text, option_a, option_b, option_c, correct_option,
+    #             explanation, misconception_tag)
     (
         "Carbs Are Not the Enemy",
-        "PLACEHOLDER HOOK — Your legs died in the 2nd half. Here's why.",
-        "PLACEHOLDER FACT BODY — structural placeholder pending RDN-authored copy.",
-        "PLACEHOLDER TAKEAWAY — structural placeholder pending RDN-authored copy.",
+        "Your legs died in the 2nd half. Here's why.",
+        "Carbs are stored in your muscles as glycogen — your body's fastest "
+        "fuel source during exercise. When glycogen runs low, your legs feel "
+        "heavy and slow, even if you're not tired everywhere else. That's "
+        "called 'bonking,' and it has nothing to do with willpower.",
+        "Rice, roti, pasta, oats — that's fuel, not cheat food.",
+        [
+            (
+                "Your legs feel dead in the second half — most likely reason?",
+                "You didn't eat enough protein", "You ran out of stored carbs (glycogen)",
+                "You didn't stretch enough", "b",
+                "Glycogen (stored carbs) fuels your muscles during exercise. When it "
+                "runs low, your legs feel heavy and slow — that's 'bonking.'",
+                "protein_fixes_everything",
+            ),
+            (
+                "Which of these is a good pre-game carb source?",
+                "Rice, pasta, or oats", "A plain protein shake",
+                "Skipping the meal to feel lighter", "a",
+                "Carbs are your body's fastest fuel source — rice, pasta, and oats "
+                "top off your glycogen stores before you play.",
+                "carbs_make_you_slow",
+            ),
+            (
+                "True or false: eating carbs before a game makes you feel sluggish.",
+                "True", "False", "Only if you eat too much", "b",
+                "The right amount of carbs before a game gives you energy, not "
+                "sluggishness — that myth keeps athletes underfueled.",
+                "carbs_make_you_sluggish",
+            ),
+        ],
     ),
     (
         "The Palm & Fist Rule",
-        "PLACEHOLDER HOOK — How much protein actually fits on your plate?",
-        "PLACEHOLDER FACT BODY — structural placeholder pending RDN-authored copy.",
-        "PLACEHOLDER TAKEAWAY — structural placeholder pending RDN-authored copy.",
+        "How much protein actually fits on your plate?",
+        "You don't need a food scale to build a solid plate. A palm-sized "
+        "portion of protein (chicken, fish, beans) plus a fist-sized portion "
+        "of carbs (rice, potatoes, pasta) covers most meals — no measuring, "
+        "no counting.",
+        "One palm of protein, one fist of carbs, every meal — no scale required.",
+        [
+            (
+                "Using the Palm & Fist Rule, how much protein should be on your plate?",
+                "A portion the size of your palm", "As much as you can fit",
+                "Half a protein shake", "a",
+                "A palm-sized portion of protein is enough to support muscle "
+                "recovery at most meals.",
+                "more_protein_is_always_better",
+            ),
+            (
+                "What does the 'fist' in Palm & Fist represent?",
+                "Protein", "Carbs (like rice or potatoes)", "Vegetables", "b",
+                "A fist-sized portion of carbs — rice, potatoes, pasta — fuels "
+                "your muscles for the next practice or game.",
+                "carbs_should_be_minimized",
+            ),
+            (
+                "Why is a simple portion guide like Palm & Fist useful for athletes?",
+                "It requires a food scale",
+                "It gives a quick, no-measuring way to build a balanced plate",
+                "It only works for adults", "b",
+                "You don't need to weigh or count anything — your hand is a "
+                "portion guide you always have with you.",
+                "need_precise_tracking",
+            ),
+        ],
     ),
 ]
 
@@ -101,22 +162,35 @@ _PLACEHOLDER_MYTH = (
 
 
 def seed_placeholder_content(conn) -> None:
-    """Local-dev-only seed: enough draft content to exercise the hub/lesson/myth
-    screens before real RDN-authored lessons exist. Never call this against a
+    """Local-dev-only seed: enough draft content — including a full 3-question
+    quiz per lesson — to exercise the hub/lesson/myth screens end to end
+    before real RDN-authored lessons exist. Never call this against a
     production DB — placeholder copy must never be athlete-visible there."""
-    for title, hook, fact_body, takeaway in _PLACEHOLDER_LESSONS:
+    for order_in_level, (title, hook, fact_body, takeaway, questions) in enumerate(
+        _PLACEHOLDER_LESSONS, start=1
+    ):
         exists = conn.execute(
             "SELECT 1 FROM fueliq_lessons WHERE title = ?", (title,)
         ).fetchone()
         if exists:
             continue
-        conn.execute(
+        lesson_id = conn.execute(
             "INSERT INTO fueliq_lessons "
             "(level, order_in_level, is_myth, title, hook, fact_body, takeaway, "
             " source_citation, review_status) "
-            "VALUES (1, 1, 0, ?, ?, ?, ?, 'PLACEHOLDER — no citation yet', 'draft')",
-            (title, hook, fact_body, takeaway),
-        )
+            "VALUES (1, ?, 0, ?, ?, ?, ?, 'EXAMPLE — no citation yet', 'draft')",
+            (order_in_level, title, hook, fact_body, takeaway),
+        ).lastrowid
+        for q_order, (q_text, opt_a, opt_b, opt_c, correct, explanation, tag) in enumerate(
+            questions, start=1
+        ):
+            conn.execute(
+                "INSERT INTO fueliq_questions "
+                "(lesson_id, question_text, option_a, option_b, option_c, correct_option, "
+                " explanation, misconception_tag, order_in_lesson) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (lesson_id, q_text, opt_a, opt_b, opt_c, correct, explanation, tag, q_order),
+            )
 
     myth_title, myth_hook, verdict, science_text = _PLACEHOLDER_MYTH
     exists = conn.execute(
