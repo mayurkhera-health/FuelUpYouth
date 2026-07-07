@@ -26,14 +26,14 @@ def client():
 _counter = {"n": 0}
 
 
-def _make_athlete(client):
+def _make_athlete(client, age=14):
     _counter["n"] += 1
     email = f"fueliq{_counter['n']}@example.com"
     p = client.post("/api/parents/", json={"full_name": "P", "email": email, "consent_confirmed": True})
     assert p.status_code == 201, p.text
     parent_id = p.json()["id"]
     a = client.post("/api/athletes/", json={
-        "parent_id": parent_id, "first_name": "A", "age": 14, "gender": "girl",
+        "parent_id": parent_id, "first_name": "A", "age": age, "gender": "girl",
         "weight_lbs": 110, "height_ft": 5, "height_in": 6, "competition_level": "Recreational",
     })
     assert a.status_code == 201, a.text
@@ -207,3 +207,16 @@ def test_badges_lists_all_defined_badges_locked_until_earned(client, monkeypatch
     after = client.get(f"/api/athletes/{aid}/badges").json()
     first_whistle = next(b for b in after["badges"] if b["key"] == "first_whistle")
     assert first_whistle["earned"] is True
+
+
+def test_hub_includes_percentile_block(client, monkeypatch):
+    monkeypatch.setenv("FUELIQ_ENABLED", "true")
+    # Unique age (other tests in this file all use the default 14; valid
+    # range is 9-17) so this athlete's cohort is guaranteed to be just
+    # themself, regardless of test execution order in the shared in-memory DB.
+    aid = _make_athlete(client, age=17)
+    body = client.get(f"/api/athletes/{aid}/hub").json()
+    # A lone test athlete is a cohort of 1 — must report insufficient data,
+    # never a fabricated percentile.
+    assert body["percentile"]["insufficient_data"] is True
+    assert body["percentile"]["percentile"] is None

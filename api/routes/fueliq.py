@@ -45,10 +45,17 @@ def get_hub(athlete_id: int):
             {"level": lvl, "unlocked": fq.level_unlocked(progress["score"], lvl)}
             for lvl in _LEVELS
         ]
+        percentile = fq.compute_percentile(athlete_id, conn)
     finally:
         conn.close()
 
-    return {"enabled": True, **progress, "levels": levels, "badges_earned": badges}
+    return {
+        "enabled": True,
+        **progress,
+        "levels": levels,
+        "badges_earned": badges,
+        "percentile": percentile,
+    }
 
 
 @router.get("/{athlete_id}/lessons")

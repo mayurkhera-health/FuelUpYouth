@@ -19,14 +19,26 @@ def _fueliq_db():
     """In-memory DB with athletes + the fueliq_* tables the service reads/writes."""
     conn = _mk_conn()
     conn.executescript("""
-        CREATE TABLE athletes (id INTEGER PRIMARY KEY, first_name TEXT);
-        INSERT INTO athletes (id, first_name) VALUES (1, 'Alex');
-        INSERT INTO athletes (id, first_name) VALUES (2, 'Sam');
+        CREATE TABLE athletes (id INTEGER PRIMARY KEY, first_name TEXT, age INTEGER);
+        INSERT INTO athletes (id, first_name, age) VALUES (1, 'Alex', 14);
+        INSERT INTO athletes (id, first_name, age) VALUES (2, 'Sam', 14);
     """)
     _create_fueliq_tables(conn)
     _create_report_config(conn)
     conn.commit()
     return conn
+
+
+def _add_athlete(conn, athlete_id, age, score=None):
+    conn.execute(
+        "INSERT INTO athletes (id, first_name, age) VALUES (?, 'Cohort', ?)", (athlete_id, age)
+    )
+    if score is not None:
+        conn.execute(
+            "INSERT INTO fueliq_athlete_progress (athlete_id, score) VALUES (?, ?)",
+            (athlete_id, score),
+        )
+    conn.commit()
 
 
 def _insert_lesson(conn, points=10, level=1, order_in_level=1, category=None, title="Test Lesson"):
@@ -482,4 +494,63 @@ def test_submit_myth_verdict_registers_streak_activity():
     result = fq.submit_myth_verdict(1, myth_id, "myth", conn)
     assert result["streak"]["current"] == 1
     assert fq.get_progress(1, conn)["current_streak"] == 1
+    conn.close()
+
+
+# ── Percentile ───────────────────────────────────────────────────────────────
+
+def test_percentile_insufficient_data_below_min_cohort():
+    conn = _fueliq_db()  # only 2 athletes, both age 14 — below default min_cohort
+    result = fq.compute_percentile(1, conn)
+    assert result["insufficient_data"] is True
+    assert result["percentile"] is None
+    assert result["cohort_size"] == 2
+    conn.close()
+
+
+def test_percentile_computed_once_cohort_is_large_enough():
+    conn = _fueliq_db()
+    fq.get_progress(1, conn)  # athlete 1: baseline score 50
+    conn.execute("UPDATE fueliq_athlete_progress SET score = 90 WHERE athlete_id = 1")
+    conn.commit()
+    # _fueliq_db() already seeds athlete 2 ("Sam") at age 14 with no progress row
+    # (baseline 50) — plus 4 more added here -> cohort of 6, athlete 1 beats all 5 others.
+    _add_athlete(conn, 10, age=14, score=50)
+    _add_athlete(conn, 11, age=14, score=60)
+    _add_athlete(conn, 12, age=14, score=70)
+    _add_athlete(conn, 13, age=14, score=80)
+
+    result = fq.compute_percentile(1, conn, min_cohort=5)
+    assert result["insufficient_data"] is False
+    assert result["cohort_size"] == 6
+    assert result["percentile"] == 100  # beats all 5 others
+
+
+def test_percentile_excludes_other_age_cohorts():
+    conn = _fueliq_db()
+    fq.get_progress(1, conn)
+    _add_athlete(conn, 10, age=14, score=90)
+    _add_athlete(conn, 11, age=14, score=90)
+    _add_athlete(conn, 12, age=14, score=90)
+    _add_athlete(conn, 20, age=17, score=1000)  # different age, must not count
+    result = fq.compute_percentile(1, conn, min_cohort=5)
+    # athletes 1, 2 ("Sam", seeded by _fueliq_db()), 10, 11, 12 — all age 14.
+    assert result["cohort_size"] == 5
+    conn.close()
+
+
+def test_percentile_treats_unengaged_athletes_as_baseline_score():
+    """An athlete with no fueliq_athlete_progress row hasn't touched Fuel IQ
+    yet — they count in the cohort at the Rookie baseline (50), not as absent,
+    so an early athlete's percentile isn't inflated by only counting engaged peers."""
+    conn = _fueliq_db()
+    fq.get_progress(1, conn)
+    conn.execute("UPDATE fueliq_athlete_progress SET score = 60 WHERE athlete_id = 1")
+    conn.commit()
+    _add_athlete(conn, 10, age=14)  # no progress row at all -> baseline 50
+    _add_athlete(conn, 11, age=14)
+    _add_athlete(conn, 12, age=14)
+    _add_athlete(conn, 13, age=14)
+    result = fq.compute_percentile(1, conn, min_cohort=5)
+    assert result["percentile"] == 100  # 60 beats the four baseline-50 peers
     conn.close()

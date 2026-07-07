@@ -469,3 +469,37 @@ def check_and_award_badges(athlete_id: int, conn) -> list[str]:
     if newly_earned:
         conn.commit()
     return newly_earned
+
+
+DEFAULT_MIN_COHORT = 5
+
+
+def compute_percentile(athlete_id: int, conn, min_cohort: int = DEFAULT_MIN_COHORT) -> dict:
+    """Solo-athlete percentile vs. anonymized same-age cohort (spec §7.2,
+    §12). With a small early user base, "beats 72% of 16-year-olds" is
+    numerically absurd for a cohort of 1 or 2 — suppress the percentile
+    below `min_cohort` and report insufficient_data instead of a misleading
+    number. An athlete with no fueliq_athlete_progress row hasn't engaged
+    yet and counts at the Rookie baseline (50), not as absent — otherwise a
+    cohort of mostly-unengaged peers would inflate everyone's percentile."""
+    row = conn.execute("SELECT age FROM athletes WHERE id = ?", (athlete_id,)).fetchone()
+    if not row or row["age"] is None:
+        return {"percentile": None, "cohort_size": 0, "insufficient_data": True}
+
+    age = row["age"]
+    cohort_ids = [r["id"] for r in conn.execute("SELECT id FROM athletes WHERE age = ?", (age,)).fetchall()]
+    scores = {}
+    for aid in cohort_ids:
+        prog = conn.execute(
+            "SELECT score FROM fueliq_athlete_progress WHERE athlete_id = ?", (aid,)
+        ).fetchone()
+        scores[aid] = prog["score"] if prog else 50
+    cohort_size = len(scores)
+
+    if cohort_size < min_cohort:
+        return {"percentile": None, "cohort_size": cohort_size, "insufficient_data": True}
+
+    my_score = scores[athlete_id]
+    beaten = sum(1 for s in scores.values() if s < my_score)
+    percentile = round(100 * beaten / (cohort_size - 1)) if cohort_size > 1 else 100
+    return {"percentile": percentile, "cohort_size": cohort_size, "insufficient_data": False}
