@@ -38,6 +38,7 @@ def run_all():
         _create_health_tables(conn)
         _add_last_login_to_parents(conn)
         _add_blueprint_viewed_to_parents(conn)
+        _create_fueliq_tables(conn)
         conn.commit()
     finally:
         conn.close()
@@ -74,6 +75,11 @@ _DEFAULT_CONFIG = [
     ("recovery_rate_low",         0.5, "Recovery confirmation rate below which the safety flag can fire"),
     ("hydration_rate_low",        0.5, "Hydration confirmation rate below which the safety flag can fire"),
     ("streak_min_confirms_per_day", 1.0, "Min confirmations in a day to count toward streak"),
+    ("fueliq_lesson_points",         10.0, "Fuel IQ: points for completing a lesson"),
+    ("fueliq_perfect_quiz_bonus",     5.0, "Fuel IQ: bonus for a 3/3 first-try quiz"),
+    ("fueliq_myth_points",           10.0, "Fuel IQ: points for completing a Myth Buster"),
+    ("fueliq_streak_milestone_bonus", 15.0, "Fuel IQ: bonus for a 7-day streak milestone"),
+    ("fueliq_review_points",          5.0, "Fuel IQ: points for a Refuel Your Brain review session"),
 ]
 
 
@@ -556,6 +562,102 @@ def _create_pantry_list_items(conn):
         "CREATE INDEX IF NOT EXISTS idx_pantry_athlete_week "
         "ON pantry_list_items (athlete_id, week_start)"
     )
+
+
+def _create_fueliq_tables(conn):
+    """Fuel IQ: gamified nutrition-education tab (lessons, myths, quiz, score,
+    badges). Lessons and myths share one table (`is_myth` discriminates); a myth
+    has `verdict`/`science_text` instead of `fact_body`/`takeaway`. Score/streak
+    live in `fueliq_athlete_progress`, one row per athlete, created lazily on
+    first read (see fueliq_service.get_progress). Idempotent — safe every startup."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_lessons (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            level           INTEGER NOT NULL,
+            order_in_level  INTEGER NOT NULL,
+            is_myth         INTEGER NOT NULL DEFAULT 0,
+            title           TEXT NOT NULL,
+            hook            TEXT NOT NULL,
+            fact_body       TEXT,
+            visual_ref      TEXT,
+            takeaway        TEXT,
+            verdict         TEXT,
+            science_text    TEXT,
+            source_citation TEXT NOT NULL,
+            points          INTEGER NOT NULL DEFAULT 10,
+            review_status   TEXT NOT NULL DEFAULT 'draft',
+            reviewed_by     TEXT,
+            review_date     TEXT,
+            drop_week       TEXT,
+            created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_questions (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            lesson_id         INTEGER NOT NULL REFERENCES fueliq_lessons(id),
+            question_text     TEXT NOT NULL,
+            option_a          TEXT NOT NULL,
+            option_b          TEXT NOT NULL,
+            option_c          TEXT,
+            correct_option    TEXT NOT NULL,
+            explanation       TEXT NOT NULL,
+            misconception_tag TEXT,
+            order_in_lesson   INTEGER NOT NULL
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_athlete_progress (
+            athlete_id                INTEGER PRIMARY KEY REFERENCES athletes(id),
+            score                     INTEGER NOT NULL DEFAULT 50,
+            current_streak            INTEGER NOT NULL DEFAULT 0,
+            best_streak               INTEGER NOT NULL DEFAULT 0,
+            freeze_tokens             INTEGER NOT NULL DEFAULT 1,
+            last_activity_date        TEXT,
+            last_celebrated_milestone INTEGER NOT NULL DEFAULT 0,
+            updated_at                TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_lesson_completions (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id     INTEGER NOT NULL REFERENCES athletes(id),
+            lesson_id      INTEGER NOT NULL REFERENCES fueliq_lessons(id),
+            perfect_quiz   INTEGER NOT NULL DEFAULT 0,
+            points_earned  INTEGER NOT NULL,
+            completed_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, lesson_id)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_quiz_attempts (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id        INTEGER NOT NULL REFERENCES athletes(id),
+            question_id       INTEGER NOT NULL REFERENCES fueliq_questions(id),
+            selected_option   TEXT NOT NULL,
+            correct           INTEGER NOT NULL,
+            misconception_tag TEXT,
+            answered_at       TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_myth_verdicts (
+            athlete_id  INTEGER NOT NULL REFERENCES athletes(id),
+            lesson_id   INTEGER NOT NULL REFERENCES fueliq_lessons(id),
+            guess       TEXT NOT NULL,
+            correct     INTEGER NOT NULL,
+            answered_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, lesson_id)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_badges_earned (
+            athlete_id  INTEGER NOT NULL REFERENCES athletes(id),
+            badge_key   TEXT NOT NULL,
+            earned_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, badge_key)
+        )
+    """)
 
 
 def _migrate_athlete_logins_unique():
