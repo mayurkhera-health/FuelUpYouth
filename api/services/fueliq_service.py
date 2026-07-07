@@ -35,6 +35,12 @@ def level_unlocked(score: int, level: int) -> bool:
     return score >= _LEVEL_THRESHOLDS[level]
 
 
+def next_rank_threshold(score: int) -> int | None:
+    """Score needed for the next rank tier, or None at the top (Pro)."""
+    higher = sorted((t for t, _ in _RANK_BANDS if t > score))
+    return higher[0] if higher else None
+
+
 def _config_value(conn, key: str, default: float) -> float:
     row = conn.execute("SELECT value FROM report_config WHERE key = ?", (key,)).fetchone()
     return row["value"] if row else default
@@ -60,6 +66,7 @@ def get_progress(athlete_id: int, conn) -> dict:
     return {
         "score": row["score"],
         "rank": rank_for_score(row["score"]),
+        "next_rank_threshold": next_rank_threshold(row["score"]),
         "current_streak": row["current_streak"],
         "best_streak": row["best_streak"],
         "freeze_tokens": row["freeze_tokens"],

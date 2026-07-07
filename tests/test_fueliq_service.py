@@ -136,6 +136,14 @@ def test_get_progress_creates_default_row_for_new_athlete():
     conn.close()
 
 
+@pytest.mark.parametrize(
+    "score,expected_next",
+    [(50, 100), (99, 100), (100, 200), (349, 350), (549, 550), (550, None), (10000, None)],
+)
+def test_next_rank_threshold(score, expected_next):
+    assert fq.next_rank_threshold(score) == expected_next
+
+
 def test_get_progress_is_idempotent():
     conn = _fueliq_db()
     fq.get_progress(1, conn)
