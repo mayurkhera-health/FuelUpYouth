@@ -16,11 +16,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Never run `flyctl deploy` from `FuelUp-Admin` or any worktree based on it
 
 ### Deployment command
-Always deploy from the main worktree:
+Always deploy from the main worktree via the guarded wrapper (checks you're on
+`main`, a clean tree, and reminds you about the `PERFORMANCE_PLATE_ENABLED` flag —
+the plate ships DARK and deploy alone does NOT enable it):
 ```bash
 cd ~/FuelUpYouth-main
-flyctl deploy --app fuelup-youth
+./scripts/deploy.sh
 ```
+Raw command it wraps (do not run directly unless the wrapper is unavailable):
+`flyctl deploy --app fuelup-youth`
 
 ### Before every deploy, confirm:
 1. You are on `main` (`git branch` shows `* main`)
