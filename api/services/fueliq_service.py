@@ -35,6 +35,11 @@ def level_unlocked(score: int, level: int) -> bool:
     return score >= _LEVEL_THRESHOLDS[level]
 
 
+def _config_value(conn, key: str, default: float) -> float:
+    row = conn.execute("SELECT value FROM report_config WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
 def _ensure_progress_row(athlete_id: int, conn) -> None:
     conn.execute(
         "INSERT OR IGNORE INTO fueliq_athlete_progress (athlete_id) VALUES (?)",
@@ -119,3 +124,106 @@ def seed_placeholder_content(conn) -> None:
             (myth_title, myth_hook, verdict, science_text),
         )
     conn.commit()
+
+
+def _award_points(athlete_id: int, points: int, conn) -> None:
+    """Score is earned-never-lost — always additive, never set/decremented."""
+    _ensure_progress_row(athlete_id, conn)
+    conn.execute(
+        "UPDATE fueliq_athlete_progress SET score = score + ?, updated_at = datetime('now') "
+        "WHERE athlete_id = ?",
+        (points, athlete_id),
+    )
+    conn.commit()
+
+
+def complete_lesson(athlete_id: int, lesson_id: int, conn, perfect_quiz: bool = False) -> dict:
+    """Write path for finishing a lesson's reward screen. Idempotent per
+    (athlete_id, lesson_id) — replaying a completion (e.g. a retried request)
+    never double-awards points."""
+    existing = conn.execute(
+        "SELECT 1 FROM fueliq_lesson_completions WHERE athlete_id = ? AND lesson_id = ?",
+        (athlete_id, lesson_id),
+    ).fetchone()
+    if existing:
+        return {"already_completed": True, "points_earned": 0, "progress": get_progress(athlete_id, conn)}
+
+    lesson_points = int(
+        conn.execute("SELECT points FROM fueliq_lessons WHERE id = ?", (lesson_id,)).fetchone()["points"]
+    )
+    points_earned = lesson_points
+    if perfect_quiz:
+        points_earned += int(_config_value(conn, "fueliq_perfect_quiz_bonus", 5))
+
+    conn.execute(
+        "INSERT INTO fueliq_lesson_completions (athlete_id, lesson_id, perfect_quiz, points_earned) "
+        "VALUES (?, ?, ?, ?)",
+        (athlete_id, lesson_id, int(perfect_quiz), points_earned),
+    )
+    conn.commit()
+    _award_points(athlete_id, points_earned, conn)
+    return {
+        "already_completed": False,
+        "points_earned": points_earned,
+        "progress": get_progress(athlete_id, conn),
+    }
+
+
+def submit_myth_verdict(athlete_id: int, lesson_id: int, guess: str, conn) -> dict:
+    """Write path for a Myth Buster REAL/MYTH tap. Points are awarded for
+    completing the myth, correct or not (spec §3.5 — failure must be cheap),
+    and only once per athlete per myth."""
+    existing = conn.execute(
+        "SELECT correct FROM fueliq_myth_verdicts WHERE athlete_id = ? AND lesson_id = ?",
+        (athlete_id, lesson_id),
+    ).fetchone()
+    if existing:
+        return {
+            "already_answered": True,
+            "correct": bool(existing["correct"]),
+            "points_earned": 0,
+            "progress": get_progress(athlete_id, conn),
+        }
+
+    lesson = conn.execute(
+        "SELECT verdict, science_text FROM fueliq_lessons WHERE id = ?", (lesson_id,)
+    ).fetchone()
+    correct = guess == lesson["verdict"]
+    points_earned = int(_config_value(conn, "fueliq_myth_points", 10))
+
+    conn.execute(
+        "INSERT INTO fueliq_myth_verdicts (athlete_id, lesson_id, guess, correct) VALUES (?, ?, ?, ?)",
+        (athlete_id, lesson_id, guess, int(correct)),
+    )
+    conn.commit()
+    _award_points(athlete_id, points_earned, conn)
+    return {
+        "already_answered": False,
+        "correct": correct,
+        "science_text": lesson["science_text"],
+        "points_earned": points_earned,
+        "progress": get_progress(athlete_id, conn),
+    }
+
+
+def submit_quiz_answer(athlete_id: int, question_id: int, selected_option: str, conn) -> dict:
+    """Write path for a single quiz question. No score effect — quiz answers
+    only unlock the lesson-complete points via `perfect_quiz`; wrong answers
+    are logged for the misconception-tag analytics (spec §6.3), never penalized."""
+    question = conn.execute(
+        "SELECT correct_option, explanation, misconception_tag FROM fueliq_questions WHERE id = ?",
+        (question_id,),
+    ).fetchone()
+    correct = selected_option == question["correct_option"]
+    conn.execute(
+        "INSERT INTO fueliq_quiz_attempts "
+        "(athlete_id, question_id, selected_option, correct, misconception_tag) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (athlete_id, question_id, selected_option, int(correct), question["misconception_tag"]),
+    )
+    conn.commit()
+    return {
+        "correct": correct,
+        "explanation": question["explanation"],
+        "misconception_tag": question["misconception_tag"],
+    }

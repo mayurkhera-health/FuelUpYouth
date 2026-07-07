@@ -21,10 +21,48 @@ def _fueliq_db():
     conn.executescript("""
         CREATE TABLE athletes (id INTEGER PRIMARY KEY, first_name TEXT);
         INSERT INTO athletes (id, first_name) VALUES (1, 'Alex');
+        INSERT INTO athletes (id, first_name) VALUES (2, 'Sam');
     """)
     _create_fueliq_tables(conn)
+    _create_report_config(conn)
     conn.commit()
     return conn
+
+
+def _insert_lesson(conn, points=10, level=1):
+    cur = conn.execute(
+        "INSERT INTO fueliq_lessons "
+        "(level, order_in_level, is_myth, title, hook, fact_body, takeaway, "
+        " source_citation, points, review_status) "
+        "VALUES (?, 1, 0, 'Test Lesson', 'hook', 'fact', 'takeaway', 'cite', ?, 'approved')",
+        (level, points),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def _insert_myth(conn, verdict="myth"):
+    cur = conn.execute(
+        "INSERT INTO fueliq_lessons "
+        "(level, order_in_level, is_myth, title, hook, verdict, science_text, "
+        " source_citation, review_status) "
+        "VALUES (4, 1, 1, 'Test Myth', 'hook', ?, 'science', 'cite', 'approved')",
+        (verdict,),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def _insert_question(conn, lesson_id, correct_option="b"):
+    cur = conn.execute(
+        "INSERT INTO fueliq_questions "
+        "(lesson_id, question_text, option_a, option_b, option_c, correct_option, "
+        " explanation, misconception_tag, order_in_lesson) "
+        "VALUES (?, 'q', 'A', 'B', 'C', ?, 'because', 'tag1', 1)",
+        (lesson_id, correct_option),
+    )
+    conn.commit()
+    return cur.lastrowid
 
 
 def test_fueliq_tables_are_created():
@@ -156,4 +194,87 @@ def test_seed_placeholder_content_is_idempotent():
     fq.seed_placeholder_content(conn)
     count = conn.execute("SELECT COUNT(*) AS c FROM fueliq_lessons").fetchone()["c"]
     assert count == 3
+    conn.close()
+
+
+def test_complete_lesson_awards_points_and_updates_score():
+    conn = _fueliq_db()
+    lesson_id = _insert_lesson(conn, points=10)
+    result = fq.complete_lesson(1, lesson_id, conn)
+    assert result["points_earned"] == 10
+    assert result["already_completed"] is False
+    assert fq.get_progress(1, conn)["score"] == 60
+    conn.close()
+
+
+def test_complete_lesson_perfect_quiz_bonus():
+    conn = _fueliq_db()
+    lesson_id = _insert_lesson(conn, points=10)
+    result = fq.complete_lesson(1, lesson_id, conn, perfect_quiz=True)
+    assert result["points_earned"] == 15  # 10 + fueliq_perfect_quiz_bonus (5)
+    assert fq.get_progress(1, conn)["score"] == 65
+    conn.close()
+
+
+def test_complete_lesson_is_idempotent_no_double_award():
+    conn = _fueliq_db()
+    lesson_id = _insert_lesson(conn, points=10)
+    fq.complete_lesson(1, lesson_id, conn)
+    second = fq.complete_lesson(1, lesson_id, conn)
+    assert second["already_completed"] is True
+    assert second["points_earned"] == 0
+    assert fq.get_progress(1, conn)["score"] == 60
+    conn.close()
+
+
+def test_submit_myth_verdict_awards_points_regardless_of_correctness():
+    conn = _fueliq_db()
+    myth_id = _insert_myth(conn, verdict="myth")
+    result = fq.submit_myth_verdict(1, myth_id, "real", conn)
+    assert result["correct"] is False
+    assert result["points_earned"] == 10
+    assert fq.get_progress(1, conn)["score"] == 60
+    conn.close()
+
+
+def test_submit_myth_verdict_correct_guess():
+    conn = _fueliq_db()
+    myth_id = _insert_myth(conn, verdict="myth")
+    result = fq.submit_myth_verdict(2, myth_id, "myth", conn)
+    assert result["correct"] is True
+    assert result["points_earned"] == 10
+    conn.close()
+
+
+def test_submit_myth_verdict_is_idempotent_no_double_award():
+    conn = _fueliq_db()
+    myth_id = _insert_myth(conn, verdict="myth")
+    fq.submit_myth_verdict(1, myth_id, "real", conn)
+    second = fq.submit_myth_verdict(1, myth_id, "myth", conn)
+    assert second["already_answered"] is True
+    assert second["points_earned"] == 0
+    assert fq.get_progress(1, conn)["score"] == 60
+    conn.close()
+
+
+def test_submit_quiz_answer_correct():
+    conn = _fueliq_db()
+    lesson_id = _insert_lesson(conn)
+    question_id = _insert_question(conn, lesson_id, correct_option="b")
+    result = fq.submit_quiz_answer(1, question_id, "b", conn)
+    assert result["correct"] is True
+    assert result["explanation"] == "because"
+    conn.close()
+
+
+def test_submit_quiz_answer_incorrect_has_no_penalty():
+    conn = _fueliq_db()
+    lesson_id = _insert_lesson(conn)
+    question_id = _insert_question(conn, lesson_id, correct_option="b")
+    result = fq.submit_quiz_answer(1, question_id, "a", conn)
+    assert result["correct"] is False
+    assert result["misconception_tag"] == "tag1"
+    # Wrong answers cost nothing (spec §3.5) — score is untouched by quiz answers,
+    # only by lesson completion.
+    assert fq.get_progress(1, conn)["score"] == 50
     conn.close()
