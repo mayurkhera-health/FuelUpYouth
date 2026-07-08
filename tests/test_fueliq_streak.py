@@ -47,33 +47,11 @@ def _lesson_completion(conn, athlete_id, completed_at):
     conn.commit()
 
 
-def _myth_verdict(conn, athlete_id, answered_at):
-    lesson_id = conn.execute(
-        "INSERT INTO fueliq_lessons "
-        "(level, order_in_level, is_myth, title, hook, verdict, science_text, source_citation, review_status) "
-        "VALUES (4, 1, 1, 'M', 'hook', 'myth', 'science', 'cite', 'approved')"
-    ).lastrowid
-    conn.execute(
-        "INSERT INTO fueliq_myth_verdicts (athlete_id, lesson_id, guess, correct, answered_at) "
-        "VALUES (?, ?, 'myth', 1, ?)",
-        (athlete_id, lesson_id, answered_at),
-    )
-    conn.commit()
-
-
 def test_qualifying_dates_from_lesson_completions():
     conn = _fueliq_db()
     _lesson_completion(conn, 1, "2026-06-10 10:00:00")
     _lesson_completion(conn, 1, "2026-06-11 10:00:00")
     assert fs._qualifying_dates(1, conn) == {"2026-06-10", "2026-06-11"}
-    conn.close()
-
-
-def test_qualifying_dates_union_with_myth_verdicts():
-    conn = _fueliq_db()
-    _lesson_completion(conn, 1, "2026-06-10 10:00:00")
-    _myth_verdict(conn, 1, "2026-06-12 10:00:00")
-    assert fs._qualifying_dates(1, conn) == {"2026-06-10", "2026-06-12"}
     conn.close()
 
 

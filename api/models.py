@@ -292,7 +292,7 @@ class FuelIQLessonComplete(BaseModel):
     perfect_quiz: bool = False
 
 
-class FuelIQMythVerdict(BaseModel):
+class FuelIQDailyChallengeVerdict(BaseModel):
     guess: str
 
 

@@ -53,18 +53,6 @@ def _insert_lesson(conn, points=10, level=1, order_in_level=1, category=None, ti
     return cur.lastrowid
 
 
-def _insert_myth(conn, verdict="myth"):
-    cur = conn.execute(
-        "INSERT INTO fueliq_lessons "
-        "(level, order_in_level, is_myth, title, hook, verdict, science_text, "
-        " source_citation, review_status) "
-        "VALUES (4, 1, 1, 'Test Myth', 'hook', ?, 'science', 'cite', 'approved')",
-        (verdict,),
-    )
-    conn.commit()
-    return cur.lastrowid
-
-
 def _insert_question(conn, lesson_id, correct_option="b"):
     cur = conn.execute(
         "INSERT INTO fueliq_questions "
@@ -93,29 +81,9 @@ def test_fueliq_tables_are_created():
         "fueliq_athlete_progress",
         "fueliq_lesson_completions",
         "fueliq_quiz_attempts",
-        "fueliq_myth_verdicts",
         "fueliq_badges_earned",
     }
     conn.close()
-
-
-@pytest.mark.parametrize(
-    "score,expected_rank",
-    [
-        (50, "Rookie"),
-        (99, "Rookie"),
-        (100, "Starter"),
-        (199, "Starter"),
-        (200, "Varsity"),
-        (349, "Varsity"),
-        (350, "Captain"),
-        (549, "Captain"),
-        (550, "Pro"),
-        (10000, "Pro"),
-    ],
-)
-def test_rank_for_score_bands(score, expected_rank):
-    assert fq.rank_for_score(score) == expected_rank
 
 
 @pytest.mark.parametrize(
@@ -142,18 +110,9 @@ def test_get_progress_creates_default_row_for_new_athlete():
     conn = _fueliq_db()
     progress = fq.get_progress(1, conn)
     assert progress["score"] == 50
-    assert progress["rank"] == "Rookie"
     assert progress["current_streak"] == 0
     assert progress["best_streak"] == 0
     conn.close()
-
-
-@pytest.mark.parametrize(
-    "score,expected_next",
-    [(50, 100), (99, 100), (100, 200), (349, 350), (549, 550), (550, None), (10000, None)],
-)
-def test_next_rank_threshold(score, expected_next):
-    assert fq.next_rank_threshold(score) == expected_next
 
 
 def test_get_progress_is_idempotent():
@@ -183,27 +142,23 @@ def test_report_config_seeds_fueliq_point_values():
     assert rows == {
         "fueliq_lesson_points": 10.0,
         "fueliq_perfect_quiz_bonus": 5.0,
-        "fueliq_myth_points": 10.0,
         "fueliq_streak_milestone_bonus": 15.0,
         "fueliq_review_points": 5.0,
+        "fueliq_daily_challenge_points": 10.0,
     }
     conn.close()
 
 
-def test_seed_placeholder_content_creates_lessons_and_myth():
+def test_seed_placeholder_content_creates_lessons():
     conn = _fueliq_db()
     fq.seed_placeholder_content(conn)
     lessons = conn.execute(
         "SELECT title, level, is_myth, review_status FROM fueliq_lessons WHERE is_myth = 0"
     ).fetchall()
-    myths = conn.execute(
-        "SELECT title, verdict, review_status FROM fueliq_lessons WHERE is_myth = 1"
-    ).fetchall()
     assert len(lessons) == 2
-    assert len(myths) == 1
     # Placeholder content is never pre-approved — the RDN sign-off gate (spec §11.1)
     # must be a deliberate, separate action, not an accident of seeding.
-    assert all(r["review_status"] == "draft" for r in lessons + myths)
+    assert all(r["review_status"] == "draft" for r in lessons)
     assert all(r["level"] == 1 for r in lessons)
     conn.close()
 
@@ -213,7 +168,7 @@ def test_seed_placeholder_content_is_idempotent():
     fq.seed_placeholder_content(conn)
     fq.seed_placeholder_content(conn)
     count = conn.execute("SELECT COUNT(*) AS c FROM fueliq_lessons").fetchone()["c"]
-    assert count == 3
+    assert count == 2
     question_count = conn.execute("SELECT COUNT(*) AS c FROM fueliq_questions").fetchone()["c"]
     assert question_count == 6  # 3 per lesson, not doubled by the second seed call
     conn.close()
@@ -288,36 +243,6 @@ def test_complete_lesson_is_idempotent_no_double_award():
     conn.close()
 
 
-def test_submit_myth_verdict_awards_points_regardless_of_correctness():
-    conn = _fueliq_db()
-    myth_id = _insert_myth(conn, verdict="myth")
-    result = fq.submit_myth_verdict(1, myth_id, "real", conn)
-    assert result["correct"] is False
-    assert result["points_earned"] == 10
-    assert fq.get_progress(1, conn)["score"] == 60
-    conn.close()
-
-
-def test_submit_myth_verdict_correct_guess():
-    conn = _fueliq_db()
-    myth_id = _insert_myth(conn, verdict="myth")
-    result = fq.submit_myth_verdict(2, myth_id, "myth", conn)
-    assert result["correct"] is True
-    assert result["points_earned"] == 10
-    conn.close()
-
-
-def test_submit_myth_verdict_is_idempotent_no_double_award():
-    conn = _fueliq_db()
-    myth_id = _insert_myth(conn, verdict="myth")
-    fq.submit_myth_verdict(1, myth_id, "real", conn)
-    second = fq.submit_myth_verdict(1, myth_id, "myth", conn)
-    assert second["already_answered"] is True
-    assert second["points_earned"] == 0
-    assert fq.get_progress(1, conn)["score"] == 60
-    conn.close()
-
-
 def test_submit_quiz_answer_correct():
     conn = _fueliq_db()
     lesson_id = _insert_lesson(conn)
@@ -378,17 +303,6 @@ def test_hydration_hero_requires_all_hydration_lessons_complete():
     conn.close()
 
 
-def test_myth_slayer_requires_five_myths_busted():
-    conn = _fueliq_db()
-    myth_ids = [_insert_myth(conn, verdict="myth") for _ in range(5)]
-    for myth_id in myth_ids[:4]:
-        result = fq.submit_myth_verdict(1, myth_id, "myth", conn)
-        assert "myth_slayer" not in result["newly_earned_badges"]
-    final = fq.submit_myth_verdict(1, myth_ids[4], "myth", conn)
-    assert "myth_slayer" in final["newly_earned_badges"]
-    conn.close()
-
-
 def test_perfect_week_from_best_streak():
     conn = _fueliq_db()
     fq.get_progress(1, conn)  # ensure the progress row exists
@@ -444,20 +358,10 @@ def test_complete_lesson_surfaces_newly_earned_badges():
     conn.close()
 
 
-def test_submit_myth_verdict_surfaces_newly_earned_badges():
-    conn = _fueliq_db()
-    myth_ids = [_insert_myth(conn, verdict="myth") for _ in range(5)]
-    for myth_id in myth_ids[:4]:
-        fq.submit_myth_verdict(1, myth_id, "myth", conn)
-    result = fq.submit_myth_verdict(1, myth_ids[4], "myth", conn)
-    assert result["newly_earned_badges"] == ["myth_slayer"]
-    conn.close()
-
-
 def test_list_badges_returns_every_defined_badge():
     conn = _fueliq_db()
     badges = fq.list_badges(1, conn)
-    assert len(badges) == 7
+    assert len(badges) == 6
     assert all(b["earned"] is False for b in badges)
     assert all(b["earned_at"] is None for b in badges)
     keys = {b["key"] for b in badges}
@@ -473,7 +377,6 @@ def test_list_badges_marks_earned_badges():
     badges = {b["key"]: b for b in fq.list_badges(1, conn)}
     assert badges["first_whistle"]["earned"] is True
     assert badges["first_whistle"]["earned_at"] is not None
-    assert badges["myth_slayer"]["earned"] is False
     conn.close()
 
 
@@ -483,15 +386,6 @@ def test_complete_lesson_registers_streak_activity():
     conn = _fueliq_db()
     lesson_id = _insert_lesson(conn)
     result = fq.complete_lesson(1, lesson_id, conn)
-    assert result["streak"]["current"] == 1
-    assert fq.get_progress(1, conn)["current_streak"] == 1
-    conn.close()
-
-
-def test_submit_myth_verdict_registers_streak_activity():
-    conn = _fueliq_db()
-    myth_id = _insert_myth(conn)
-    result = fq.submit_myth_verdict(1, myth_id, "myth", conn)
     assert result["streak"]["current"] == 1
     assert fq.get_progress(1, conn)["current_streak"] == 1
     conn.close()

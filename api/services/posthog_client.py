@@ -32,8 +32,10 @@ CANONICAL_EVENTS = [
     "event_added_manual", "problem_reported", "feature_idea_submitted", "app_opened",
     # Fuel IQ (spec §13)
     "fuel_iq_viewed", "fuel_iq_lesson_start", "fuel_iq_lesson_complete",
-    "fuel_iq_quiz_answer", "fuel_iq_perfect_quiz", "fuel_iq_myth_verdict",
+    "fuel_iq_quiz_answer", "fuel_iq_perfect_quiz",
     "fuel_iq_streak_day", "fuel_iq_streak_milestone", "fuel_iq_badge_earned",
+    # Fuel IQ Daily Challenge — separate feature, replaced fuel_iq_myth_verdict
+    "fuel_iq_daily_challenge_verdict",
 ]
 
 # Events shown in the live activity feed: the "who did what" actions only.

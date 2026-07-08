@@ -39,6 +39,8 @@ def run_all():
         _add_last_login_to_parents(conn)
         _add_blueprint_viewed_to_parents(conn)
         _create_fueliq_tables(conn)
+        _create_fueliq_daily_challenge_tables(conn)
+        _add_push_sent_to_daily_challenges(conn)
         conn.commit()
     finally:
         conn.close()
@@ -77,9 +79,9 @@ _DEFAULT_CONFIG = [
     ("streak_min_confirms_per_day", 1.0, "Min confirmations in a day to count toward streak"),
     ("fueliq_lesson_points",         10.0, "Fuel IQ: points for completing a lesson"),
     ("fueliq_perfect_quiz_bonus",     5.0, "Fuel IQ: bonus for a 3/3 first-try quiz"),
-    ("fueliq_myth_points",           10.0, "Fuel IQ: points for completing a Myth Buster"),
     ("fueliq_streak_milestone_bonus", 15.0, "Fuel IQ: bonus for a 7-day streak milestone"),
     ("fueliq_review_points",          5.0, "Fuel IQ: points for a Refuel Your Brain review session"),
+    ("fueliq_daily_challenge_points", 10.0, "Fuel IQ: points for completing the Daily Challenge"),
 ]
 
 
@@ -642,16 +644,6 @@ def _create_fueliq_tables(conn):
         )
     """)
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS fueliq_myth_verdicts (
-            athlete_id  INTEGER NOT NULL REFERENCES athletes(id),
-            lesson_id   INTEGER NOT NULL REFERENCES fueliq_lessons(id),
-            guess       TEXT NOT NULL,
-            correct     INTEGER NOT NULL,
-            answered_at TEXT NOT NULL DEFAULT (datetime('now')),
-            UNIQUE (athlete_id, lesson_id)
-        )
-    """)
-    conn.execute("""
         CREATE TABLE IF NOT EXISTS fueliq_badges_earned (
             athlete_id  INTEGER NOT NULL REFERENCES athletes(id),
             badge_key   TEXT NOT NULL,
@@ -659,6 +651,58 @@ def _create_fueliq_tables(conn):
             UNIQUE (athlete_id, badge_key)
         )
     """)
+
+
+def _create_fueliq_daily_challenge_tables(conn):
+    """Daily Challenge: one global myth-style challenge published per calendar
+    day (PST — see fueliq_daily_challenge_service._today_pst), same for every
+    athlete (no per-athlete personalization/rotation). Deliberately a fully
+    separate feature from the old Myth Buster pool it replaces — its own
+    content table, its own answers table, and its own streak (NOT folded into
+    fueliq_athlete_progress/fueliq_streak.py, which track lesson activity)."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_daily_challenges (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            challenge_date  TEXT NOT NULL UNIQUE,
+            title           TEXT NOT NULL,
+            hook            TEXT NOT NULL,
+            verdict         TEXT NOT NULL,
+            science_text    TEXT NOT NULL,
+            source_citation TEXT,
+            points          INTEGER NOT NULL DEFAULT 10,
+            created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_daily_challenge_answers (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id     INTEGER NOT NULL REFERENCES athletes(id),
+            challenge_date TEXT NOT NULL,
+            guess          TEXT NOT NULL,
+            correct        INTEGER NOT NULL,
+            answered_at    TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, challenge_date)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_daily_challenge_streak (
+            athlete_id          INTEGER PRIMARY KEY REFERENCES athletes(id),
+            current_streak      INTEGER NOT NULL DEFAULT 0,
+            best_streak         INTEGER NOT NULL DEFAULT 0,
+            last_completed_date TEXT,
+            updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+
+
+def _add_push_sent_to_daily_challenges(conn):
+    """Dedup guard for the daily 5pm-PST push job — one column on the
+    challenge row itself (not a separate log table) since there's exactly
+    one challenge per day, so "has today's push gone out" is naturally a
+    property of that row. NULL = not sent yet."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(fueliq_daily_challenges)").fetchall()]
+    if "push_sent_at" not in cols:
+        conn.execute("ALTER TABLE fueliq_daily_challenges ADD COLUMN push_sent_at TEXT")
 
 
 def _migrate_athlete_logins_unique():

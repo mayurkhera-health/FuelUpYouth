@@ -2,15 +2,19 @@
 Fuel IQ Streak — a genuinely separate streak from api/services/streak_service.py.
 
 That module tracks "did you log a fuel window" (meal confirmations). This one
-tracks "did you do something in Fuel IQ" — a lesson completion or a myth
-verdict counts as a qualifying day (spec §5.3: "any Fuel IQ activity"). The
-two are intentionally not conflated: a meal-logging streak and a learning
-streak measure different behaviors.
+tracks "did you do something in Fuel IQ" — a lesson completion counts as a
+qualifying day. The two are intentionally not conflated: a meal-logging
+streak and a learning streak measure different behaviors.
 
-current/best streak are always computed live from fueliq_lesson_completions ∪
-fueliq_myth_verdicts — never cached — mirroring streak_service's own
-never-drift guarantee. fueliq_athlete_progress stores only the non-derivable
-state (freeze tokens, last-celebrated milestone), same split as streak_state.
+(The Daily Challenge feature has its own separate streak entirely — see
+api/services/fueliq_daily_challenge_service.py — deliberately not folded into
+this one, since "did you learn a lesson" and "did you do today's daily
+challenge" are different habits worth tracking independently.)
+
+current/best streak are always computed live from fueliq_lesson_completions —
+never cached — mirroring streak_service's own never-drift guarantee.
+fueliq_athlete_progress stores only the non-derivable state (freeze tokens,
+last-celebrated milestone), same split as streak_state.
 """
 
 from datetime import date, timedelta
@@ -30,16 +34,12 @@ def _as_date(value) -> date:
 
 
 def _qualifying_dates(athlete_id: int, conn) -> set:
-    """Set of YYYY-MM-DD strings the athlete did *something* in Fuel IQ on."""
+    """Set of YYYY-MM-DD strings the athlete completed a lesson on."""
     lessons = conn.execute(
         "SELECT DISTINCT substr(completed_at, 1, 10) AS d FROM fueliq_lesson_completions WHERE athlete_id = ?",
         (athlete_id,),
     ).fetchall()
-    myths = conn.execute(
-        "SELECT DISTINCT substr(answered_at, 1, 10) AS d FROM fueliq_myth_verdicts WHERE athlete_id = ?",
-        (athlete_id,),
-    ).fetchall()
-    return {r["d"] for r in lessons} | {r["d"] for r in myths}
+    return {r["d"] for r in lessons}
 
 
 def _best_streak(qual: set) -> int:

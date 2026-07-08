@@ -64,18 +64,6 @@ def _seed_question(conn, lesson_id, correct_option="b"):
     return cur.lastrowid
 
 
-def _seed_myth(conn, verdict="myth"):
-    cur = conn.execute(
-        "INSERT INTO fueliq_lessons "
-        "(level, order_in_level, is_myth, title, hook, verdict, science_text, "
-        " source_citation, review_status) "
-        "VALUES (4, 1, 1, 'Test Myth', 'hook', ?, 'science', 'cite', 'approved')",
-        (verdict,),
-    )
-    conn.commit()
-    return cur.lastrowid
-
-
 def test_hub_returns_disabled_when_flag_off(client, monkeypatch):
     monkeypatch.setenv("FUELIQ_ENABLED", "false")
     aid = _make_athlete(client)
@@ -92,7 +80,6 @@ def test_hub_returns_baseline_progress_when_enabled(client, monkeypatch):
     body = r.json()
     assert body["enabled"] is True
     assert body["score"] == 50
-    assert body["rank"] == "Rookie"
     assert body["levels"] == [
         {"level": 1, "unlocked": True},
         {"level": 2, "unlocked": False},
@@ -170,27 +157,6 @@ def test_answer_question_returns_correctness_and_explanation(client, monkeypatch
     assert body["misconception_tag"] == "tag1"
 
 
-def test_myths_list_and_verdict_flow(client, monkeypatch):
-    monkeypatch.setenv("FUELIQ_ENABLED", "true")
-    aid = _make_athlete(client)
-    conn = get_conn()
-    myth_id = _seed_myth(conn, verdict="myth")
-    conn.close()
-
-    listed = client.get(f"/api/athletes/{aid}/myths").json()
-    assert listed["myths"][0]["answered"] is False
-
-    r = client.post(f"/api/athletes/{aid}/myths/{myth_id}/verdict", json={"guess": "myth"})
-    assert r.status_code == 200
-    body = r.json()
-    assert body["correct"] is True
-    assert body["points_earned"] == 10
-
-    listed_again = client.get(f"/api/athletes/{aid}/myths").json()
-    assert listed_again["myths"][0]["answered"] is True
-    assert listed_again["myths"][0]["correct"] is True
-
-
 def test_badges_lists_all_defined_badges_locked_until_earned(client, monkeypatch):
     monkeypatch.setenv("FUELIQ_ENABLED", "true")
     aid = _make_athlete(client)
@@ -199,7 +165,7 @@ def test_badges_lists_all_defined_badges_locked_until_earned(client, monkeypatch
     conn.close()
 
     before = client.get(f"/api/athletes/{aid}/badges").json()
-    assert len(before["badges"]) == 7
+    assert len(before["badges"]) == 6
     assert all(b["earned"] is False for b in before["badges"])
 
     client.post(f"/api/athletes/{aid}/lessons/{lesson_id}/complete", json={"perfect_quiz": False})

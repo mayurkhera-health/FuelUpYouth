@@ -6,19 +6,22 @@ GET  /api/{athlete_id}/fueliq/lessons?level=N
 GET  /api/{athlete_id}/fueliq/lessons/{lesson_id}
 POST /api/{athlete_id}/fueliq/lessons/{lesson_id}/complete
 POST /api/{athlete_id}/fueliq/questions/{question_id}/answer
-GET  /api/{athlete_id}/fueliq/myths
-POST /api/{athlete_id}/fueliq/myths/{lesson_id}/verdict
 GET  /api/{athlete_id}/fueliq/badges
 
 Feature-flagged (FUELIQ_ENABLED) — ships dark, mirroring plate.py/fueling_targets.py.
 When off, every endpoint returns a minimal `{"enabled": False}`-shaped payload
 instead of doing DB work, same convention as the Performance Plate route.
+
+(Myth Buster — a separate list of always-available myth lessons a lesson
+picker could route to — was removed here; replaced by the Daily Challenge
+feature, a single global challenge per day. See
+api/routes/fueliq_daily_challenge.py.)
 """
 
 from fastapi import APIRouter, HTTPException, Query
 
 from api.database import get_conn
-from api.models import FuelIQLessonComplete, FuelIQMythVerdict, FuelIQQuizAnswer
+from api.models import FuelIQLessonComplete, FuelIQQuizAnswer
 from api.services import fueliq_service as fq
 
 router = APIRouter()
@@ -151,53 +154,6 @@ def answer_question(athlete_id: int, question_id: int, body: FuelIQQuizAnswer):
         if not exists:
             raise HTTPException(404, f"Question {question_id} not found")
         result = fq.submit_quiz_answer(athlete_id, question_id, body.selected_option, conn)
-    finally:
-        conn.close()
-
-    return {"enabled": True, **result}
-
-
-@router.get("/{athlete_id}/myths")
-def list_myths(athlete_id: int):
-    if not fq.fueliq_enabled():
-        return {"enabled": False}
-
-    conn = get_conn()
-    try:
-        rows = conn.execute(
-            "SELECT id, title, hook FROM fueliq_lessons "
-            "WHERE is_myth = 1 AND review_status = 'approved' ORDER BY id"
-        ).fetchall()
-        verdicts = {
-            r["lesson_id"]: {"guess": r["guess"], "correct": bool(r["correct"])}
-            for r in conn.execute(
-                "SELECT lesson_id, guess, correct FROM fueliq_myth_verdicts WHERE athlete_id = ?",
-                (athlete_id,),
-            ).fetchall()
-        }
-    finally:
-        conn.close()
-
-    myths = [
-        {**dict(r), "answered": r["id"] in verdicts, **verdicts.get(r["id"], {})}
-        for r in rows
-    ]
-    return {"enabled": True, "myths": myths}
-
-
-@router.post("/{athlete_id}/myths/{lesson_id}/verdict")
-def submit_myth_verdict(athlete_id: int, lesson_id: int, body: FuelIQMythVerdict):
-    if not fq.fueliq_enabled():
-        return {"enabled": False}
-
-    conn = get_conn()
-    try:
-        exists = conn.execute(
-            "SELECT 1 FROM fueliq_lessons WHERE id = ? AND is_myth = 1", (lesson_id,)
-        ).fetchone()
-        if not exists:
-            raise HTTPException(404, f"Myth {lesson_id} not found")
-        result = fq.submit_myth_verdict(athlete_id, lesson_id, body.guess, conn)
     finally:
         conn.close()
 
