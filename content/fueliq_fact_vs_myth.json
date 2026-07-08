@@ -1,0 +1,202 @@
+[
+  {
+    "id": "hyd-f01",
+    "topic": "Hydration",
+    "statement": "Hydration only matters on workout days.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. Hydration is an every-single-day habit. Focus on fluids all day, not just around workouts \u2014 that's how you show up ready.",
+    "fun_fact": "Carrying a water bottle everywhere is one of the simplest habits shared by top athletes."
+  },
+  {
+    "id": "hyd-f02",
+    "topic": "Hydration",
+    "statement": "Losing even a little sweat weight can hurt your performance.",
+    "verdict": "FACT",
+    "explanation": "FACT. Losing just a small percentage of your body weight in sweat measurably slows you down. Staying topped up keeps your speed and endurance where they belong.",
+    "fun_fact": "For a 200-pound athlete, that tipping point is only about 4 pounds of sweat."
+  },
+  {
+    "id": "hyd-f03",
+    "topic": "Hydration",
+    "statement": "Waiting until you're thirsty is a solid hydration strategy.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. Thirst shows up late to the game. By the time you feel it, you're already behind. Hydrate early and often \u2014 before, during, and after exercise.",
+    "fun_fact": "Hard exercise can actually blunt your thirst signal \u2014 another reason to drink on a schedule."
+  },
+  {
+    "id": "hyd-f04",
+    "topic": "Hydration",
+    "statement": "You should rehydrate within a couple hours after exercise.",
+    "verdict": "FACT",
+    "explanation": "FACT. The clock starts when training ends. Replacing your fluid losses within about 2 hours sets up your recovery and tomorrow's performance.",
+    "fun_fact": "Rehydration is the fastest piece of recovery you can control."
+  },
+  {
+    "id": "swt-f01",
+    "topic": "Sweat & Electrolytes",
+    "statement": "You need a sports drink for every workout.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. For sessions under an hour, water does the job perfectly. Sports drinks earn their place during long, intense, sweaty training.",
+    "fun_fact": "Electrolytes come in food too \u2014 you don't always need a bottle or packet."
+  },
+  {
+    "id": "swt-f02",
+    "topic": "Sweat & Electrolytes",
+    "statement": "Electrolytes should be part of your whole day, not just your workout.",
+    "verdict": "FACT",
+    "explanation": "FACT. Water and electrolytes consumed throughout the day keep your fluid and electrolyte levels optimal \u2014 so you start every session ready to go.",
+    "fun_fact": "A balanced diet covers most electrolyte needs without any special products."
+  },
+  {
+    "id": "swt-f03",
+    "topic": "Sweat & Electrolytes",
+    "statement": "Sweat is just water leaving your body.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. Sweat carries sodium, chloride, potassium, magnesium, and calcium out with it. That's why hard-sweating athletes replace more than just water.",
+    "fun_fact": "A runner sweating hard for an hour can lose up to a teaspoon of salt."
+  },
+  {
+    "id": "plate-f01",
+    "topic": "Performance Plate",
+    "statement": "Your meals are part of your training, just like reps in the gym.",
+    "verdict": "FACT",
+    "explanation": "FACT. Every plate drives your energy, hydration, and recovery. Fuel with purpose and every practice gets better.",
+    "fun_fact": "Your 'performance plates' directly affect your energy levels, hydration status, and recovery potential."
+  },
+  {
+    "id": "plate-f02",
+    "topic": "Performance Plate",
+    "statement": "Training hard can make up for poor fueling.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. You can't out-train a bad diet. Without proper fueling, your full athletic potential stays locked away \u2014 no matter how many hours you grind.",
+    "fun_fact": "Quality gym hours PLUS quality fueling is the formula dietitians give college athletes."
+  },
+  {
+    "id": "plate-f03",
+    "topic": "Performance Plate",
+    "statement": "Your plate should look the same in-season and offseason.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. Your needs change with your training. In-season and hard days call for more energy foods; offseason and light days shift toward more fruits, veggies, and protein.",
+    "fun_fact": "In the offseason, grains may decrease and lean protein may increase to support body composition goals."
+  },
+  {
+    "id": "plate-f04",
+    "topic": "Performance Plate",
+    "statement": "Fruits and vegetables are your plate's antioxidant defense squad.",
+    "verdict": "FACT",
+    "explanation": "FACT. Berries, spinach, broccoli, carrots, and friends deliver antioxidants that power recovery and keep your immune system game-ready.",
+    "fun_fact": "Colorful plates win \u2014 each color brings different protective nutrients."
+  },
+  {
+    "id": "freq-f01",
+    "topic": "Eating Frequency",
+    "statement": "Skipping breakfast saves time and doesn't affect performance.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. Skipping breakfast leaves you tired and sluggish, then ravenous at night \u2014 which wrecks your sleep and tomorrow's appetite. Break the cycle with morning fuel.",
+    "fun_fact": "Even a quick banana with peanut butter counts as breaking the fast like a champion."
+  },
+  {
+    "id": "freq-f02",
+    "topic": "Eating Frequency",
+    "statement": "A big meal right before bed sets you up for a great morning.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. Late-night feasts make it harder to fall asleep and kill your morning appetite. Spread your fuel through the day and both your sleep and breakfast improve.",
+    "fun_fact": "Consistent daytime eating naturally fixes the late-night hunger problem."
+  },
+  {
+    "id": "freq-f03",
+    "topic": "Eating Frequency",
+    "statement": "A balanced meal combines lean protein, carbs, and fruits or vegetables.",
+    "verdict": "FACT",
+    "explanation": "FACT. That's the winning formula: turkey sub with pretzels and fruit, pasta with meat sauce and salad, or chicken stir-fry with rice and veggies. Balanced and built to perform.",
+    "fun_fact": "Fruits and veggies bring micronutrients that round out every meal."
+  },
+  {
+    "id": "freq-f04",
+    "topic": "Eating Frequency",
+    "statement": "Flexibility matters \u2014 some days won't go as planned, and that's okay.",
+    "verdict": "FACT",
+    "explanation": "FACT. Some days are busier than others. Stay flexible, focus on meeting your overall needs, and get back on your routine at the next meal. Progress beats perfection.",
+    "fun_fact": "Sports dietitians build flexibility into every athlete's plan on purpose."
+  },
+  {
+    "id": "shop-f01",
+    "topic": "Smart Shopping & Prep",
+    "statement": "One hour a week of shopping and food prep can upgrade your entire week of fueling.",
+    "verdict": "FACT",
+    "explanation": "FACT. Fail to plan, plan to fail. One planned hour of shopping and prep positively impacts every food choice you make all week \u2014 that's a competitive advantage.",
+    "fun_fact": "How athletes manage their time and feed their body can make or break performance gains."
+  },
+  {
+    "id": "shop-f02",
+    "topic": "Smart Shopping & Prep",
+    "statement": "Frozen vegetables are less nutritious than fresh ones.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. Frozen veggies are just as nutrient-packed as fresh, they're fast and easy, and they never go bad in the back of the fridge. Stock up proudly.",
+    "fun_fact": "Frozen fruit is a smoothie game-changer \u2014 no chopping, no waste."
+  },
+  {
+    "id": "shop-f03",
+    "topic": "Smart Shopping & Prep",
+    "statement": "Shopping while hungry is a great way to discover new foods.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. Hungry shopping = splurge shopping. Eat first, bring your list, and stick to it. Discipline at the store shows up on your plate.",
+    "fun_fact": "Store brands match name-brand quality at a lower price \u2014 smart athletes save."
+  },
+  {
+    "id": "shop-f04",
+    "topic": "Smart Shopping & Prep",
+    "statement": "If it's on sale, it belongs in your cart.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. A deal on food you don't need is still money and nutrition lost. Don't rationalize the sale \u2014 run your list like a game plan.",
+    "fun_fact": "BOGO deals are only wins when they're on foods already in your plan."
+  },
+  {
+    "id": "shop-f05",
+    "topic": "Smart Shopping & Prep",
+    "statement": "Convenience foods like pre-cut veggies and rotisserie chicken can be worth the extra cost.",
+    "verdict": "FACT",
+    "explanation": "FACT. Weigh the cost of convenience: if pre-cut veggies, hard-boiled eggs, or a rotisserie chicken get healthy food into you faster, that's money well spent.",
+    "fun_fact": "Most frozen dinners are the exception \u2014 low in nutrients and overpriced. Frozen stir-fry kits are the better play."
+  },
+  {
+    "id": "time-f01",
+    "topic": "Nutrient Timing",
+    "statement": "Before training you fuel for the work you EXPECT to do; after, you fuel for the work you DID do.",
+    "verdict": "FACT",
+    "explanation": "FACT. Pre-fuel matches the session ahead \u2014 easy day, balanced snack; hard day, carb-focused. Afterward, your recovery plate matches what you actually did. That's fueling with intention.",
+    "fun_fact": "This expect/did framework comes straight from sports dietitians who fuel elite athletes."
+  },
+  {
+    "id": "time-f02",
+    "topic": "Nutrient Timing",
+    "statement": "Training on empty makes you tougher and fitter.",
+    "verdict": "MYTH",
+    "explanation": "MYTH. Skipping fuel before high-intensity training blunts your aerobic gains over time and risks low energy availability. Always pre-fuel your hard sessions \u2014 that's how you actually get faster.",
+    "fun_fact": "Chronic under-fueling has a name \u2014 RED-S \u2014 and it can sideline even dedicated athletes."
+  },
+  {
+    "id": "time-f03",
+    "topic": "Nutrient Timing",
+    "statement": "WHEN you eat matters, not just WHAT you eat.",
+    "verdict": "FACT",
+    "explanation": "FACT. Within-day energy balance \u2014 matching your intake to your training through the day \u2014 is a key performance factor. Same food, better timing, better results.",
+    "fun_fact": "Your body switches between carbs and fat for fuel depending on training intensity and what you've eaten."
+  },
+  {
+    "id": "time-f04",
+    "topic": "Nutrient Timing",
+    "statement": "Rest days deserve fuel too.",
+    "verdict": "FACT",
+    "explanation": "FACT. Energy needs spread across your whole week \u2014 including rest days \u2014 to support recovery and keep your energy availability strong. Rest days are when you rebuild.",
+    "fun_fact": "During heavy training weeks, dietitians plan fuel across the entire week, not just workout days."
+  },
+  {
+    "id": "time-f05",
+    "topic": "Nutrient Timing",
+    "statement": "The goal of fueling during long training is keeping your blood sugar stable.",
+    "verdict": "FACT",
+    "explanation": "FACT. Steady blood glucose = steady energy = steady performance. That's why endurance athletes fuel by the hour during long sessions.",
+    "fun_fact": "A sports drink during a 60-75 minute session is often all it takes to hold steady."
+  }
+]

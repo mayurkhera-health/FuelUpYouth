@@ -149,53 +149,89 @@ def test_report_config_seeds_fueliq_point_values():
     conn.close()
 
 
-def test_seed_placeholder_content_creates_lessons():
+def _lesson_item(title, level=1, order_in_level=1, category="hydration", num_questions=3):
+    return {
+        "level": level,
+        "order_in_level": order_in_level,
+        "title": title,
+        "hook": f"{title} hook",
+        "fact_body": f"{title} fact body",
+        "takeaway": f"{title} takeaway",
+        "category": category,
+        "source_citation": "Test Source Flyer",
+        "questions": [
+            {
+                "question_text": f"{title} question {i}",
+                "option_a": "A",
+                "option_b": "B",
+                "option_c": "C",
+                "correct_option": "a",
+                "explanation": f"{title} explanation {i}",
+            }
+            for i in range(1, num_questions + 1)
+        ],
+    }
+
+
+def test_import_lessons_creates_lessons_and_questions():
     conn = _fueliq_db()
-    fq.seed_placeholder_content(conn)
+    inserted = fq.import_lessons(conn, [_lesson_item("Hydration"), _lesson_item("Sweat", order_in_level=2)])
+    assert [r["title"] for r in inserted] == ["Hydration", "Sweat"]
     lessons = conn.execute(
         "SELECT title, level, is_myth, review_status FROM fueliq_lessons WHERE is_myth = 0"
     ).fetchall()
     assert len(lessons) == 2
-    # Placeholder content is never pre-approved — the RDN sign-off gate (spec §11.1)
-    # must be a deliberate, separate action, not an accident of seeding.
+    # Imported content is never pre-approved by default — the RDN sign-off gate
+    # (spec §11.1) must be a deliberate, explicit argument, not an accident of import.
     assert all(r["review_status"] == "draft" for r in lessons)
     assert all(r["level"] == 1 for r in lessons)
     conn.close()
 
 
-def test_seed_placeholder_content_is_idempotent():
+def test_import_lessons_is_idempotent_by_title():
     conn = _fueliq_db()
-    fq.seed_placeholder_content(conn)
-    fq.seed_placeholder_content(conn)
+    fq.import_lessons(conn, [_lesson_item("Hydration")])
+    second = fq.import_lessons(conn, [_lesson_item("Hydration"), _lesson_item("Sweat", order_in_level=2)])
+    assert [r["title"] for r in second] == ["Sweat"]
     count = conn.execute("SELECT COUNT(*) AS c FROM fueliq_lessons").fetchone()["c"]
     assert count == 2
-    question_count = conn.execute("SELECT COUNT(*) AS c FROM fueliq_questions").fetchone()["c"]
-    assert question_count == 6  # 3 per lesson, not doubled by the second seed call
     conn.close()
 
 
-def test_seed_placeholder_content_gives_each_lesson_three_questions():
+def test_import_lessons_stamps_approved_review_status_when_requested():
     conn = _fueliq_db()
-    fq.seed_placeholder_content(conn)
+    fq.import_lessons(conn, [_lesson_item("Hydration")], review_status="approved", reviewed_by="RDN Jane")
+    row = conn.execute(
+        "SELECT review_status, reviewed_by, review_date FROM fueliq_lessons WHERE title = 'Hydration'"
+    ).fetchone()
+    assert row["review_status"] == "approved"
+    assert row["reviewed_by"] == "RDN Jane"
+    assert row["review_date"] is not None
+    conn.close()
+
+
+def test_import_lessons_gives_each_lesson_its_own_questions():
+    conn = _fueliq_db()
+    fq.import_lessons(conn, [_lesson_item("Hydration", num_questions=3), _lesson_item("Sweat", order_in_level=2, num_questions=2)])
     lessons = conn.execute(
-        "SELECT id, order_in_level FROM fueliq_lessons WHERE is_myth = 0 ORDER BY order_in_level"
+        "SELECT id, title FROM fueliq_lessons WHERE is_myth = 0 ORDER BY order_in_level"
     ).fetchall()
-    # Each of the 2 lessons gets its own order_in_level (1, 2) — not both hardcoded to 1.
-    assert [r["order_in_level"] for r in lessons] == [1, 2]
+    counts = {}
     for lesson in lessons:
         questions = conn.execute(
             "SELECT correct_option FROM fueliq_questions WHERE lesson_id = ?", (lesson["id"],)
         ).fetchall()
-        assert len(questions) == 3
+        counts[lesson["title"]] = len(questions)
         assert all(q["correct_option"] in ("a", "b", "c") for q in questions)
+    assert counts == {"Hydration": 3, "Sweat": 2}
     conn.close()
 
 
-def test_seed_placeholder_content_questions_are_answerable_end_to_end():
-    """The seeded quiz must actually work through submit_quiz_answer /
+def test_import_lessons_questions_are_answerable_end_to_end():
+    """The imported quiz must actually work through submit_quiz_answer /
     complete_lesson — not just exist as rows."""
     conn = _fueliq_db()
-    fq.seed_placeholder_content(conn)
+    fq.import_lessons(conn, [_lesson_item("Hydration", num_questions=3)])
     lesson = conn.execute(
         "SELECT id FROM fueliq_lessons WHERE is_myth = 0 AND order_in_level = 1"
     ).fetchone()
