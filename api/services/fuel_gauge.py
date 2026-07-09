@@ -157,52 +157,60 @@ def compute_event_day_targets(
 # ── per-window contribution split ───────────────────────────────────────────
 # ── per-window macro seed resolution (Phase 5 — Purvi per-slot ratios) ────────
 def _slot_for_window(window_key: str) -> Optional[str]:
-    """Map an engine window_key (== split slot_name) to a Purvi macro slot.
-    Suffix-tolerant (pre_event_meal, pre_event_meal_1, …). Tournament/merge windows
-    (between_games_*, refuel_ready_*) return None — OUT OF SCOPE, they keep the
-    category_key distribution (no per-slot reseed).
+    """Map a window slot_name to the matching key in SLOT_MACRO_RATIOS.
 
-    The day-layout engine (DAY_LAYOUT_V2) uses compact slot names that ARE the
-    split key directly (fuel_before, top_up, recharge, rebuild, everyday_meal).
-    These are matched first so the prefix checks below still handle the legacy
-    window_engine_v2 suffixed variants.
+    Returns the key exactly as it appears in SLOT_MACRO_RATIOS, or None for
+    windows not covered by the ratio map (fuel_before, proper_breakfast_after,
+    quick_morning_snack, between_games_*, everyday_meal, etc.) — those fall
+    back to the category_key CONTRIBUTION_WEIGHTS distribution.
     """
     wk = window_key or ""
-    # Day-layout compact names — exact match (no suffix variants in this engine).
-    if wk == "fuel_before":                      return "fuel_before"
-    if wk == "top_up":                           return "top_up"
-    if wk == "recharge":                         return "recharge"
-    if wk == "rebuild":                          return "rebuild"
-    # Legacy window_engine_v2 prefix variants (suffix-tolerant).
-    if wk.startswith("pre_event_meal"):         return "fuel_before"
-    if wk.startswith("top_up_snack"):           return "top_up"
-    if wk.startswith("fuel_after_primary"):     return "recharge"
-    if wk.startswith("fuel_after_second"):      return "rebuild"
-    if wk.startswith("proper_breakfast_after"): return "proper_breakfast_after"
-    if wk.startswith("quick_morning_snack"):    return "quick_morning_snack"
-    if wk.startswith("everyday_"):              return "everyday"
+    # Everyday meals — each slot has its own ratio.
+    if wk == "everyday_breakfast": return "everyday_breakfast"
+    if wk == "everyday_snack":     return "everyday_snack"
+    if wk == "everyday_lunch":     return "everyday_lunch"
+    if wk == "everyday_dinner":    return "everyday_dinner"
+    # Training fuel slots.
+    if wk == "top_up":    return "top_up"
+    if wk == "recharge":  return "recharge"
+    if wk == "rebuild":   return "rebuild"
+    # Legacy window_engine_v2 suffix variants.
+    if wk.startswith("top_up_snack"):       return "top_up"
+    if wk.startswith("fuel_after_primary"): return "recharge"
+    if wk.startswith("fuel_after_second"):  return "rebuild"
+    # Not in ratio map: fuel_before, proper_breakfast_after, quick_morning_snack,
+    # everyday_meal (day_layout combined card), between_games_*, refuel_ready_*, etc.
     return None
 
 
-def _seed_ratio(w: dict, n: str, n_everyday: int) -> float:
+def _seed_ratio(w: dict, n: str) -> float:
     """Per-window seed weight for nutrient ``n`` (used by the normalization below).
 
-    • carbs_g / protein_g → Purvi per-slot ratio. The "everyday" TOTAL is divided
-      across the everyday windows actually present that day (not applied per-window).
-      Tournament windows (slot None) fall back to the category_key weight — they are
-      out of scope for the reseed.
+    • carbs_g / protein_g → Purvi per-slot ratio from SLOT_MACRO_RATIOS. Each
+      everyday slot has its own ratio; no pooling or per-day division needed.
+      Windows not in the ratio map fall back to the category_key weight.
     • fluids_ml / sodium_mg / calcium_mg → UNCHANGED category_key CONTRIBUTION_WEIGHTS
       distribution; hydration is never driven by these ratios.
     """
     cat = w.get("category_key")
     if n in ft.SLOT_SEEDED_NUTRIENTS:
         slot = _slot_for_window(w.get("slot_name") or "")
-        if slot == "everyday":
-            base = ft.SLOT_MACRO_RATIOS["everyday"].get(n, 0.0)
-            return (base / n_everyday) if n_everyday else 0.0
         if slot is not None:
-            return ft.SLOT_MACRO_RATIOS.get(slot, {}).get(n, 0.0)
-        return ft.CONTRIBUTION_WEIGHTS.get(cat, {}).get(n, 0.0)  # tournament / out-of-scope
+            ratio = ft.SLOT_MACRO_RATIOS.get(slot)
+            if ratio is None:
+                log.warning(
+                    "_seed_ratio: slot %r not in SLOT_MACRO_RATIOS (window %r), "
+                    "falling back to category_key weights",
+                    slot, w.get("slot_name"),
+                )
+                return ft.CONTRIBUTION_WEIGHTS.get(cat, {}).get(n, 0.0)
+            return ratio
+        if cat not in ft.CONTRIBUTION_WEIGHTS:
+            log.warning(
+                "_seed_ratio: unknown category_key %r for window %r, contributing 0",
+                cat, w.get("slot_name"),
+            )
+        return ft.CONTRIBUTION_WEIGHTS.get(cat, {}).get(n, 0.0)  # not in ratio map
     return ft.CONTRIBUTION_WEIGHTS.get(cat, {}).get(n, 0.0)
 
 
@@ -222,13 +230,10 @@ def split_targets_across_windows(daily_targets: dict, windows: list[dict]) -> li
     """
     creditable = [w for w in windows if ft.is_creditable_category(w.get("category_key"))]
 
-    n_everyday = sum(
-        1 for w in creditable if _slot_for_window(w.get("slot_name") or "") == "everyday"
-    )
-
-    # Per-nutrient sum of SEED weights across the windows actually present today.
+    # Per-nutrient sum of seed weights across the windows actually present today.
+    # Normalization ensures confirming all tappable windows fills each gauge to ~100%.
     totals = {
-        n: sum(_seed_ratio(w, n, n_everyday) for w in creditable)
+        n: sum(_seed_ratio(w, n) for w in creditable)
         for n in ft.NUTRIENT_KEYS
     }
 
@@ -243,7 +248,7 @@ def split_targets_across_windows(daily_targets: dict, windows: list[dict]) -> li
             elif tw <= 0:
                 contribution[n] = 0
             else:
-                contribution[n] = _seed_ratio(w, n, n_everyday) / tw * target
+                contribution[n] = _seed_ratio(w, n) / tw * target
         result.append({
             "slot_name": w.get("slot_name"),
             "category_key": w.get("category_key"),

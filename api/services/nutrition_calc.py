@@ -73,9 +73,9 @@ HYDRATION_TARGETS = {  # oz/day — legacy fallback only
 # ── Spec-formula tables (getDashboardTargets) ─────────────────────────────────
 CHO_FACTOR = {
     "rest":       {"any": 4.0},
-    "low":        {"any": 3.5},
-    "moderate":   {"lt60": 4.5, "bt6090": 6.0, "gt90": 7.0},
-    "hard":       {"lt60": 5.5, "bt6090": 8.0, "gt90": 9.0},
+    "low":        {"any": 4.0},
+    "moderate":   {"lt60": 6.0, "bt6090": 6.0, "gt90": 6.0},
+    "hard":       {"lt60": 8.0, "bt6090": 8.0, "gt90": 8.0},
     "tournament": {"any": 10.0},
 }
 
@@ -83,14 +83,14 @@ SEASON_CHO  = {"in_season": 1.0, "off_season": 0.90, "post_season": 0.85}
 SEASON_PROT = {"in_season": 1.0, "off_season": 1.05, "post_season": 0.95}
 
 SPORT_PROT = {
-    "soccer": 1.85, "basketball": 1.85, "volleyball": 1.85,
-    "tennis": 1.85, "other": 1.85,
-    "running": 1.40, "swimming": 1.40,
-    "strength": 1.80,
+    "soccer": 1.50, "basketball": 1.50, "volleyball": 1.50,
+    "tennis": 1.50, "other": 1.50,
+    "running": 1.50, "swimming": 1.50,
+    "strength": 1.50,
 }
 
-# +0.20 g/kg on S&C days — ISSN resistance training standard
-SC_PROT_BUMP = 0.20
+# Flat 1.5 g/kg/day for all sports and day types (Purvi, July 2026).
+SC_PROT_BUMP = 0.0
 
 # +10 / +15 % for plant-based athletes (lower leucine bioavailability — ISSN Position Stand)
 DIET_PROT_MULT = {
