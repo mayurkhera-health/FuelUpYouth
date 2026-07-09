@@ -827,15 +827,11 @@ def _build_fuel_targets_block(athlete: dict, events: list, windows: list,
     confirmed_totals and daily_met are PURE derivations from that combined set —
     no new persistence.
     """
-    from api.services import fuel_gauge, fueling_targets as ft, weather as weather_svc
+    from api.services import fuel_gauge, fueling_targets as ft
 
     season_phase = athlete.get("season_phase")
     if events:
-        dom = fuel_gauge._dominant_event(events)
-        weather_data = weather_svc.get_weather(
-            city=dom.get("city"), lat=dom.get("latitude"), lon=dom.get("longitude")
-        )
-        daily = fuel_gauge.compute_event_day_targets(athlete, events, season_phase, weather_data)
+        daily = fuel_gauge.compute_event_day_targets(athlete, events, season_phase, None)
         target_source = "event_day"
     else:
         daily = fuel_gauge.compute_rest_day_targets(athlete, season_phase)
