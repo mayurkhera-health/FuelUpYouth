@@ -39,8 +39,9 @@ def derive_sweat_profile(athlete: dict) -> str:
     return profile
 
 
-_WEATHER_TTL_SECONDS = 1800  # 30 minutes
-_weather_cache: dict[str, tuple[float, dict]] = {}  # city(lower) -> (fetched_at, result)
+_WEATHER_TTL_SECONDS = 1800       # 30 minutes for successful results
+_WEATHER_ERROR_TTL_SECONDS = 60   # 1 minute for error results (self-heals quickly)
+_weather_cache: dict[str, tuple[float, dict]] = {}  # key -> (fetched_at, result)
 
 
 def _now() -> float:
@@ -59,7 +60,7 @@ def _fetch_weather(city: str | None = None, lat: float | None = None, lon: float
     else:
         return {"temp_f": None, "humidity": None, "description": "unknown", "error": "No location provided"}
     try:
-        resp = requests.get(url, timeout=5)
+        resp = requests.get(url, timeout=3)
         data = resp.json()
         if resp.status_code != 200:
             return {"temp_f": None, "humidity": None, "description": "unknown", "error": data.get("message", "API error")}
@@ -88,11 +89,12 @@ def get_weather(city: str | None = None, lat: float | None = None, lon: float | 
     if not key:
         return {"temp_f": None, "humidity": None, "description": "unknown", "error": "No location provided"}
     cached = _weather_cache.get(key)
-    if cached and (_now() - cached[0]) < _WEATHER_TTL_SECONDS:
-        return cached[1]
+    if cached:
+        ttl = _WEATHER_ERROR_TTL_SECONDS if cached[1].get("error") else _WEATHER_TTL_SECONDS
+        if (_now() - cached[0]) < ttl:
+            return cached[1]
     result = _fetch_weather(city=city, lat=lat, lon=lon)
-    if not result.get("error"):
-        _weather_cache[key] = (_now(), result)
+    _weather_cache[key] = (_now(), result)  # cache both successes and errors
     return result
 
 

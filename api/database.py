@@ -18,7 +18,13 @@ def get_conn():
             "file::memory:?cache=shared", uri=True, check_same_thread=False
         )
     else:
-        conn = sqlite3.connect(raw)
+        conn = sqlite3.connect(raw, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    # WAL mode: readers never block writers, writers never block readers.
+    # Without this, a single write lock from a background job blocks all
+    # concurrent reads (FastAPI threadpool) → "database is locked" 500s on Today.
+    conn.execute("PRAGMA journal_mode=WAL")
+    # Retry for up to 10 s on lock contention instead of failing immediately.
+    conn.execute("PRAGMA busy_timeout=10000")
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
