@@ -224,21 +224,49 @@ def sync_platform(conn, athlete_id: int, platform: str, ics_url: str,
     for uid, ev in desired.items():
         intensity = derive_intensity(ev["event_type"], competition_level)
         if uid not in existing:
-            try:
-                conn.execute(
-                    "INSERT INTO events (athlete_id, event_name, event_type, event_date, "
-                    "start_time, duration_hours, city, venue_name, intensity, uid, source, synced_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (athlete_id, ev["event_name"], ev["event_type"], ev["event_date"],
-                     ev["start_time"], ev["duration_hours"], ev["city"], ev["venue_name"],
-                     intensity, uid, platform, now_iso),
+            # BYGA (and some other providers) rotate their VEVENT UIDs on every
+            # export, so a UID-only lookup never finds a previously-imported copy
+            # of the same event. Fall back to matching on (name, date, start_time)
+            # so we update the existing row rather than creating a duplicate.
+            name_time_row = conn.execute(
+                "SELECT * FROM events WHERE athlete_id=? AND event_name=? "
+                "AND event_date=? AND start_time=?",
+                (athlete_id, ev["event_name"], ev["event_date"], ev["start_time"]),
+            ).fetchone()
+            if name_time_row:
+                matched = dict(name_time_row)
+                logger.debug(
+                    "Name+time match for uid %s → adopting existing event id=%s (was source=%s)",
+                    uid, matched["id"], matched.get("source"),
                 )
-                counts["inserted"] += 1
+                conn.execute(
+                    "UPDATE events SET uid=?, source=?, event_type=?, duration_hours=?, "
+                    "city=?, venue_name=?, intensity=?, synced_at=? WHERE id=?",
+                    (uid, platform, ev["event_type"], ev["duration_hours"],
+                     ev["city"], ev["venue_name"], intensity, now_iso, matched["id"]),
+                )
+                # Register under the new uid so the delete phase won't remove it.
+                existing[uid] = {**matched, "uid": uid, "source": platform}
+                counts["updated"] += 1
                 affected_dates.add(ev["event_date"])
-            except Exception:
-                # Partial unique index (athlete_id, uid) — e.g. same UID already
-                # synced under the other platform. Leave it; log and move on.
-                logger.debug("Insert skipped for uid %s", uid, exc_info=True)
+                if matched.get("event_date") != ev["event_date"]:
+                    affected_dates.add(matched["event_date"])
+            else:
+                try:
+                    conn.execute(
+                        "INSERT INTO events (athlete_id, event_name, event_type, event_date, "
+                        "start_time, duration_hours, city, venue_name, intensity, uid, source, synced_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (athlete_id, ev["event_name"], ev["event_type"], ev["event_date"],
+                         ev["start_time"], ev["duration_hours"], ev["city"], ev["venue_name"],
+                         intensity, uid, platform, now_iso),
+                    )
+                    counts["inserted"] += 1
+                    affected_dates.add(ev["event_date"])
+                except Exception:
+                    # Partial unique index (athlete_id, uid) — e.g. same UID already
+                    # synced under the other platform. Leave it; log and move on.
+                    logger.debug("Insert skipped for uid %s", uid, exc_info=True)
         else:
             cur = existing[uid]
             if _needs_update(cur, ev):
