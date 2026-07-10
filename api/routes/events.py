@@ -45,10 +45,10 @@ def create_event(data: EventCreate):
 
         try:
             conn.execute(
-                "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours, city, venue_name, address, latitude, longitude, intensity, activity_type, uid) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO events (athlete_id, event_name, event_type, event_date, start_time, duration_hours, city, venue_name, address, latitude, longitude, intensity, activity_type, uid, source) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (data.athlete_id, data.event_name, data.event_type, data.event_date, data.start_time, data.duration_hours,
-                 data.city, data.venue_name, data.address, data.latitude, data.longitude, intensity, data.activity_type, data.uid),
+                 data.city, data.venue_name, data.address, data.latitude, data.longitude, intensity, data.activity_type, data.uid, data.source),
             )
             conn.commit()
         except sqlite3.IntegrityError:
