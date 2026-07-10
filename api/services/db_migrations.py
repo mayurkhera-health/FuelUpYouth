@@ -38,6 +38,7 @@ def run_all():
         _create_health_tables(conn)
         _add_last_login_to_parents(conn)
         _add_blueprint_viewed_to_parents(conn)
+        _add_phone_to_athletes(conn)
         conn.commit()
     finally:
         conn.close()
@@ -398,6 +399,16 @@ def _add_blueprint_viewed_to_parents(conn):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(parents)").fetchall()]
     if "blueprint_first_viewed_at" not in cols:
         conn.execute("ALTER TABLE parents ADD COLUMN blueprint_first_viewed_at TEXT")
+
+
+def _add_phone_to_athletes(conn):
+    """Athlete contact phone for SMS reminders, emergency contact, and account
+    recovery. Nullable — optional at onboarding and in edit-profile. Stored as the
+    client-formatted string (e.g. '(408) 555-1234'); 10-digit US validated server-
+    side before write. Idempotent — safe every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
+    if "phone" not in cols:
+        conn.execute("ALTER TABLE athletes ADD COLUMN phone TEXT DEFAULT NULL")
 
 
 def _create_admin_audit_log(conn):

@@ -44,6 +44,16 @@ class ParentResponse(BaseModel):
     created_at: str
 
 
+def _validate_phone(v: Optional[str]) -> Optional[str]:
+    """Accept any formatting; require exactly 10 US digits when non-empty."""
+    if v is None or v == "":
+        return None
+    digits = re.sub(r"\D", "", v)
+    if len(digits) != 10:
+        raise ValueError("phone must contain exactly 10 digits (US number)")
+    return v
+
+
 class AthleteCreate(BaseModel):
     parent_id: int
     first_name: str
@@ -63,6 +73,12 @@ class AthleteCreate(BaseModel):
     date_of_birth: Optional[str] = None  # ISO YYYY-MM-DD; used by calc_age() for precision targets
     lifestyle_activity: str = "light"    # sedentary / light / moderate — drives lifestyle PAL in calc_tdee
     diet_pref: str = "omnivore"          # omnivore / vegetarian / vegan — drives DIET_PROT_MULT
+    phone: Optional[str] = None          # US contact number; optional; validated to 10 digits
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, v):
+        return _validate_phone(v)
 
 
 class OnboardingAthlete(BaseModel):
@@ -83,6 +99,12 @@ class OnboardingAthlete(BaseModel):
     date_of_birth: Optional[str] = None
     lifestyle_activity: Optional[str] = None
     diet_pref: Optional[str] = None
+    phone: Optional[str] = None
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, v):
+        return _validate_phone(v)
 
 
 class OnboardingComplete(BaseModel):
@@ -105,11 +127,12 @@ class AthleteResponse(BaseModel):
     allergies: Optional[str]
     dietary_restrictions: Optional[str]
     supplement_use: Optional[str]
-    season_phase: Optional[str] = None  # in_season / off_season / postseason (Fuel Gauge)
-    food_preferences: Optional[str] = None  # onboarding wizard: free-text likes/dislikes/textures
+    season_phase: Optional[str] = None
+    food_preferences: Optional[str] = None
     date_of_birth: Optional[str] = None
-    lifestyle_activity: str = "light"       # sedentary / light / moderate
-    diet_pref: str = "omnivore"             # omnivore / vegetarian / vegan
+    phone: Optional[str] = None
+    lifestyle_activity: str = "light"
+    diet_pref: str = "omnivore"
     schedule_reminder_dismissed: bool = False
     created_at: str
 
