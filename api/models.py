@@ -1,7 +1,7 @@
 import re
 from datetime import datetime as _dt
 from pydantic import BaseModel, field_validator
-from typing import Optional, List
+from typing import Literal, Optional, List
 
 from api.services.activity_type_resolver import VALID_ACTIVITY_TYPES
 
@@ -139,7 +139,7 @@ class EventCreate(BaseModel):
     intensity: Optional[str] = None  # low / medium / high; derived if omitted
     activity_type: Optional[str] = None  # 7 engine keys; None = untagged (2h default applies)
     uid: Optional[str] = None  # source ICS VEVENT UID; enables import dedup. None for manual events.
-    source: Optional[str] = "manual"  # 'manual' | 'byga' | 'playmetrics'
+    source: Literal["manual"] = "manual"  # public POST only creates manual events; synced sources write directly to DB
 
     @field_validator("start_time", mode="before")
     @classmethod
