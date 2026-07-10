@@ -227,30 +227,52 @@ def sync_platform(conn, athlete_id: int, platform: str, ics_url: str,
             # BYGA (and some other providers) rotate their VEVENT UIDs on every
             # export, so a UID-only lookup never finds a previously-imported copy
             # of the same event. Fall back to matching on (name, date, start_time)
-            # so we update the existing row rather than creating a duplicate.
-            name_time_row = conn.execute(
-                "SELECT * FROM events WHERE athlete_id=? AND event_name=? "
-                "AND event_date=? AND start_time=?",
+            # — but only for manually-sourced rows, and only when exactly one row
+            # matches (ambiguous duplicates are left for INSERT to resolve).
+            name_time_count = conn.execute(
+                "SELECT COUNT(*) FROM events WHERE athlete_id=? AND event_name=? "
+                "AND event_date=? AND start_time=? AND source='manual'",
                 (athlete_id, ev["event_name"], ev["event_date"], ev["start_time"]),
-            ).fetchone()
+            ).fetchone()[0]
+            if name_time_count > 1:
+                logger.warning(
+                    "Name+time fallback skipped for uid %s: %d ambiguous manual rows "
+                    "(athlete %s, event_name=%r, date=%s)",
+                    uid, name_time_count, athlete_id, ev["event_name"], ev["event_date"],
+                )
+                name_time_row = None
+            elif name_time_count == 1:
+                name_time_row = conn.execute(
+                    "SELECT * FROM events WHERE athlete_id=? AND event_name=? "
+                    "AND event_date=? AND start_time=? AND source='manual'",
+                    (athlete_id, ev["event_name"], ev["event_date"], ev["start_time"]),
+                ).fetchone()
+            else:
+                name_time_row = None
             if name_time_row:
                 matched = dict(name_time_row)
                 logger.debug(
                     "Name+time match for uid %s → adopting existing event id=%s (was source=%s)",
                     uid, matched["id"], matched.get("source"),
                 )
-                conn.execute(
-                    "UPDATE events SET uid=?, source=?, event_type=?, duration_hours=?, "
-                    "city=?, venue_name=?, intensity=?, synced_at=? WHERE id=?",
-                    (uid, platform, ev["event_type"], ev["duration_hours"],
+                cur = conn.execute(
+                    "UPDATE events SET uid=?, source=?, event_name=?, event_type=?, "
+                    "duration_hours=?, city=?, venue_name=?, intensity=?, synced_at=? WHERE id=?",
+                    (uid, platform, ev["event_name"], ev["event_type"], ev["duration_hours"],
                      ev["city"], ev["venue_name"], intensity, now_iso, matched["id"]),
                 )
-                # Register under the new uid so the delete phase won't remove it.
-                existing[uid] = {**matched, "uid": uid, "source": platform}
-                counts["updated"] += 1
-                affected_dates.add(ev["event_date"])
-                if matched.get("event_date") != ev["event_date"]:
-                    affected_dates.add(matched["event_date"])
+                if cur.rowcount == 0:
+                    logger.warning(
+                        "Name+time fallback UPDATE matched id=%s but rowcount=0 "
+                        "(concurrent delete?)", matched["id"],
+                    )
+                else:
+                    # Register under the new uid so the delete phase won't remove it.
+                    existing[uid] = {**matched, "uid": uid, "source": platform}
+                    counts["updated"] += 1
+                    affected_dates.add(ev["event_date"])
+                    if matched.get("event_date") != ev["event_date"]:
+                        affected_dates.add(matched["event_date"])
             else:
                 try:
                     conn.execute(
