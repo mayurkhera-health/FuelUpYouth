@@ -12,6 +12,7 @@ Mounted at prefix /api/athletes, so the routes are /{athlete_id}/calendar/...
 import logging
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
 from api.database import get_conn
@@ -136,7 +137,7 @@ def sync_status(athlete_id: int):
                 "synced_event_count": agg["n"],
                 "last_sync": agg["last"],
             }
-        return out
+        return JSONResponse(content=out, headers={"Cache-Control": "no-store"})
     finally:
         conn.close()
 

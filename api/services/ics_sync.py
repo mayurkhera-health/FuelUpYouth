@@ -195,7 +195,7 @@ def sync_platform(conn, athlete_id: int, platform: str, ics_url: str,
     """Fetch + reconcile one athlete's feed for one platform. Returns a counts dict
     for logging. Never raises — a bad feed is logged and skipped so one athlete's
     broken link can't abort the whole tick."""
-    counts = {"inserted": 0, "updated": 0, "deleted": 0, "feed": 0, "error": None, "inserted_events": []}
+    counts = {"inserted": 0, "updated": 0, "deleted": 0, "feed": 0, "error": None, "inserted_events": [], "source_upgraded": 0}
     now_utc = datetime.now(timezone.utc)
     cutoff_utc = now_utc - _PAST_BUFFER
     cutoff_date = (now_utc - _PAST_BUFFER).strftime("%Y-%m-%d")
@@ -241,9 +241,19 @@ def sync_platform(conn, athlete_id: int, platform: str, ics_url: str,
                 })
                 affected_dates.add(ev["event_date"])
             except Exception:
-                # Partial unique index (athlete_id, uid) — e.g. same UID already
-                # synced under the other platform. Leave it; log and move on.
+                # Partial unique index (athlete_id, uid) — uid conflict.
+                # If the existing row is source='manual' (user previously
+                # uploaded a file), upgrade it to the platform source so the
+                # 6-hour job owns it going forward. Otherwise leave as-is.
                 logger.debug("Insert skipped for uid %s", uid, exc_info=True)
+                upgraded = conn.execute(
+                    "UPDATE events SET source = ?, synced_at = ? "
+                    "WHERE athlete_id = ? AND uid = ? AND source = 'manual'",
+                    (platform, now_iso, athlete_id, uid),
+                ).rowcount
+                if upgraded:
+                    counts["source_upgraded"] += 1
+                    affected_dates.add(ev["event_date"])
         else:
             cur = existing[uid]
             if _needs_update(cur, ev):
