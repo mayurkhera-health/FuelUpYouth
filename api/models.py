@@ -38,10 +38,21 @@ class ParentResponse(BaseModel):
     id: int
     full_name: str
     email: str
+    phone: Optional[str] = None
     consent_timestamp: str
     consent_confirmed: bool
     schedule_reminder_dismissed: bool = False
     created_at: str
+
+
+class ParentProfileUpdate(BaseModel):
+    full_name: str
+    phone: Optional[str] = None
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, v):
+        return _validate_phone(v)
 
 
 def _validate_phone(v: Optional[str]) -> Optional[str]:

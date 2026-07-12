@@ -39,6 +39,7 @@ def run_all():
         _add_last_login_to_parents(conn)
         _add_blueprint_viewed_to_parents(conn)
         _add_phone_to_athletes(conn)
+        _add_phone_to_parents(conn)
         conn.commit()
     finally:
         conn.close()
@@ -409,6 +410,13 @@ def _add_phone_to_athletes(conn):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
     if "phone" not in cols:
         conn.execute("ALTER TABLE athletes ADD COLUMN phone TEXT DEFAULT NULL")
+
+
+def _add_phone_to_parents(conn):
+    """Parent contact phone, editable from Settings. Nullable. Idempotent."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(parents)").fetchall()]
+    if "phone" not in cols:
+        conn.execute("ALTER TABLE parents ADD COLUMN phone TEXT DEFAULT NULL")
 
 
 def _create_admin_audit_log(conn):
