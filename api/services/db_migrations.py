@@ -31,6 +31,9 @@ def run_all():
         _create_problem_reports(conn)
         _create_coach_feedback(conn)
         _create_pantry_list_items(conn)
+        _create_recipe_selections(conn)
+        _create_recipe_lists(conn)
+        _create_recipe_list_items(conn)
         _create_feature_requests(conn)
         _add_calendar_sync_to_athletes(conn)
         _add_source_to_events(conn)
@@ -503,6 +506,70 @@ def _create_health_tables(conn):
     conn.executemany(
         "INSERT OR IGNORE INTO health_checks (check_name, status) VALUES (?, 'unknown')",
         [(n,) for n in _HEALTH_CHECK_NAMES],
+    )
+
+
+def _create_recipe_selections(conn):
+    """Recipe Selection: records which recipe an athlete has chosen for a
+    specific fueling window on a specific date. Drives the weekly grocery
+    list aggregation — ingredients from selected recipes are written to
+    shopping_list_items with source='recipe'. One selection per athlete
+    per date per fueling window — UNIQUE enforces this at the DB layer.
+    Idempotent — safe to run on every startup."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS recipe_selections (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id          INTEGER NOT NULL REFERENCES athletes(id),
+            week_start          TEXT    NOT NULL,
+            selection_date      TEXT    NOT NULL,
+            fueling_window_key  TEXT    NOT NULL,
+            recipe_id           TEXT    NOT NULL,
+            servings            INTEGER NOT NULL DEFAULT 1,
+            created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+            updated_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, selection_date, fueling_window_key)
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_recipe_selections_athlete_week
+            ON recipe_selections (athlete_id, week_start)
+    """)
+
+
+def _create_recipe_lists(conn):
+    """Recipe Lists: one grocery list per athlete per week, scoped to recipe
+    selections rather than pantry suggestions. Separate from shopping_lists so
+    recipe-derived items can be managed independently. UNIQUE enforces one list
+    per athlete per week at the DB layer. Idempotent — safe to run on every startup."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS recipe_lists (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id  INTEGER NOT NULL REFERENCES athletes(id),
+            week_start  TEXT    NOT NULL,
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, week_start)
+        )
+    """)
+
+
+def _create_recipe_list_items(conn):
+    """Recipe List Items: ingredients derived from recipe selections, one row per
+    ingredient name per list. Separate from shopping_list_items so recipe-sourced
+    items have their own checked state and lifecycle. Idempotent — safe to run on
+    every startup."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS recipe_list_items (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            list_id     INTEGER NOT NULL REFERENCES recipe_lists(id),
+            name        TEXT    NOT NULL,
+            checked     INTEGER NOT NULL DEFAULT 0,
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (list_id, name)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_recipe_list_items_list "
+        "ON recipe_list_items (list_id)"
     )
 
 
