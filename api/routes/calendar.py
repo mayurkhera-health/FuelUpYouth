@@ -79,6 +79,32 @@ def save_sync_url(athlete_id: int, body: CalendarSyncRequest):
         counts = ics_sync.sync_platform(
             conn, athlete_id, body.platform, body.ics_url, athlete["competition_level"]
         )
+
+        # Email 1: confirm the first sync to the parent. Best-effort — a failed
+        # email must not roll back the sync or return an error to the client.
+        try:
+            from api.services.email_service import send_email
+            from api.services.email_templates import calendar_first_sync_email
+            parent = conn.execute(
+                "SELECT p.email, p.full_name, a.first_name "
+                "FROM parents p JOIN athletes a ON a.parent_id = p.id "
+                "WHERE a.id = ?",
+                (athlete_id,),
+            ).fetchone()
+            if parent and parent["email"]:
+                platform_label = "BYGA" if body.platform == "byga" else "PlayMetrics"
+                subject, text_body, html_body = calendar_first_sync_email(
+                    parent_name=parent["full_name"],
+                    athlete_name=parent["first_name"],
+                    platform_label=platform_label,
+                    counts=counts,
+                )
+                send_email(subject=subject, body=text_body, to=[parent["email"]],
+                           html=html_body, bcc=["mayurkhera@gmail.com"])
+        except Exception:
+            logger.warning("Failed to send first-sync email (athlete %s, %s)",
+                           athlete_id, body.platform, exc_info=True)
+
         return {"ok": True, "platform": body.platform, "sync": counts}
     finally:
         conn.close()

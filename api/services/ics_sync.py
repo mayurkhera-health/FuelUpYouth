@@ -195,7 +195,7 @@ def sync_platform(conn, athlete_id: int, platform: str, ics_url: str,
     """Fetch + reconcile one athlete's feed for one platform. Returns a counts dict
     for logging. Never raises — a bad feed is logged and skipped so one athlete's
     broken link can't abort the whole tick."""
-    counts = {"inserted": 0, "updated": 0, "deleted": 0, "feed": 0, "error": None}
+    counts = {"inserted": 0, "updated": 0, "deleted": 0, "feed": 0, "error": None, "inserted_events": []}
     now_utc = datetime.now(timezone.utc)
     cutoff_utc = now_utc - _PAST_BUFFER
     cutoff_date = (now_utc - _PAST_BUFFER).strftime("%Y-%m-%d")
@@ -234,6 +234,11 @@ def sync_platform(conn, athlete_id: int, platform: str, ics_url: str,
                      intensity, uid, platform, now_iso),
                 )
                 counts["inserted"] += 1
+                counts["inserted_events"].append({
+                    "event_name": ev["event_name"],
+                    "event_date": ev["event_date"],
+                    "event_type": ev["event_type"],
+                })
                 affected_dates.add(ev["event_date"])
             except Exception:
                 # Partial unique index (athlete_id, uid) — e.g. same UID already
@@ -278,6 +283,33 @@ def sync_platform(conn, athlete_id: int, platform: str, ics_url: str,
     return counts
 
 
+def _send_new_events_email(conn, athlete_id: int, platform: str, new_events: list) -> None:
+    """Best-effort: email the parent when the 6-hour sync finds new events."""
+    try:
+        from api.services.email_service import send_email
+        from api.services.email_templates import calendar_new_events_email
+        row = conn.execute(
+            "SELECT a.first_name, p.email, p.full_name "
+            "FROM athletes a JOIN parents p ON p.id = a.parent_id "
+            "WHERE a.id = ?",
+            (athlete_id,),
+        ).fetchone()
+        if not row or not row["email"]:
+            return
+        platform_label = "BYGA" if platform == "byga" else "PlayMetrics"
+        subject, text_body, html_body = calendar_new_events_email(
+            parent_name=row["full_name"],
+            athlete_name=row["first_name"],
+            platform_label=platform_label,
+            new_events=new_events,
+        )
+        send_email(subject=subject, body=text_body, to=[row["email"]],
+                   html=html_body, bcc=["mayurkhera@gmail.com"])
+    except Exception:
+        logger.warning("Failed to send new-events email (athlete %s, %s)",
+                       athlete_id, platform, exc_info=True)
+
+
 def run_calendar_sync_tick() -> None:
     """APScheduler entrypoint — sync every athlete that has connected a feed. One DB
     connection for the whole tick (mirrors run_notification_tick)."""
@@ -298,6 +330,9 @@ def run_calendar_sync_tick() -> None:
                         counts = sync_platform(conn, row["id"], platform, urls[platform], row["competition_level"])
                         if not counts.get("error"):
                             succeeded += 1
+                            # Email 2: notify parent when new events are found.
+                            if counts["inserted"] > 0:
+                                _send_new_events_email(conn, row["id"], platform, counts["inserted_events"])
                     except Exception:
                         logger.exception("Calendar sync crashed (athlete %s, %s)", row["id"], platform)
     finally:

@@ -10,6 +10,7 @@ on. replace() only swaps the explicit {token} placeholders and leaves CSS alone.
 """
 
 import os
+from datetime import datetime
 from html import escape as _escape
 
 # Base URL for links/CTAs. Overridable via env for staging/local.
@@ -254,3 +255,227 @@ def feature_idea_email(parent_name: str, feature_idea_summary: str, idea_id, sub
                    f"<strong>Submitted:</strong> {submitted_date}"),
         meta_text=(f"Your idea ID: #{idea_id}\nSubmitted: {submitted_date}"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Template 4: Calendar first-sync confirmation
+# Sent once per platform when a parent connects BYGA or PlayMetrics for the
+# first time (either via Schedule screen upload or Settings → Calendar Sync).
+# ---------------------------------------------------------------------------
+_CALENDAR_FIRST_SYNC_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar Synced - FuelUp</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9fafb; margin: 0; padding: 0; }
+        .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px 20px; text-align: center; color: white; }
+        .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .content { padding: 40px 30px; }
+        .greeting { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #1f2937; }
+        .body-text { font-size: 16px; line-height: 1.5; color: #4b5563; margin-bottom: 14px; }
+        .sync-box { background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 14px 18px; border-radius: 4px; margin-bottom: 14px; color: #4b5563; font-size: 15px; }
+        .sync-box strong { color: #065f46; display: block; margin-bottom: 8px; }
+        .sync-box ul { margin: 0; padding-left: 20px; }
+        .sync-box li { margin-bottom: 4px; }
+        .tagline { font-size: 16px; font-weight: 700; color: #065f46; margin-top: 4px; }
+        .footer { background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+        .footer a { color: #10b981; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">🏃 FuelUp</div>
+        </div>
+        <div class="content">
+            <div class="greeting">Hi {parent_name},</div>
+            <div class="body-text">
+                Great news — <strong>{athlete_name}</strong>'s <strong>{platform_label}</strong> calendar is now connected to FuelUp. We ran the first sync and here's what was imported:
+            </div>
+            <div class="sync-box">
+                <strong>First sync summary</strong>
+                <ul>
+{event_lines_html}
+                </ul>
+            </div>
+            <div class="body-text">
+                FuelUp will check <strong>{platform_label}</strong> every 6 hours and automatically update {athlete_name}'s schedule whenever new events appear — no action needed on your end.
+            </div>
+            <div class="body-text">
+                Every event now has tailored fueling guidance built in: pre-game meals, hydration targets, and recovery snacks calibrated to {athlete_name}'s training load.
+            </div>
+            <div class="tagline">Synced. Fueled. Ready.</div>
+        </div>
+        <div class="footer">
+            <p>© 2026 FuelUp. Fueling the next generation of athletes.</p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+
+def _fmt_date(date_str: str) -> str:
+    """Format 'yyyy-mm-dd' as 'Mon, Jul 14'."""
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%a, %b %-d")
+    except Exception:
+        return date_str
+
+
+def calendar_first_sync_email(
+    parent_name: str,
+    athlete_name: str,
+    platform_label: str,
+    counts: dict,
+) -> tuple[str, str, str]:
+    """Email 1 — sent once when a parent connects a calendar for the first time.
+
+    counts must have keys: inserted, updated, deleted, feed (ints).
+    Returns (subject, plaintext, html).
+    """
+    inserted = counts.get("inserted", 0)
+    total = counts.get("feed", inserted)
+
+    lines = []
+    if inserted > 0:
+        lines.append(f"{inserted} new event{'s' if inserted != 1 else ''} added to {athlete_name}'s schedule")
+    if total > inserted:
+        lines.append(f"{total} total event{'s' if total != 1 else ''} found in the {platform_label} feed")
+    if not lines:
+        lines.append(f"Calendar connected — {athlete_name}'s schedule is up to date")
+
+    event_lines_html = "\n".join(f"                    <li>{_escape(l)}</li>" for l in lines)
+    html = _render(
+        _CALENDAR_FIRST_SYNC_HTML,
+        parent_name=_escape(parent_name),
+        athlete_name=_escape(athlete_name),
+        platform_label=_escape(platform_label),
+        event_lines_html=event_lines_html,
+    )
+    text = (
+        f"Hi {parent_name},\n\n"
+        f"{athlete_name}'s {platform_label} calendar is now connected to FuelUp. "
+        f"We ran the first sync and here's what was imported:\n\n"
+        + "\n".join(f"- {l}" for l in lines)
+        + f"\n\nFuelUp will check {platform_label} every 6 hours and automatically update "
+        f"{athlete_name}'s schedule whenever new events appear — no action needed on your end.\n\n"
+        f"Every event now has tailored fueling guidance built in: pre-game meals, hydration "
+        f"targets, and recovery snacks calibrated to {athlete_name}'s training load.\n\n"
+        "Synced. Fueled. Ready."
+    )
+    subject = f"{athlete_name}'s {platform_label} calendar is connected to FuelUp"
+    text, html = _finalize(text, html)
+    return subject, text, html
+
+
+# ---------------------------------------------------------------------------
+# Template 5: Calendar new-events notification
+# Sent by the 6-hour sync job whenever it finds NEW events (new UIDs) for an
+# athlete. Field updates to existing events do NOT trigger this email.
+# ---------------------------------------------------------------------------
+_CALENDAR_NEW_EVENTS_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Events Synced - FuelUp</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9fafb; margin: 0; padding: 0; }
+        .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px 20px; text-align: center; color: white; }
+        .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .content { padding: 40px 30px; }
+        .greeting { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #1f2937; }
+        .body-text { font-size: 16px; line-height: 1.5; color: #4b5563; margin-bottom: 14px; }
+        .events-box { background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 14px 18px; border-radius: 4px; margin-bottom: 14px; color: #4b5563; font-size: 15px; }
+        .events-box strong { color: #065f46; display: block; margin-bottom: 8px; }
+        .events-box ul { margin: 0; padding-left: 20px; }
+        .events-box li { margin-bottom: 6px; }
+        .event-name { font-weight: 600; color: #1f2937; }
+        .event-date { color: #6b7280; font-size: 13px; margin-left: 4px; }
+        .note { font-size: 13px; color: #6b7280; background-color: #f3f4f6; padding: 12px 16px; border-radius: 6px; margin-top: 8px; }
+        .footer { background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+        .footer a { color: #10b981; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">🏃 FuelUp</div>
+        </div>
+        <div class="content">
+            <div class="greeting">Hi {parent_name},</div>
+            <div class="body-text">
+                We found <strong>{count} new event{plural}</strong> in <strong>{athlete_name}</strong>'s <strong>{platform_label}</strong> calendar during our latest sync:
+            </div>
+            <div class="events-box">
+                <strong>New events added</strong>
+                <ul>
+{event_items_html}
+                </ul>
+            </div>
+            <div class="body-text">
+                These are now live in FuelUp with personalized fueling guidance for each session.
+            </div>
+            <div class="note">
+                FuelUp checks {platform_label} every 6 hours to keep {athlete_name}'s schedule current. You'll hear from us whenever something new appears.
+            </div>
+        </div>
+        <div class="footer">
+            <p>© 2026 FuelUp. Fueling the next generation of athletes.</p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+
+def calendar_new_events_email(
+    parent_name: str,
+    athlete_name: str,
+    platform_label: str,
+    new_events: list[dict],
+) -> tuple[str, str, str]:
+    """Email 2 — sent by the 6-hour sync job when it finds new events (new UIDs).
+
+    new_events: list of dicts with keys event_name, event_date, event_type.
+    Returns (subject, plaintext, html).
+    """
+    count = len(new_events)
+    plural = "s" if count != 1 else ""
+
+    items_html = []
+    items_text = []
+    for ev in new_events:
+        name = _escape(ev.get("event_name", "Event"))
+        date = _fmt_date(ev.get("event_date", ""))
+        items_html.append(
+            f'                    <li><span class="event-name">{name}</span>'
+            f'<span class="event-date">— {_escape(date)}</span></li>'
+        )
+        items_text.append(f"- {ev.get('event_name', 'Event')} ({date})")
+
+    event_items_html = "\n".join(items_html)
+    html = _render(
+        _CALENDAR_NEW_EVENTS_HTML,
+        parent_name=_escape(parent_name),
+        athlete_name=_escape(athlete_name),
+        platform_label=_escape(platform_label),
+        count=str(count),
+        plural=plural,
+        event_items_html=event_items_html,
+    )
+    text = (
+        f"Hi {parent_name},\n\n"
+        f"We found {count} new event{plural} in {athlete_name}'s {platform_label} calendar "
+        f"during our latest sync:\n\n"
+        + "\n".join(items_text)
+        + f"\n\nThese are now live in FuelUp with personalized fueling guidance for each session.\n\n"
+        f"FuelUp checks {platform_label} every 6 hours to keep {athlete_name}'s schedule current. "
+        f"You'll hear from us whenever something new appears."
+    )
+    subject = f"{count} new event{plural} added to {athlete_name}'s schedule from {platform_label}"
+    text, html = _finalize(text, html)
+    return subject, text, html
