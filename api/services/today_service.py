@@ -988,6 +988,15 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
     ).fetchall()
     wl_map = {r["window_id"]: dict(r) for r in wl_rows}
 
+    # Confirmation taps ("I Ate This") — queried once here so both the window
+    # status builder and the fuel gauge block can use the same set.
+    confirmed_keys = {
+        r["window_key"] for r in conn.execute(
+            "SELECT window_key FROM confirmations WHERE athlete_id = ? AND log_date = ?",
+            (athlete_id, today_str),
+        ).fetchall()
+    }
+
     # Compute daily macro targets once for per-window breakdown
     _ev0 = events[0] if events else {}
     _dur_min = (_ev0.get("duration_hours") or 0) * 60
@@ -1060,8 +1069,8 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
             continue
         plan_info = logged_map.get(sn, {})
         wl        = wl_map.get(sn)
-        # logged = True if captured via window_logs OR if Meal Plan tab marked it done
-        logged    = bool(wl is not None) or bool(plan_info.get("logged", False))
+        # logged = True if "I Ate This" tapped, captured via window_logs, or Meal Plan marked done
+        logged    = (sn in confirmed_keys) or bool(wl is not None) or bool(plan_info.get("logged", False))
         od = tw.get("open_dt")
         cd = tw.get("close_dt")
         # Prefer the window's own macro_focus when it's a recognized split key
@@ -1184,13 +1193,7 @@ def build_today_view(athlete_id: int, conn, today: str | None = None, force_v2: 
         if _ft.fuel_gauge_enabled() and has_schedule:
             # A window is confirmed via the Today confirm tap (confirmations table)
             # OR a CaptureSheet log (window_logs, carried on each window's `logged`).
-            # Query the confirm-tap set here; the union happens in the helper.
-            confirmed_keys = {
-                r["window_key"] for r in conn.execute(
-                    "SELECT window_key FROM confirmations WHERE athlete_id = ? AND log_date = ?",
-                    (athlete_id, today_str),
-                ).fetchall()
-            }
+            # confirmed_keys already computed above (shared with window status builder).
             result["fuel_targets"] = _build_fuel_targets_block(
                 athlete, events, windows, tappable, template_windows, confirmed_keys
             )
