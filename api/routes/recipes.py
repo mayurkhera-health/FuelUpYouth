@@ -211,6 +211,60 @@ def sync_grocery_list(data: _SyncGroceryList):
         conn.close()
 
 
+@router.get("/grocery-list")
+def get_grocery_list(athlete_id: int = Query(...), week_start: str = Query(...)):
+    conn = get_conn()
+    try:
+        list_row = conn.execute(
+            "SELECT id FROM recipe_lists WHERE athlete_id = ? AND week_start = ?",
+            (athlete_id, week_start),
+        ).fetchone()
+        if not list_row:
+            return {"list_id": None, "week_start": week_start, "items": [], "item_count": 0, "checked_count": 0}
+        list_id = list_row[0]
+        rows = conn.execute(
+            "SELECT * FROM recipe_list_items WHERE list_id = ? ORDER BY created_at",
+            (list_id,),
+        ).fetchall()
+        items = [{**dict(r), "checked": bool(r["checked"])} for r in rows]
+        return {
+            "list_id": list_id,
+            "week_start": week_start,
+            "items": items,
+            "item_count": len(items),
+            "checked_count": sum(1 for it in items if it["checked"]),
+        }
+    finally:
+        conn.close()
+
+
+class _ToggleItem(BaseModel):
+    checked: bool
+
+
+@router.patch("/grocery-list/items/{item_id}")
+def toggle_grocery_list_item(item_id: int, data: _ToggleItem):
+    conn = get_conn()
+    try:
+        if not conn.execute(
+            "SELECT id FROM recipe_list_items WHERE id = ?", (item_id,)
+        ).fetchone():
+            raise HTTPException(404, f"Item {item_id} not found.")
+        conn.execute(
+            "UPDATE recipe_list_items SET checked = ? WHERE id = ?",
+            (int(data.checked), item_id),
+        )
+        conn.commit()
+        updated = conn.execute(
+            "SELECT * FROM recipe_list_items WHERE id = ?", (item_id,)
+        ).fetchone()
+        r = dict(updated)
+        r["checked"] = bool(r["checked"])
+        return r
+    finally:
+        conn.close()
+
+
 @router.get("/{recipe_id}")
 def get_recipe(recipe_id: str):
     recipe = recipe_db.get_recipe_by_id(recipe_id.upper())
