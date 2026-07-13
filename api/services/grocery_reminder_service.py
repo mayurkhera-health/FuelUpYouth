@@ -95,7 +95,7 @@ def _remind_if_due(parent_id: int, conn) -> None:
         return
 
     tokens = [r["token"] for r in token_rows]
-    send_notification_guarded(
+    first_send = send_notification_guarded(
         parent_id,  # stored as athlete_id in notification_log for dedup
         _WINDOW_KEY,
         local_date,
@@ -105,6 +105,8 @@ def _remind_if_due(parent_id: int, conn) -> None:
         _BODY,
         conn,
     )
+    if not first_send:
+        return
 
     parent_row = conn.execute(
         "SELECT email, full_name FROM parents WHERE id = ?", (parent_id,)
