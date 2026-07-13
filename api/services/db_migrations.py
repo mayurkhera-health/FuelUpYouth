@@ -34,6 +34,9 @@ def run_all():
         _create_recipe_selections(conn)
         _create_recipe_lists(conn)
         _create_recipe_list_items(conn)
+        _add_category_to_recipe_list_items(conn)
+        _add_ingredient_type_to_recipe_list_items(conn)
+        _create_recipe_list_item_sources(conn)
         _create_feature_requests(conn)
         _add_calendar_sync_to_athletes(conn)
         _add_source_to_events(conn)
@@ -52,6 +55,7 @@ def run_all():
     # cannot change inside a transaction — so it owns its full transaction/pragma
     # lifecycle in isolation and must never share the batch connection.
     _migrate_athlete_logins_unique()
+    _fix_recipe_selections_unique_constraint()
 
 
 def _create_confirmations(conn):
@@ -584,6 +588,48 @@ def _create_recipe_list_items(conn):
     )
 
 
+def _add_category_to_recipe_list_items(conn):
+    """Add category column to recipe_list_items for grouped grocery display.
+    Values match pantryCategories.ts: produce, protein, carb, fat, hydration, other.
+    Idempotent — safe to run on every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(recipe_list_items)").fetchall()]
+    if "category" not in cols:
+        conn.execute(
+            "ALTER TABLE recipe_list_items ADD COLUMN category TEXT NOT NULL DEFAULT 'other'"
+        )
+
+
+def _add_ingredient_type_to_recipe_list_items(conn):
+    """Add ingredient_type column to recipe_list_items.
+    Values: 'main' (needs shopping) or 'staple' (pantry item, pre-checked).
+    Idempotent — safe to run on every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(recipe_list_items)").fetchall()]
+    if "ingredient_type" not in cols:
+        conn.execute(
+            "ALTER TABLE recipe_list_items ADD COLUMN ingredient_type TEXT NOT NULL DEFAULT 'main'"
+        )
+
+
+def _create_recipe_list_item_sources(conn):
+    """Track which recipes contributed each grocery list ingredient.
+    Enables source display in UI and correct removal behavior when
+    a recipe is deselected. Idempotent — safe to run on every startup."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS recipe_list_item_sources (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            list_item_id INTEGER NOT NULL REFERENCES recipe_list_items(id) ON DELETE CASCADE,
+            recipe_id    TEXT    NOT NULL,
+            recipe_name  TEXT    NOT NULL,
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (list_item_id, recipe_id)
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_recipe_list_item_sources_item
+            ON recipe_list_item_sources (list_item_id)
+    """)
+
+
 def _create_feature_requests(conn):
     # "What's Coming" → Suggest a Feature submissions. Each row also triggers a
     # best-effort email to the team (see api/routes/feedback.py). reason is
@@ -642,6 +688,67 @@ def _create_pantry_list_items(conn):
         "CREATE INDEX IF NOT EXISTS idx_pantry_athlete_week "
         "ON pantry_list_items (athlete_id, week_start)"
     )
+
+
+def _fix_recipe_selections_unique_constraint():
+    """
+    Replace UNIQUE (athlete_id, selection_date, fueling_window_key) with
+    UNIQUE (athlete_id, week_start, fueling_window_key, recipe_id) so parents
+    can select multiple recipes per fueling window per week — only the exact
+    same recipe in the same window is blocked as a duplicate.
+
+    Runs on a dedicated connection after the batch has committed. Idempotent:
+    returns immediately once the new constraint exists.
+    """
+    conn = get_conn()
+    try:
+        if not conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='recipe_selections'"
+        ).fetchone():
+            return
+
+        for idx in conn.execute("PRAGMA index_list(recipe_selections)").fetchall():
+            cols = [r[2] for r in conn.execute(f"PRAGMA index_info('{idx[1]}')").fetchall()]
+            if set(cols) == {"athlete_id", "week_start", "fueling_window_key", "recipe_id"}:
+                return  # Already correct — nothing to do
+
+        conn.isolation_level = None
+        try:
+            conn.execute("PRAGMA foreign_keys=OFF")
+            conn.execute("BEGIN")
+            conn.execute("""
+                CREATE TABLE recipe_selections_new (
+                    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    athlete_id          INTEGER NOT NULL REFERENCES athletes(id),
+                    week_start          TEXT    NOT NULL,
+                    selection_date      TEXT    NOT NULL,
+                    fueling_window_key  TEXT    NOT NULL,
+                    recipe_id           TEXT    NOT NULL,
+                    servings            INTEGER NOT NULL DEFAULT 1,
+                    created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+                    updated_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+                    UNIQUE (athlete_id, week_start, fueling_window_key, recipe_id)
+                )
+            """)
+            conn.execute("""
+                INSERT OR IGNORE INTO recipe_selections_new
+                SELECT * FROM recipe_selections
+            """)
+            conn.execute("DROP TABLE recipe_selections")
+            conn.execute("ALTER TABLE recipe_selections_new RENAME TO recipe_selections")
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_recipe_selections_athlete_week
+                ON recipe_selections (athlete_id, week_start)
+            """)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+        finally:
+            conn.execute("PRAGMA foreign_keys=ON")
+            conn.isolation_level = ""
+    finally:
+        conn.close()
 
 
 def _migrate_athlete_logins_unique():
