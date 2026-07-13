@@ -30,10 +30,16 @@ async def lifespan(app: FastAPI):
         from api.services.notification_service import run_notification_tick
         from api.services.ics_sync import build_calendar_sync_job, configure_calendar_sync_startup
         from api.services.health_service import instrument_job, run_health_tick, run_health_daily
+        from api.services.grocery_reset_service import run_grocery_reset_tick
+        from api.services.grocery_reminder_service import run_grocery_reminder_tick
         # Wrap the two existing jobs so they record scheduler heartbeats — no change
         # to the jobs' own logic; the wrapper only stamps last_run/last_success.
         _scheduler.add_job(instrument_job("notifications", run_notification_tick), "interval", minutes=15,
                            id="notifications", replace_existing=True)
+        _scheduler.add_job(run_grocery_reset_tick, "interval", minutes=15,
+                           id="grocery_reset", replace_existing=True)
+        _scheduler.add_job(run_grocery_reminder_tick, "interval", minutes=15,
+                           id="grocery_reminder", replace_existing=True)
         # calendar_sync is registered via build_calendar_sync_job() (instrument + skip-
         # if-running lock); configure_calendar_sync_startup() then handles Option B
         # (catch-up if stale/initial, re-anchor next run if fresh) — see ics_sync.py.
@@ -47,7 +53,8 @@ async def lifespan(app: FastAPI):
         if not _scheduler.running:
             _scheduler.start()
         configure_calendar_sync_startup(_scheduler)
-        logger.info("Schedulers started (notifications 15-min, calendar sync 6-hr, health 15-min + daily).")
+        logger.info("Schedulers started (notifications 15-min, calendar sync 6-hr, health 15-min + daily, "
+                    "grocery reset 15-min, grocery reminder 15-min).")
     except Exception:
         logger.exception("Scheduler failed to start")
 

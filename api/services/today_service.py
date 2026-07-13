@@ -5,6 +5,7 @@ from api.services.nutrition_calc import calc_daily_targets
 from api.services.window_distribution import distribute_to_slots
 from api.services.window_engine_v2 import event_relative_windows_enabled
 from api.services.activity_type_resolver import resolve_activity_type
+from api.utils.week import get_week_start
 
 log = logging.getLogger(__name__)
 
@@ -157,7 +158,7 @@ def get_athlete_streak(athlete_id: int, conn) -> dict:
             best = cur
             best_end = d
 
-    week_start = today - timedelta(days=today.weekday())
+    week_start = get_week_start(today)
     week_logged = []
     for i in range(7):
         d = week_start + timedelta(days=i)

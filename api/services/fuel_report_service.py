@@ -10,6 +10,7 @@ from datetime import date as dt_date, timedelta
 
 from api.database import get_conn
 from api.services.meal_timing import generate_day_windows
+from api.utils.week import get_week_start as _week_start_sunday
 
 # Engine categories that map to confirmation tap types
 _CATEGORY_TO_TYPE: dict[str, str] = {
@@ -30,7 +31,7 @@ DAY_ABBR = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 
 def _get_week_start(reference: dt_date | None = None) -> str:
     d = reference or dt_date.today()
-    return (d - timedelta(days=d.weekday())).isoformat()
+    return _week_start_sunday(d).isoformat()
 
 
 def _get_week_dates(week_start: str) -> list[str]:

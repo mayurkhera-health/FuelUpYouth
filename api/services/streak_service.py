@@ -14,6 +14,7 @@ they cannot drift. The streak_state table stores only non-derivable state
 
 import sqlite3
 from datetime import date, timedelta
+from api.utils.week import get_week_start
 
 MILESTONES = [2, 5, 10, 21]
 DEFAULT_FREEZE_TOKENS = 1
@@ -66,9 +67,9 @@ def _best_streak(qual: set) -> int:
 
 
 def _week_strip(qual: set, today: date) -> list:
-    """Mon..Sun booleans for the week containing `today`."""
-    monday = today - timedelta(days=today.weekday())
-    return [(monday + timedelta(days=i)).isoformat() in qual for i in range(7)]
+    """Sun..Sat booleans for the week containing `today`."""
+    sunday = get_week_start(today)
+    return [(sunday + timedelta(days=i)).isoformat() in qual for i in range(7)]
 
 
 def _freeze_tokens(athlete_id: int, conn) -> int:

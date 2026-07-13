@@ -1,5 +1,6 @@
 from datetime import date as dt_date, timedelta
 from api.services.today_service import compute_traffic_light, compute_logged_totals, get_athlete_streak
+from api.utils.week import get_week_start as _get_week_start_sunday
 
 NUTRIENT_LABELS = {
     "calories":   ("🔥", "Calories"),
@@ -18,7 +19,7 @@ WIN_COLORS = {
 
 def get_week_start(reference_date: str = None) -> str:
     d = dt_date.fromisoformat(reference_date) if reference_date else dt_date.today()
-    return (d - timedelta(days=d.weekday())).isoformat()
+    return _get_week_start_sunday(d).isoformat()
 
 
 def get_week_dates(week_start: str) -> list:

@@ -6,6 +6,7 @@ from api.models import RecipeSwapRequest, RecipeGenerateRequest
 from api.services import recipe_db, claude_ai, recipe_generator
 from api.services.recipe_db import PROFILE_TO_DB_CATEGORIES
 from api.database import get_conn
+from api.utils.week import get_week_start as _get_week_start
 
 router = APIRouter()
 
@@ -119,8 +120,7 @@ def _parse_dietary(raw) -> list:
 
 
 def _week_start(date_str: str) -> str:
-    d = _date.fromisoformat(date_str)
-    return (d - timedelta(days=d.weekday())).isoformat()
+    return _get_week_start(_date.fromisoformat(date_str)).isoformat()
 
 
 def _get_or_create_recipe_list(athlete_id: int, week_start: str, conn) -> int:
