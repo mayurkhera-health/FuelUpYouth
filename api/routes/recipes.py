@@ -9,6 +9,99 @@ from api.database import get_conn
 
 router = APIRouter()
 
+_CATEGORY_KEYWORDS: dict[str, list[str]] = {
+    "spice": [
+        "salt", "pepper", "paprika", "cumin", "coriander", "turmeric",
+        "cinnamon", "nutmeg", "oregano", "thyme", "rosemary", "basil",
+        "bay leaf", "garlic powder", "onion powder", "chili powder",
+        "cayenne", "red pepper flakes", "italian seasoning", "seasoning",
+        "spice", "herb", "extract", "vanilla",
+    ],
+    "produce": [
+        "spinach", "kale", "lettuce", "arugula", "broccoli", "cauliflower",
+        "carrot", "celery", "cucumber", "zucchini", "squash",
+        "tomato", "onion", "garlic", "ginger", "mushroom", "asparagus",
+        "edamame", "corn", "pea", "bean", "lentil", "chickpea", "avocado",
+        "banana", "apple", "berry", "blueberry", "strawberry", "raspberry",
+        "mango", "pineapple", "orange", "lemon", "lime", "grape", "cherry",
+        "peach", "pear", "watermelon", "melon", "fruit", "vegetable", "veggie",
+        "cilantro", "parsley", "mint", "dill", "scallion",
+        "green onion", "sweet potato", "potato", "beet", "radish",
+        "mixed berries", "dried fruit", "dried cranberry", "raisin",
+        "sun-dried tomato", "artichoke", "leek", "shallot", "bok choy",
+        "snap pea", "snow pea", "brussels sprout", "cabbage", "fennel",
+        "jalapeño", "jalapeno", "serrano", "poblano", "tomatillo",
+    ],
+    "protein": [
+        "chicken", "turkey", "beef", "steak", "pork", "salmon", "tuna",
+        "shrimp", "tilapia", "cod", "fish", "egg", "tofu", "tempeh",
+        "ground beef", "ground turkey", "lamb", "bacon", "sausage",
+        "protein powder", "whey", "greek yogurt", "cottage cheese",
+        "edamame", "lentil", "black bean", "kidney bean",
+        "deli turkey", "rotisserie chicken", "canned tuna", "canned salmon",
+        "jerky", "deli meat", "lunch meat", "pepperoni", "prosciutto",
+    ],
+    "carb": [
+        "rice", "pasta", "bread", "tortilla", "oat", "quinoa", "barley",
+        "farro", "couscous", "noodle", "bagel", "wrap", "pita", "cereal",
+        "granola", "cracker", "pretzel", "potato", "sweet potato",
+        "flour", "cornmeal", "panko", "breadcrumb",
+        "brown rice", "white rice", "rice cake", "english muffin",
+        "waffle", "pancake mix", "pita bread", "sourdough", "rye bread",
+    ],
+    "fat": [
+        "olive oil", "avocado oil", "coconut oil", "butter", "ghee",
+        "almond", "walnut", "cashew", "pecan", "pistachio", "peanut",
+        "nut butter", "almond butter", "peanut butter", "tahini",
+        "cheese", "cream cheese", "mayo", "mayonnaise", "sesame oil",
+        "flax", "chia", "hemp", "sunflower seed", "pumpkin seed",
+    ],
+    "hydration": [
+        "water", "coconut water", "sports drink", "juice", "milk",
+        "almond milk", "oat milk", "soy milk", "broth", "stock",
+        "electrolyte", "tea", "smoothie",
+    ],
+}
+
+
+def _categorize_ingredient(name: str) -> str:
+    """Map a free-text ingredient name to a grocery category using keyword matching.
+    Returns one of: produce, protein, carb, fat, hydration, other."""
+    lower = name.lower()
+    for category, keywords in _CATEGORY_KEYWORDS.items():
+        if any(kw in lower for kw in keywords):
+            return category
+    return "other"
+
+
+_PANTRY_STAPLES = {
+    # Seasonings & spices
+    "salt", "pepper", "black pepper", "white pepper", "red pepper flakes",
+    "red chili flakes", "chili flakes", "cayenne", "paprika", "smoked paprika",
+    "cumin", "coriander", "turmeric", "cinnamon", "nutmeg", "oregano",
+    "thyme", "rosemary", "basil", "bay leaf", "garlic powder", "onion powder",
+    "italian seasoning", "everything bagel seasoning", "old bay",
+    # Oils & cooking fats
+    "cooking spray", "olive oil", "vegetable oil", "canola oil",
+    "coconut oil spray", "nonstick spray",
+    # Acids & condiments
+    "lemon juice", "lime juice", "vinegar", "apple cider vinegar",
+    "balsamic vinegar", "rice vinegar", "soy sauce", "worcestershire",
+    # Baking basics
+    "baking powder", "baking soda", "vanilla extract", "cornstarch",
+    "flour", "sugar", "brown sugar", "honey", "maple syrup",
+    # Water
+    "water",
+}
+
+
+def _is_pantry_staple(name: str) -> bool:
+    """Return True if the ingredient is a common pantry staple."""
+    lower = name.lower().strip()
+    if lower in _PANTRY_STAPLES:
+        return True
+    return any(staple in lower for staple in _PANTRY_STAPLES)
+
 
 def _parse_allergies(raw) -> list:
     if not raw:
@@ -143,16 +236,18 @@ def create_selection(data: _SelectionCreate):
             raise HTTPException(404, f"Recipe {data.recipe_id} not found.")
         ws = _week_start(data.selection_date)
         conn.execute(
-            """INSERT OR REPLACE INTO recipe_selections
-               (athlete_id, week_start, selection_date, fueling_window_key, recipe_id, servings,
-                updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, datetime('now'))""",
+            """INSERT OR IGNORE INTO recipe_selections
+               (athlete_id, week_start, selection_date, fueling_window_key, recipe_id, servings)
+               VALUES (?, ?, ?, ?, ?, ?)""",
             (data.athlete_id, ws, data.selection_date, data.fueling_window_key,
              data.recipe_id.upper(), data.servings),
         )
         conn.commit()
         row = conn.execute(
-            "SELECT * FROM recipe_selections WHERE rowid = last_insert_rowid()"
+            """SELECT * FROM recipe_selections
+               WHERE athlete_id = ? AND week_start = ?
+               AND fueling_window_key = ? AND recipe_id = ?""",
+            (data.athlete_id, ws, data.fueling_window_key, data.recipe_id.upper()),
         ).fetchone()
         return {"selection": dict(row)}
     finally:
@@ -190,29 +285,85 @@ def sync_grocery_list(data: _SyncGroceryList):
             (data.athlete_id, data.week_start),
         ).fetchall()
         list_id = _get_or_create_recipe_list(data.athlete_id, data.week_start, conn)
+        conn.execute(
+            "DELETE FROM recipe_list_item_sources WHERE list_item_id IN "
+            "(SELECT id FROM recipe_list_items WHERE list_id = ?)",
+            (list_id,)
+        )
+        conn.execute("DELETE FROM recipe_list_items WHERE list_id = ?", (list_id,))
         added = 0
         for row in rows:
             recipe = recipe_db.get_recipe_by_id(row["recipe_id"])
             if not recipe:
                 continue
-            for ingredient in recipe.get("ingredients", []):
-                name = ingredient.get("name", "").strip() if isinstance(ingredient, dict) else str(ingredient).strip()
+            raw = recipe.get("ingredients", [])
+            if isinstance(raw, str):
+                ingredient_names = [i.strip() for i in raw.split(",") if i.strip()]
+            elif isinstance(raw, list):
+                ingredient_names = []
+                for item in raw:
+                    if isinstance(item, dict):
+                        n = item.get("name", "").strip()
+                    else:
+                        n = str(item).strip()
+                    if n:
+                        ingredient_names.append(n)
+            else:
+                ingredient_names = []
+            for name in ingredient_names:
                 if not name:
                     continue
+                is_staple = _is_pantry_staple(name)
                 result = conn.execute(
-                    "INSERT OR IGNORE INTO recipe_list_items (list_id, name)"
-                    " VALUES (?, ?)",
-                    (list_id, name),
+                    "INSERT OR IGNORE INTO recipe_list_items"
+                    " (list_id, name, category, ingredient_type, checked)"
+                    " VALUES (?, ?, ?, ?, ?)",
+                    (list_id, name, _categorize_ingredient(name),
+                     "staple" if is_staple else "main",
+                     1 if is_staple else 0),
                 )
                 added += result.rowcount
+                item_row = conn.execute(
+                    "SELECT id FROM recipe_list_items WHERE list_id = ? AND name = ?",
+                    (list_id, name),
+                ).fetchone()
+                if item_row:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO recipe_list_item_sources"
+                        " (list_item_id, recipe_id, recipe_name)"
+                        " VALUES (?, ?, ?)",
+                        (item_row["id"], row["recipe_id"], recipe.get("name", row["recipe_id"])),
+                    )
         conn.commit()
         return {"synced": True, "items_added": added, "week_start": data.week_start}
     finally:
         conn.close()
 
 
+_CATEGORY_ORDER = ["produce", "protein", "carb", "fat", "hydration", "spice", "other"]
+_CATEGORY_LABELS = {
+    "produce":   "Produce",
+    "protein":   "Protein",
+    "carb":      "Carbs & Grains",
+    "fat":       "Snacks & Healthy Fats",
+    "hydration": "Drinks & Hydration",
+    "spice":     "Spices & Seasonings",
+    "other":     "Other",
+}
+_CATEGORY_ICONS = {
+    "produce":   "leaf-outline",
+    "protein":   "egg-outline",
+    "carb":      "nutrition-outline",
+    "fat":       "cafe-outline",
+    "hydration": "water-outline",
+    "spice":     "color-filter-outline",
+    "other":     "ellipsis-horizontal-outline",
+}
+
+
 @router.get("/grocery-list")
 def get_grocery_list(athlete_id: int = Query(...), week_start: str = Query(...)):
+    from collections import defaultdict
     conn = get_conn()
     try:
         list_row = conn.execute(
@@ -220,19 +371,55 @@ def get_grocery_list(athlete_id: int = Query(...), week_start: str = Query(...))
             (athlete_id, week_start),
         ).fetchone()
         if not list_row:
-            return {"list_id": None, "week_start": week_start, "items": [], "item_count": 0, "checked_count": 0}
-        list_id = list_row[0]
-        rows = conn.execute(
-            "SELECT * FROM recipe_list_items WHERE list_id = ? ORDER BY created_at",
+            return {"list_id": None, "week_start": week_start, "groups": [], "item_count": 0, "checked_count": 0}
+        list_id = list_row["id"]
+        item_rows = conn.execute(
+            "SELECT * FROM recipe_list_items WHERE list_id = ? ORDER BY name",
             (list_id,),
         ).fetchall()
-        items = [{**dict(r), "checked": bool(r["checked"])} for r in rows]
+        item_ids = [r["id"] for r in item_rows]
+        sources_by_item: dict = {}
+        if item_ids:
+            placeholders = ",".join("?" * len(item_ids))
+            source_rows = conn.execute(
+                f"SELECT list_item_id, recipe_id, recipe_name FROM recipe_list_item_sources "
+                f"WHERE list_item_id IN ({placeholders})",
+                item_ids,
+            ).fetchall()
+            for s in source_rows:
+                sources_by_item.setdefault(s["list_item_id"], []).append({
+                    "recipe_id": s["recipe_id"],
+                    "recipe_name": s["recipe_name"],
+                })
+        buckets: dict = defaultdict(list)
+        for row in item_rows:
+            cat = row["category"] or "other"
+            buckets[cat].append({
+                "id": row["id"],
+                "list_id": row["list_id"],
+                "name": row["name"],
+                "checked": bool(row["checked"]),
+                "category": cat,
+                "ingredient_type": row["ingredient_type"],
+                "sources": sources_by_item.get(row["id"], []),
+                "created_at": row["created_at"],
+            })
+        groups = [
+            {
+                "category": cat,
+                "label": _CATEGORY_LABELS[cat],
+                "icon": _CATEGORY_ICONS[cat],
+                "items": buckets[cat],
+            }
+            for cat in _CATEGORY_ORDER
+            if cat in buckets
+        ]
         return {
             "list_id": list_id,
             "week_start": week_start,
-            "items": items,
-            "item_count": len(items),
-            "checked_count": sum(1 for it in items if it["checked"]),
+            "groups": groups,
+            "item_count": len(item_rows),
+            "checked_count": sum(1 for r in item_rows if r["checked"]),
         }
     finally:
         conn.close()
