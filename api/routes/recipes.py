@@ -85,11 +85,10 @@ _PANTRY_STAPLES = {
     "cooking spray", "olive oil", "vegetable oil", "canola oil",
     "coconut oil spray", "nonstick spray",
     # Acids & condiments
-    "lemon juice", "lime juice", "vinegar", "apple cider vinegar",
-    "balsamic vinegar", "rice vinegar", "soy sauce", "worcestershire",
+    "vinegar", "apple cider vinegar", "balsamic vinegar", "rice vinegar",
+    "soy sauce", "worcestershire",
     # Baking basics
     "baking powder", "baking soda", "vanilla extract", "cornstarch",
-    "flour", "sugar", "brown sugar", "honey", "maple syrup",
     # Water
     "water",
 }
@@ -285,13 +284,18 @@ def sync_grocery_list(data: _SyncGroceryList):
             (data.athlete_id, data.week_start),
         ).fetchall()
         list_id = _get_or_create_recipe_list(data.athlete_id, data.week_start, conn)
+        existing_names = {
+            row["name"]
+            for row in conn.execute(
+                "SELECT name FROM recipe_list_items WHERE list_id = ?", (list_id,)
+            ).fetchall()
+        }
         conn.execute(
             "DELETE FROM recipe_list_item_sources WHERE list_item_id IN "
             "(SELECT id FROM recipe_list_items WHERE list_id = ?)",
             (list_id,)
         )
         conn.execute("DELETE FROM recipe_list_items WHERE list_id = ?", (list_id,))
-        added = 0
         for row in rows:
             recipe = recipe_db.get_recipe_by_id(row["recipe_id"])
             if not recipe:
@@ -314,7 +318,7 @@ def sync_grocery_list(data: _SyncGroceryList):
                 if not name:
                     continue
                 is_staple = _is_pantry_staple(name)
-                result = conn.execute(
+                conn.execute(
                     "INSERT OR IGNORE INTO recipe_list_items"
                     " (list_id, name, category, ingredient_type, checked)"
                     " VALUES (?, ?, ?, ?, ?)",
@@ -322,7 +326,6 @@ def sync_grocery_list(data: _SyncGroceryList):
                      "staple" if is_staple else "main",
                      1 if is_staple else 0),
                 )
-                added += result.rowcount
                 item_row = conn.execute(
                     "SELECT id FROM recipe_list_items WHERE list_id = ? AND name = ?",
                     (list_id, name),
@@ -334,8 +337,14 @@ def sync_grocery_list(data: _SyncGroceryList):
                         " VALUES (?, ?, ?)",
                         (item_row["id"], row["recipe_id"], recipe.get("name", row["recipe_id"])),
                     )
+        new_names = {
+            row["name"]
+            for row in conn.execute(
+                "SELECT name FROM recipe_list_items WHERE list_id = ?", (list_id,)
+            ).fetchall()
+        }
         conn.commit()
-        return {"synced": True, "items_added": added, "week_start": data.week_start}
+        return {"synced": True, "items_added": len(new_names - existing_names), "week_start": data.week_start}
     finally:
         conn.close()
 
