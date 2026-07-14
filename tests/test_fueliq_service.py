@@ -397,7 +397,7 @@ def test_complete_lesson_surfaces_newly_earned_badges():
 def test_list_badges_returns_every_defined_badge():
     conn = _fueliq_db()
     badges = fq.list_badges(1, conn)
-    assert len(badges) == 6
+    assert len(badges) == 8
     assert all(b["earned"] is False for b in badges)
     assert all(b["earned_at"] is None for b in badges)
     keys = {b["key"] for b in badges}

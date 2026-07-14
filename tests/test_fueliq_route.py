@@ -81,10 +81,11 @@ def test_hub_returns_baseline_progress_when_enabled(client, monkeypatch):
     assert body["enabled"] is True
     assert body["score"] == 50
     assert body["levels"] == [
-        {"level": 1, "unlocked": True},
-        {"level": 2, "unlocked": False},
-        {"level": 3, "unlocked": False},
-        {"level": 4, "unlocked": False},
+        {"level": 1, "unlocked": True,  "level_name": "Kickoff"},
+        {"level": 2, "unlocked": False, "level_name": "Energy Builder"},
+        {"level": 3, "unlocked": False, "level_name": "Match Ready"},
+        {"level": 4, "unlocked": False, "level_name": "Performance Leader"},
+        {"level": 5, "unlocked": False, "level_name": "Fuel IQ Champion"},
     ]
     assert body["badges_earned"] == []
 
@@ -165,7 +166,7 @@ def test_badges_lists_all_defined_badges_locked_until_earned(client, monkeypatch
     conn.close()
 
     before = client.get(f"/api/athletes/{aid}/badges").json()
-    assert len(before["badges"]) == 6
+    assert len(before["badges"]) == 8
     assert all(b["earned"] is False for b in before["badges"])
 
     client.post(f"/api/athletes/{aid}/lessons/{lesson_id}/complete", json={"perfect_quiz": False})
