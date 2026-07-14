@@ -9,7 +9,7 @@ only the non-derivable state (raw score, streak counters, freeze tokens).
 
 import os
 
-_LEVEL_THRESHOLDS = {1: 0, 2: 100, 3: 200, 4: 300}
+_LEVEL_THRESHOLDS = {1: 0, 2: 100, 3: 200, 4: 300, 5: 400}
 
 
 def fueliq_enabled() -> bool:
@@ -268,19 +268,39 @@ def _has_full_tank(athlete_id: int, conn) -> bool:
     return False
 
 
+def _has_three_in_a_row(athlete_id: int, conn) -> bool:
+    """3-day lesson streak — simplest form: best_streak ever reached ≥ 3."""
+    row = conn.execute(
+        "SELECT best_streak FROM fueliq_athlete_progress WHERE athlete_id = ?",
+        (athlete_id,),
+    ).fetchone()
+    return bool(row) and row["best_streak"] >= 3
+
+
 def _has_team_player(athlete_id: int, conn) -> bool:
     """Team Challenges are Post-MVP (spec §12) — no data source exists yet, so
     this badge is defined but permanently unearnable until that feature ships."""
     return False
 
 
+def _has_level_up(athlete_id: int, conn) -> bool:
+    """Earned the first time an athlete reaches Level 2 (score ≥ 100)."""
+    row = conn.execute(
+        "SELECT score FROM fueliq_athlete_progress WHERE athlete_id = ?",
+        (athlete_id,),
+    ).fetchone()
+    return bool(row) and row["score"] >= 100
+
+
 BADGE_CHECKS = {
     "first_whistle": _has_first_whistle,
+    "three_in_a_row": _has_three_in_a_row,
     "hydration_hero": _has_hydration_hero,
     "perfect_week": _has_perfect_week,
     "game_day_ready": _has_game_day_ready,
     "full_tank": _has_full_tank,
     "team_player": _has_team_player,
+    "level_up": _has_level_up,
 }
 
 # Display metadata for the Badge Gallery — order matches spec §7.1.
@@ -288,11 +308,13 @@ BADGE_CHECKS = {
 # Myth Buster feature it read from — dev-only, no earned rows existed yet.
 BADGE_DEFINITIONS = [
     {"key": "first_whistle", "name": "Kickoff", "hint": "Complete your first lesson"},
-    {"key": "hydration_hero", "name": "Water Break", "hint": "Complete all water lessons"},
-    {"key": "perfect_week", "name": "Ever-Present", "hint": "Hit a 7-day streak"},
-    {"key": "game_day_ready", "name": "Starting XI", "hint": "Complete Level 2"},
+    {"key": "three_in_a_row", "name": "Three in a Row", "hint": "Build a 3-day lesson streak"},
+    {"key": "hydration_hero", "name": "Hydration Hero", "hint": "Complete all water lessons"},
+    {"key": "perfect_week", "name": "Seven-Day Starter", "hint": "Hit a 7-day streak"},
+    {"key": "game_day_ready", "name": "Match Ready", "hint": "Complete Level 2"},
     {"key": "team_player", "name": "Team Player", "hint": "Complete your first Team Challenge"},
     {"key": "full_tank", "name": "Golden Boot", "hint": "100% of a level with perfect quizzes"},
+    {"key": "level_up", "name": "Level Up", "hint": "Reach your first new level"},
 ]
 
 
@@ -334,6 +356,46 @@ def check_and_award_badges(athlete_id: int, conn) -> list[str]:
 
 
 DEFAULT_MIN_COHORT = 5
+
+# Display names for lesson category codes — kept server-side so raw DB
+# values never reach the client. Fallback: title-case the raw value if an
+# unknown category appears after new content is imported.
+_CATEGORY_DISPLAY: dict[str, str] = {
+    "hydration": "Hydration",
+    "nutrient_timing": "Nutrient Timing",
+    "performance_plate": "Performance Plate",
+    "eating_frequency": "Eating Frequency",
+    "sweat_electrolytes": "Sweat & Electrolytes",
+    "smart_shopping_prep": "Smart Shopping",
+}
+
+STRONGEST_AT_MIN_COMPLETIONS = 1  # interim floor until more lesson content ships per category
+
+
+def compute_strongest_at(athlete_id: int, conn, min_completions: int = STRONGEST_AT_MIN_COMPLETIONS) -> dict | None:
+    """Lesson-completion proxy for the 'Strongest at' mastery signal (§6,
+    Addendum B). Returns the category where this athlete has the most lesson
+    completions, provided they have at least `min_completions` in that
+    category. Tie-break: whichever tied category had its most recent
+    completion later. Returns None when no category meets the floor."""
+    row = conn.execute(
+        """
+        SELECT l.category, COUNT(*) AS cnt, MAX(lc.completed_at) AS last_completed
+        FROM fueliq_lesson_completions lc
+        JOIN fueliq_lessons l ON l.id = lc.lesson_id
+        WHERE lc.athlete_id = ? AND l.category IS NOT NULL
+        GROUP BY l.category
+        HAVING cnt >= ?
+        ORDER BY cnt DESC, last_completed DESC
+        LIMIT 1
+        """,
+        (athlete_id, min_completions),
+    ).fetchone()
+    if not row:
+        return None
+    category = row["category"]
+    display_name = _CATEGORY_DISPLAY.get(category, category.replace("_", " ").title())
+    return {"category": category, "display_name": display_name}
 
 
 def compute_percentile(athlete_id: int, conn, min_cohort: int = DEFAULT_MIN_COHORT) -> dict:

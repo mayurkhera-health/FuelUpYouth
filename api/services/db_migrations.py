@@ -41,6 +41,9 @@ def run_all():
         _create_fueliq_tables(conn)
         _create_fueliq_daily_challenge_tables(conn)
         _add_push_sent_to_daily_challenges(conn)
+        _create_fueliq_notification_prefs(conn)
+        _create_fueliq_push_events(conn)
+        _drop_fueliq_lessons_drop_week(conn)
         conn.commit()
     finally:
         conn.close()
@@ -591,7 +594,6 @@ def _create_fueliq_tables(conn):
             review_status   TEXT NOT NULL DEFAULT 'draft',
             reviewed_by     TEXT,
             review_date     TEXT,
-            drop_week       TEXT,
             created_at      TEXT NOT NULL DEFAULT (datetime('now'))
         )
     """)
@@ -703,6 +705,42 @@ def _add_push_sent_to_daily_challenges(conn):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(fueliq_daily_challenges)").fetchall()]
     if "push_sent_at" not in cols:
         conn.execute("ALTER TABLE fueliq_daily_challenges ADD COLUMN push_sent_at TEXT")
+
+
+def _create_fueliq_notification_prefs(conn):
+    """Per-athlete opt-in flags for the two Fuel IQ §2.1 push triggers.
+    Defaults to both enabled. UPSERTED by PATCH /api/notifications/fueliq-prefs."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_notification_prefs (
+            athlete_id       INTEGER PRIMARY KEY REFERENCES athletes(id),
+            morning_enabled  INTEGER NOT NULL DEFAULT 1,
+            pregame_enabled  INTEGER NOT NULL DEFAULT 1,
+            updated_at       TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+
+
+def _create_fueliq_push_events(conn):
+    """Audit trail for Fuel IQ notification sends and skips. Queryable for
+    skip-rate analysis (e.g. pregame trigger skipped due to no start_time).
+    INSERT OR IGNORE — at most one event per (athlete, trigger, outcome, date)."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueliq_push_events (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id INTEGER NOT NULL,
+            trigger    TEXT    NOT NULL,
+            outcome    TEXT    NOT NULL,
+            event_date TEXT    NOT NULL,
+            logged_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, trigger, outcome, event_date)
+        )
+    """)
+
+
+def _drop_fueliq_lessons_drop_week(conn):
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(fueliq_lessons)").fetchall()]
+    if "drop_week" in cols:
+        conn.execute("ALTER TABLE fueliq_lessons DROP COLUMN drop_week")
 
 
 def _migrate_athlete_logins_unique():

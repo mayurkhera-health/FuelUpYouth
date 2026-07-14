@@ -17,9 +17,22 @@ fueliq_athlete_progress stores only the non-derivable state (freeze tokens,
 last-celebrated milestone), same split as streak_state.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from api.services import fueliq_service as fq
+
+# Lesson streak dates are anchored to PST, matching the daily-challenge streak
+# (fueliq_daily_challenge_service.py). The server runs UTC on Fly.io, so
+# datetime('now') in SQLite returns UTC — we convert stored timestamps to PST
+# local dates before comparing, so a lesson completed at 11 PM PST lands on
+# the correct calendar day rather than the next UTC day.
+_PST = ZoneInfo("America/Los_Angeles")
+
+
+def _today_pst() -> date:
+    return datetime.now(_PST).date()
+
 
 MILESTONES = [7]
 DEFAULT_FREEZE_TOKENS = 1
@@ -27,19 +40,30 @@ DEFAULT_FREEZE_TOKENS = 1
 
 def _as_date(value) -> date:
     if value is None:
-        return date.today()
+        return _today_pst()
     if isinstance(value, date):
         return value
     return date.fromisoformat(value)
 
 
 def _qualifying_dates(athlete_id: int, conn) -> set:
-    """Set of YYYY-MM-DD strings the athlete completed a lesson on."""
-    lessons = conn.execute(
-        "SELECT DISTINCT substr(completed_at, 1, 10) AS d FROM fueliq_lesson_completions WHERE athlete_id = ?",
+    """Set of PST-local YYYY-MM-DD strings the athlete completed a lesson on.
+
+    completed_at is stored as UTC (SQLite's datetime('now') on Fly.io). Converting
+    to PST before extracting the date means a lesson logged at 11 PM PST lands on
+    the correct local calendar day, not the next UTC day."""
+    rows = conn.execute(
+        "SELECT completed_at FROM fueliq_lesson_completions WHERE athlete_id = ?",
         (athlete_id,),
     ).fetchall()
-    return {r["d"] for r in lessons}
+    result = set()
+    for r in rows:
+        try:
+            utc_dt = datetime.fromisoformat(r["completed_at"]).replace(tzinfo=ZoneInfo("UTC"))
+            result.add(utc_dt.astimezone(_PST).date().isoformat())
+        except (ValueError, TypeError):
+            pass
+    return result
 
 
 def _best_streak(qual: set) -> int:
@@ -107,10 +131,12 @@ def register_activity(athlete_id: int, conn, today=None) -> dict:
     last = int(row["last_celebrated_milestone"])
     reached = max((m for m in MILESTONES if m <= cur["current"]), default=0)
 
+    today_str = _as_date(today).isoformat()
     conn.execute(
-        "UPDATE fueliq_athlete_progress SET current_streak = ?, best_streak = ?, updated_at = datetime('now') "
+        "UPDATE fueliq_athlete_progress SET current_streak = ?, best_streak = ?, "
+        "last_activity_date = ?, updated_at = datetime('now') "
         "WHERE athlete_id = ?",
-        (cur["current"], best, athlete_id),
+        (cur["current"], best, today_str, athlete_id),
     )
     conn.commit()
 
