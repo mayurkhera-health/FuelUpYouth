@@ -171,7 +171,7 @@ def recipe_profile_for_window(window_key: str) -> str | None:
 
 
 def select_options(recipes: list[dict], n: int = 5) -> list[dict]:
-    """Pick up to n recipes with cuisine variety, as {short_label, plate_sections}.
+    """Pick up to n recipes with cuisine variety, as {id, short_label, plate_sections}.
     Deterministic (file order, distinct cuisines first) — stable across requests."""
     seen_cuisines: set[str] = set()
     primary, rest = [], []
@@ -186,6 +186,10 @@ def select_options(recipes: list[dict], n: int = 5) -> list[dict]:
             break
     chosen = (primary + rest)[:n]
     return [
-        {"short_label": r.get("short_label") or r["name"], "plate_sections": r.get("plate_sections", [])}
+        {
+            "id": r["id"],
+            "short_label": r.get("short_label") or r["name"],
+            "plate_sections": r.get("plate_sections", []),
+        }
         for r in chosen
     ]

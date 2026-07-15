@@ -1,11 +1,15 @@
 """Performance Plate — per-window plate shape + allergy-filtered food options.
 
 GET /api/plate/window?athlete_id=&window_key=
-  → { window_key, plate | null, options[] }
+  → { window_key, profile_key | null, plate | null, options[] }
 
-Display-only. `plate` is null for nudge/hydration windows (between_games etc.).
-Options are 4–5 short combo labels ({short_label, plate_sections}) drawn from the
+Options are 4–8 recipe combos ({id, short_label, plate_sections}) drawn from the
 recipe library, filtered by the athlete's allergies (safety) + dietary prefs.
+`profile_key` is the recipe-catalog window vocabulary (e.g. "breakfast") that
+`window_key` (e.g. "everyday_breakfast") maps to — the same vocabulary the
+recipes/grocery-list endpoints use, so a client can fetch/select the full
+recipe behind an option via /api/recipes/{id} and /api/recipes/selections
+using this profile_key as fueling_window_key.
 """
 from fastapi import APIRouter, HTTPException, Query
 
@@ -31,12 +35,12 @@ def get_window_plate(
     # Feature flag — ships dark. When off, no DB work: return an empty payload so
     # the client renders nothing (and does no per-window plate fetch overhead).
     if not performance_plate_enabled():
-        return {"window_key": window_key, "plate": None, "options": []}
+        return {"window_key": window_key, "profile_key": None, "plate": None, "options": []}
 
     plate = plate_for_window(window_key)
     if plate is None:
         # Nudge/hydration window — no plate, no options.
-        return {"window_key": window_key, "plate": None, "options": []}
+        return {"window_key": window_key, "profile_key": None, "plate": None, "options": []}
 
     conn = get_conn()
     try:
@@ -59,4 +63,4 @@ def get_window_plate(
     )
     options = select_options(recipes, n=8)
 
-    return {"window_key": window_key, "plate": plate, "options": options}
+    return {"window_key": window_key, "profile_key": profile, "plate": plate, "options": options}
