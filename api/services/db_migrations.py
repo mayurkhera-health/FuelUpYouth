@@ -30,6 +30,7 @@ def run_all():
         _add_diet_pref_to_athletes(conn)
         _create_problem_reports(conn)
         _create_coach_feedback(conn)
+        _create_instacart_handoff_feedback(conn)
         _create_pantry_list_items(conn)
         _create_recipe_selections(conn)
         _create_recipe_lists(conn)
@@ -642,6 +643,22 @@ def _create_feature_requests(conn):
             suggestion   TEXT NOT NULL,
             reason       TEXT,
             submitted_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+
+def _create_instacart_handoff_feedback(conn):
+    # Instacart grocery-handoff MVP feedback (Return & Feedback step). High-volume,
+    # no email — same shape as coach_feedback. comment is unused by the MVP UI (no
+    # free-text field) but kept nullable so adding one later is a pure frontend change.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS instacart_handoff_feedback (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id      INTEGER,
+            outcome         TEXT NOT NULL,
+            would_use_again TEXT NOT NULL,
+            comment         TEXT,
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
