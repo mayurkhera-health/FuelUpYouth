@@ -6,20 +6,28 @@ from pathlib import Path
 # When DB_PATH=:memory: (used in tests), the SQLite shared-cache in-memory
 # database is destroyed as soon as all connections to it are closed.  We keep
 # a module-level connection open so the DB survives across get_conn() calls.
+# _persistent_memory_uri tracks which named URI _persistent_memory_conn is open
+# against; when tests/conftest.py switches to a new URI per module, init_db()
+# closes the old conn and opens a fresh one.
 _persistent_memory_conn = None
+_persistent_memory_uri = None
 
 
 def init_db():
-    global _persistent_memory_conn
+    global _persistent_memory_conn, _persistent_memory_uri
     db_path = os.getenv("DB_PATH", str(Path(__file__).resolve().parent.parent / "fuelup.db"))
     if db_path == ":memory:":
-        # Use a named shared-cache URI so the schema written here is visible
-        # to every get_conn() call in the same process (test isolation).
-        # The module-level connection keeps the DB alive after init_db returns.
+        from api import database as _dbmod
+        target_uri = _dbmod._test_db_uri or "file::memory:?cache=shared"
+        if _persistent_memory_conn is not None and _persistent_memory_uri != target_uri:
+            _persistent_memory_conn.close()
+            _persistent_memory_conn = None
+            _persistent_memory_uri = None
         if _persistent_memory_conn is None:
             _persistent_memory_conn = sqlite3.connect(
-                "file::memory:?cache=shared", uri=True, check_same_thread=False
+                target_uri, uri=True, check_same_thread=False
             )
+            _persistent_memory_uri = target_uri
         conn = _persistent_memory_conn
     else:
         conn = sqlite3.connect(db_path)

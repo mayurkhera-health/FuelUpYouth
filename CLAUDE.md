@@ -100,31 +100,34 @@ All API routes use the `/api/` prefix. The React frontend sets `const API = impo
 ### Push notifications
 `api/routes/notifications.py` sends Web Push via `pywebpush`. VAPID keys are stored as Fly.io secrets. The browser service worker is at `frontend/public/sw.js`. Subscription endpoints are stored in the `push_subscriptions` table.
 
-## Test suite baseline — `feat/fueliq` (established 2026-07-14)
+## Test suite baseline — `feat/fueliq` (deterministic, established 2026-07-14)
 
 Run: `python3 -m pytest tests/ --tb=no -q` from `~/FuelUpYouth-main`
 
-**Baseline result: 24 failed / 580 passed / 14 errors**
+**Baseline result: 19 failed / 597 passed / 2 errors** (~84–92 s)
 
-When adding Phase work on this branch, diff against this list. A test not in this list that starts failing is a regression introduced by the new work and must be fixed before the phase is considered done.
+Verified identical across 3 consecutive runs.  DB isolation was fixed on 2026-07-14
+(see `tests/conftest.py`): each test module gets its own named in-memory SQLite DB,
+the APScheduler background thread is suppressed for tests (prevents SQLITE_LOCKED
+races), and three Phase 5 Fuel IQ test assertions were updated to match the new
+level count (4→5 levels, `level_name` field) and badge count (6→8 badges).
+Commit `cdd31e1` message incorrectly says "two Fuel IQ tests" — it was three
+(`test_hub_returns_baseline_progress_when_enabled`, `test_badges_lists_all_defined_badges_locked_until_earned`,
+`test_list_badges_returns_every_defined_badge`).
 
-### Pre-existing FAILED tests (24)
+When adding Phase work on this branch, diff against this list. A test not in this list
+that starts failing is a regression introduced by the new work and must be fixed before
+the phase is considered done.
+
+### Pre-existing FAILED tests (19)
 
 ```
-tests/test_admin_analytics_activity.py::test_activity_resolves_names_with_unknown_fallback
-tests/test_admin_family_engagement.py::test_engagement_empty_for_fresh_athlete
-tests/test_admin_overview.py::test_active_users_warning_toggles
-tests/test_admin_overview.py::test_growth_section_new_families
-tests/test_admin_overview.py::test_metric_gauge_fields
 tests/test_fuel_gauge.py::test_event_day_has_all_five_metrics
 tests/test_fuel_gauge.py::test_event_day_split_excludes_everyday_and_reaches_100
 tests/test_fuel_gauge.py::test_flag_off_payload_is_byte_identical_to_production
 tests/test_fuel_gauge.py::test_fuel_targets_shape_when_flag_on
 tests/test_fuel_gauge.py::test_split_unknown_category_contributes_zero_and_logs
 tests/test_fueliq_daily_challenge_route.py::test_daily_challenge_verdict_flow_end_to_end  ← see isolation note below
-tests/test_ics_sync.py::test_update_changed_event_only
-tests/test_login_alerts.py::test_first_ever_explicit_login_reads_as_new
-tests/test_login_alerts.py::test_new_signup_via_onboarding_alerts
 tests/test_notification_service.py::TestSendExpoPush::test_different_recipient_is_independent
 tests/test_notification_service.py::TestSendNotificationGuarded::test_duplicate_send_returns_false_and_does_not_push
 tests/test_notification_service.py::TestSendNotificationGuarded::test_first_send_returns_true_and_calls_push
@@ -140,30 +143,23 @@ tests/test_window_templates.py::test_tournament_close_gap
 tests/test_window_templates.py::test_tournament_wide_gap
 ```
 
-### Pre-existing ERROR tests (14) — shared in-memory DB state contamination
+### Pre-existing ERROR tests (2) — intra-module ordering issue
 
 ```
-tests/test_auth_flow.py::test_athlete_with_no_login_cannot_log_in
-tests/test_auth_flow.py::test_create_login_rejects_duplicate_for_same_athlete
-tests/test_auth_flow.py::test_create_login_rejects_email_already_taken
-tests/test_auth_flow.py::test_create_login_requires_athlete_belongs_to_parent
-tests/test_auth_flow.py::test_create_login_requires_existing_parent
-tests/test_auth_flow.py::test_login_parent_is_case_insensitive
-tests/test_auth_flow.py::test_login_parent_with_no_athletes_returns_empty_list
-tests/test_auth_flow.py::test_login_resolves_athlete_after_login_created
-tests/test_auth_flow.py::test_login_resolves_parent_with_athletes
-tests/test_auth_flow.py::test_login_unknown_email_404
-tests/test_auth_flow.py::test_parent_takes_precedence_over_athlete_login
-tests/test_blueprint_route.py::test_blueprint_get_does_not_500_for_age_ge_14
-tests/test_fueliq_daily_challenge_route.py::test_daily_challenge_verdict_404_when_nothing_scheduled  ← see isolation note below
-tests/test_fueliq_daily_challenge_route.py::test_daily_challenge_verdict_does_not_appear_in_fueliq_hub_score  ← see isolation note below
+tests/test_fueliq_daily_challenge_route.py::test_daily_challenge_verdict_404_when_nothing_scheduled
+tests/test_fueliq_daily_challenge_route.py::test_daily_challenge_verdict_does_not_appear_in_fueliq_hub_score
 ```
 
 ### Known isolation issue — `test_fueliq_daily_challenge_route`
 
-Three tests in `tests/test_fueliq_daily_challenge_route.py` behave differently depending on run order:
-- `test_daily_challenge_verdict_flow_end_to_end` — FAILS under full suite, PASSES individually
-- `test_daily_challenge_verdict_404_when_nothing_scheduled` — ERROR under full suite, PASSES individually
-- `test_daily_challenge_verdict_does_not_appear_in_fueliq_hub_score` — ERROR under full suite, PASSES individually
+Three tests in `tests/test_fueliq_daily_challenge_route.py` fail when run as a module
+but pass when run as individual tests (`pytest path::test_name`):
+- `test_daily_challenge_verdict_flow_end_to_end` — FAILS in module run, PASSES individually
+- `test_daily_challenge_verdict_404_when_nothing_scheduled` — ERROR in module run, PASSES individually
+- `test_daily_challenge_verdict_does_not_appear_in_fueliq_hub_score` — ERROR in module run, PASSES individually
 
-Root cause: shared in-memory SQLite DB contaminated by earlier test suites (likely `test_fueliq_route.py` leaving uncommitted state). Not urgent — fix when the daily challenge tests need to be extended. Do not count these as Phase regressions.
+Root cause: intra-module ordering dependency within `test_fueliq_daily_challenge_route.py`
+(an earlier test in the file leaves DB state that later tests do not expect). Not
+cross-module contamination — the module-scoped DB isolation fix resolved cross-module
+issues. Not urgent — fix when the daily challenge tests need to be extended. Do not
+count these as Phase regressions.
