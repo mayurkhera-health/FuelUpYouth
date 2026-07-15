@@ -9,7 +9,7 @@ only the non-derivable state (raw score, streak counters, freeze tokens).
 
 import os
 
-_LEVEL_THRESHOLDS = {1: 0, 2: 100, 3: 200, 4: 300, 5: 400}
+_LEVEL_THRESHOLDS = {1: 0, 2: 65, 3: 120, 4: 145, 5: 165}
 
 
 def fueliq_enabled() -> bool:
