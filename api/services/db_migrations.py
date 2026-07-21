@@ -47,6 +47,7 @@ def run_all():
         _add_blueprint_viewed_to_parents(conn)
         _add_phone_to_athletes(conn)
         _add_phone_to_parents(conn)
+        _create_teamcoach_tables(conn)
         conn.commit()
     finally:
         conn.close()
@@ -707,6 +708,137 @@ def _create_pantry_list_items(conn):
     )
 
 
+def _fix_recipe_selections_unique_constraint():
+    """
+    Replace UNIQUE (athlete_id, selection_date, fueling_window_key) with
+    UNIQUE (athlete_id, week_start, fueling_window_key, recipe_id) so parents
+    can select multiple recipes per fueling window per week — only the exact
+    same recipe in the same window is blocked as a duplicate.
+
+    Runs on a dedicated connection after the batch has committed. Idempotent:
+    returns immediately once the new constraint exists.
+    """
+    conn = get_conn()
+    try:
+        if not conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='recipe_selections'"
+        ).fetchone():
+            return
+
+        for idx in conn.execute("PRAGMA index_list(recipe_selections)").fetchall():
+            cols = [r[2] for r in conn.execute(f"PRAGMA index_info('{idx[1]}')").fetchall()]
+            if set(cols) == {"athlete_id", "week_start", "fueling_window_key", "recipe_id"}:
+                return  # Already correct — nothing to do
+
+        conn.isolation_level = None
+        try:
+            conn.execute("PRAGMA foreign_keys=OFF")
+            conn.execute("BEGIN")
+            conn.execute("""
+                CREATE TABLE recipe_selections_new (
+                    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    athlete_id          INTEGER NOT NULL REFERENCES athletes(id),
+                    week_start          TEXT    NOT NULL,
+                    selection_date      TEXT    NOT NULL,
+                    fueling_window_key  TEXT    NOT NULL,
+                    recipe_id           TEXT    NOT NULL,
+                    servings            INTEGER NOT NULL DEFAULT 1,
+                    created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+                    updated_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+                    UNIQUE (athlete_id, week_start, fueling_window_key, recipe_id)
+                )
+            """)
+            conn.execute("""
+                INSERT OR IGNORE INTO recipe_selections_new
+                SELECT * FROM recipe_selections
+            """)
+            conn.execute("DROP TABLE recipe_selections")
+            conn.execute("ALTER TABLE recipe_selections_new RENAME TO recipe_selections")
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_recipe_selections_athlete_week
+                ON recipe_selections (athlete_id, week_start)
+            """)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+        finally:
+            conn.execute("PRAGMA foreign_keys=ON")
+            conn.isolation_level = ""
+    finally:
+        conn.close()
+
+
+def _create_teamcoach_tables(conn):
+    # coaches — auth_provider_id is NULL for MVP password auth; reserved for future SSO.
+    # password_hash/salt carry MVP credentials.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS coaches (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            name             TEXT    NOT NULL,
+            email            TEXT    UNIQUE NOT NULL,
+            auth_provider_id TEXT    NULL,
+            password_hash    TEXT    NULL,
+            salt             TEXT    NULL,
+            created_at       TEXT    DEFAULT (datetime('now'))
+        )
+    """)
+    # club_id is unused in MVP but kept in schema for future Athletic Director rollup.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS teams (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            name          TEXT    NOT NULL,
+            season        TEXT    NOT NULL,
+            club_id       INTEGER NULL,
+            threshold_pct INTEGER NOT NULL DEFAULT 80,
+            created_at    TEXT    DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS coach_team_access (
+            coach_id INTEGER NOT NULL REFERENCES coaches(id),
+            team_id  INTEGER NOT NULL REFERENCES teams(id),
+            PRIMARY KEY (coach_id, team_id)
+        )
+    """)
+    # parent_consent_flag stays in schema even though ENFORCE_CONSENT=False in MVP
+    # (decision #1) — preserves path to enforcement later without a migration.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS roster_membership (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id          INTEGER NOT NULL REFERENCES athletes(id),
+            team_id             INTEGER NOT NULL REFERENCES teams(id),
+            parent_consent_flag INTEGER NOT NULL DEFAULT 0,
+            joined_at           TEXT    DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, team_id)
+        )
+    """)
+    # window_slot values: everyday | fuel_before | top_up | during | recharge | rebuild
+    # Column is named 'date' per spec (not log_date).
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueling_window_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id  INTEGER NOT NULL REFERENCES athletes(id),
+            date        TEXT    NOT NULL,
+            window_slot TEXT    NOT NULL,
+            applicable  INTEGER NOT NULL DEFAULT 1,
+            completed   INTEGER NOT NULL DEFAULT 0,
+            logged_at   TEXT    DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, date, window_slot)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS team_engagement_snapshot (
+            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_id                 INTEGER NOT NULL REFERENCES teams(id),
+            week_start              TEXT    NOT NULL,
+            threshold_pct           INTEGER NOT NULL DEFAULT 80,
+            players_above_threshold INTEGER NOT NULL DEFAULT 0,
+            roster_count            INTEGER NOT NULL DEFAULT 0,
+            generated_at            TEXT    DEFAULT (datetime('now')),
+            UNIQUE (team_id, week_start)
+        )
+    """)
 def _fix_recipe_selections_unique_constraint():
     """
     Replace UNIQUE (athlete_id, selection_date, fueling_window_key) with
