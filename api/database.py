@@ -28,3 +28,20 @@ def get_conn():
     conn.execute("PRAGMA busy_timeout=10000")
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def get_read_conn():
+    """Read-only SQLite connection for TeamCoach request handlers.
+    Uses ?mode=ro URI flag on file DBs and a 3-second busy timeout.
+    Never call conn.commit() on this connection — writes raise OperationalError.
+    """
+    raw = os.getenv("DB_PATH", _DEFAULT_DB)
+    if raw == ":memory:":
+        conn = sqlite3.connect("file::memory:?cache=shared", uri=True, check_same_thread=False)
+    else:
+        conn = sqlite3.connect(f"file:{raw}?mode=ro", uri=True, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=3000")
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
