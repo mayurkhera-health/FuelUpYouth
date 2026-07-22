@@ -202,32 +202,32 @@ function ReportCard({ report, disabled }) {
 
 // ── main ──────────────────────────────────────────────────────────────────────
 
-const s = {
-  wrap:   { padding: '36px 32px', maxWidth: 960, margin: '0 auto' },
-  header: { marginBottom: 32 },
-  title:  { fontWeight: 800, fontSize: 30, color: '#fff' },
-  sub:    { fontSize: 15, color: 'rgba(255,255,255,0.5)', marginTop: 6, fontWeight: 500 },
-  hint:   { fontSize: 13, color: 'rgba(255,255,255,0.35)', marginTop: 10, fontStyle: 'italic' },
-  grid:   { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
-}
-
 export default function Reports({ teamsData }) {
   const teams   = teamsData?.teams ?? []
   const season  = teamsData?.season
   const reports = buildReports(teams, season)
 
   return (
-    <div style={s.wrap}>
-      <div style={s.header}>
-        <div style={s.title}>Reports</div>
-        <div style={s.sub}>{season || 'Current season'} · Export data as CSV</div>
-        <div style={s.hint}>Files download instantly to your device — no account needed.</div>
-      </div>
+    <div style={{ minHeight: '100vh', background: '#123826' }}>
+      <div className="dashboard-wrap">
+        <header style={{ marginBottom: 28 }}>
+          <h1 style={{ fontWeight: 700, fontSize: 40, color: '#fff', lineHeight: 1.05,
+                       margin: 0, letterSpacing: '-.01em' }}>
+            Reports
+          </h1>
+          <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', marginTop: 6, fontWeight: 500 }}>
+            {season || 'Current season'} · Export data as CSV
+          </div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.28)', marginTop: 6, fontStyle: 'italic' }}>
+            Files download instantly to your device — no account needed.
+          </div>
+        </header>
 
-      <div style={s.grid}>
-        {reports.map(r => (
-          <ReportCard key={r.id} report={r} disabled={teams.length === 0} />
-        ))}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {reports.map(r => (
+            <ReportCard key={r.id} report={r} disabled={teams.length === 0} />
+          ))}
+        </div>
       </div>
     </div>
   )
