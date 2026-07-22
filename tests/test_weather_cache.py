@@ -42,13 +42,34 @@ def test_call_after_ttl_refetches(monkeypatch):
     assert calls["n"] == 2
 
 
-def test_errors_are_not_cached(monkeypatch):
+def test_errors_are_cached_with_short_ttl(monkeypatch):
     weather._weather_cache.clear()
-    monkeypatch.setattr(weather, "_now", lambda: 1000.0)
+    calls = {"n": 0}
 
     def err_fetch(city=None, lat=None, lon=None):
+        calls["n"] += 1
         return {"temp_f": None, "humidity": None, "description": "unknown", "error": "boom"}
 
     monkeypatch.setattr(weather, "_fetch_weather", err_fetch)
+    monkeypatch.setattr(weather, "_now", lambda: 1000.0)
     weather.get_weather("Denver")
-    assert "denver" not in weather._weather_cache
+    weather.get_weather("Denver")
+
+    assert calls["n"] == 1  # second call within error TTL served from cache
+
+
+def test_error_after_ttl_refetches(monkeypatch):
+    weather._weather_cache.clear()
+    calls = {"n": 0}
+
+    def err_fetch(city=None, lat=None, lon=None):
+        calls["n"] += 1
+        return {"temp_f": None, "humidity": None, "description": "unknown", "error": "boom"}
+
+    monkeypatch.setattr(weather, "_fetch_weather", err_fetch)
+    monkeypatch.setattr(weather, "_now", lambda: 1000.0)
+    weather.get_weather("Denver")
+    monkeypatch.setattr(weather, "_now", lambda: 1000.0 + weather._WEATHER_ERROR_TTL_SECONDS + 1)
+    weather.get_weather("Denver")
+
+    assert calls["n"] == 2  # error TTL expired, re-fetched

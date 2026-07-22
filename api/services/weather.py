@@ -80,8 +80,9 @@ def _fetch_weather(city: str | None = None, lat: float | None = None, lon: float
 def get_weather(city: str | None = None, lat: float | None = None, lon: float | None = None) -> dict:
     """Cached weather lookup. Prefers precise coordinates (lat/lon) when BOTH are
     provided; otherwise falls back to a city-name query. Returns an error result if
-    neither is given. Successful results are cached per location for the TTL; error
-    results are never cached (so a transient failure self-heals next call).
+    neither is given. Successful results are cached for _WEATHER_TTL_SECONDS; error
+    results are cached too but for the much shorter _WEATHER_ERROR_TTL_SECONDS, so a
+    transient failure self-heals quickly instead of hammering the upstream API.
     In-memory, per-process — correct for the single-VM deployment."""
     use_coords = lat is not None and lon is not None
     key = (
