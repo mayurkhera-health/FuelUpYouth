@@ -108,70 +108,25 @@ function ProgressBar({ value, max, threshold }) {
   )
 }
 
-// ── MetricCard ────────────────────────────────────────────────────────────────
+// ── StatsStrip ────────────────────────────────────────────────────────────────
 
-function MetricCard({ label, value, sub, icon, variant = 'default', pct }) {
-  const styles = {
-    default:   { numColor: T.primary,   bg: T.surface,   border: T.border,    subColor: T.muted },
-    success:   { numColor: T.success,   bg: T.successBg, border: '#c5e8d2',   subColor: T.muted },
-    attention: { numColor: T.attention, bg: T.attnBg,    border: '#fde5a0',   subColor: T.attention },
-  }
-  const v = styles[variant] || styles.default
-
+function StatCell({ value, label, sub, numColor, subColor, accentBg, last }) {
   return (
     <div style={{
-      background: v.bg,
-      border: `1px solid ${v.border}`,
-      borderRadius: 16,
-      padding: '16px 20px 14px',
-      minHeight: 118,
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-      boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-      position: 'relative',
-      overflow: 'hidden',
+      flex: 1,
+      padding: '14px 20px',
+      borderRight: last ? 'none' : `1px solid ${T.border}`,
+      background: accentBg || 'transparent',
+      display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2,
     }}>
-      {/* Ghost watermark */}
-      <div style={{
-        position: 'absolute', right: 10, bottom: 4,
-        fontSize: 80, fontWeight: 800, lineHeight: 1,
-        color: v.numColor, opacity: 0.07,
-        userSelect: 'none', pointerEvents: 'none',
-      }}>{icon}</div>
-
-      {/* Number */}
-      <div style={{ fontSize: 42, fontWeight: 700, color: v.numColor, lineHeight: 1 }}>
+      <div style={{ fontSize: 30, fontWeight: 800, color: numColor || T.primary, lineHeight: 1 }}>
         {value}
       </div>
-
-      {/* Mini bar */}
-      {pct !== undefined && (
-        <div style={{
-          height: 4, borderRadius: 2, overflow: 'hidden',
-          background: 'rgba(0,0,0,0.08)', margin: '10px 0 6px',
-        }}>
-          <div style={{
-            height: '100%', borderRadius: 2,
-            width: `${Math.min(Math.max(pct, 0), 100)}%`,
-            background: v.numColor, opacity: 0.65,
-            transition: 'width .5s ease',
-          }} />
-        </div>
-      )}
-
-      {/* Label + sub */}
-      <div>
-        <div style={{ fontSize: 16, fontWeight: 600, color: T.primary, marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 13, color: v.subColor, fontWeight: variant === 'attention' ? 600 : 400 }}>
-          {sub}
-        </div>
-      </div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: T.primary, marginTop: 3 }}>{label}</div>
+      <div style={{ fontSize: 12, color: subColor || T.muted, fontWeight: subColor ? 600 : 400 }}>{sub}</div>
     </div>
   )
 }
-
-// ── MetricGrid ────────────────────────────────────────────────────────────────
 
 function MetricGrid({ teams }) {
   const totalRoster = teams.reduce((s, t) => s + (t.roster_count ?? 0), 0)
@@ -180,44 +135,43 @@ function MetricGrid({ teams }) {
   const attnCount   = teams.filter(t => t.needs_attention).length
   const onTrack     = teams.filter(t => !t.needs_attention).length
   const overallPct  = totalRoster > 0 ? Math.round((totalLogged / totalRoster) * 100) : 0
-
-  const joinedPct  = totalRoster > 0 ? Math.round((totalJoined  / totalRoster)   * 100) : 0
-  const onTrackPct = teams.length  > 0 ? Math.round((onTrack     / teams.length) * 100) : 0
-  const attnPct    = teams.length  > 0 ? Math.round((attnCount   / teams.length) * 100) : 0
+  const joinedPct   = totalRoster > 0 ? Math.round((totalJoined / totalRoster) * 100) : 0
 
   return (
-    <div className="metric-grid">
-      <MetricCard
-        label="Rostered athletes"
+    <div style={{
+      display: 'flex',
+      background: T.surface,
+      border: `1px solid ${T.border}`,
+      borderRadius: 16,
+      boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+      overflow: 'hidden',
+      marginBottom: 32,
+    }}>
+      <StatCell
         value={totalRoster}
+        label="Rostered athletes"
         sub={`${joinedPct}% in the app`}
-        icon="◉"
-        variant="default"
-        pct={joinedPct}
       />
-      <MetricCard
-        label="Logged this week"
+      <StatCell
         value={totalLogged}
+        label="Logged this week"
         sub={`${overallPct}% of roster`}
-        icon="☑"
-        variant={totalLogged > 0 ? 'success' : 'default'}
-        pct={overallPct}
+        numColor={totalLogged > 0 ? T.success : T.primary}
       />
-      <MetricCard
-        label="On track"
+      <StatCell
         value={onTrack}
-        sub={`${onTrackPct}% of teams`}
-        icon="✓"
-        variant={onTrack > 0 ? 'success' : 'default'}
-        pct={onTrackPct}
+        label="On track"
+        sub={`${teams.length} total teams`}
+        numColor={onTrack > 0 ? T.success : T.primary}
       />
-      <MetricCard
-        label="Need attention"
+      <StatCell
         value={attnCount}
-        sub={attnCount > 0 ? 'Review teams →' : 'All teams on track'}
-        icon="⚑"
-        variant={attnCount > 0 ? 'attention' : 'default'}
-        pct={attnPct}
+        label="Need attention"
+        sub={attnCount > 0 ? 'Review teams below' : 'All teams on track'}
+        numColor={attnCount > 0 ? T.attention : T.primary}
+        subColor={attnCount > 0 ? T.attention : null}
+        accentBg={attnCount > 0 ? T.attnBg : null}
+        last
       />
     </div>
   )
@@ -225,18 +179,23 @@ function MetricGrid({ teams }) {
 
 function LoadingMetricGrid() {
   return (
-    <div className="metric-grid">
+    <div style={{
+      display: 'flex',
+      background: T.surface,
+      border: `1px solid ${T.border}`,
+      borderRadius: 16,
+      overflow: 'hidden',
+      marginBottom: 32,
+    }}>
       {[0,1,2,3].map(i => (
         <div key={i} style={{
-          background: T.surface, borderRadius: 16, padding: '16px 20px',
-          border: `1px solid ${T.border}`, minHeight: 118,
-          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+          flex: 1, padding: '14px 20px',
+          borderRight: i < 3 ? `1px solid ${T.border}` : 'none',
+          display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          <div className="shimmer" style={{ height: 34, width: '45%', borderRadius: 6 }} />
-          <div>
-            <div className="shimmer" style={{ height: 15, width: '70%', borderRadius: 4, marginBottom: 6 }} />
-            <div className="shimmer" style={{ height: 12, width: '50%', borderRadius: 4 }} />
-          </div>
+          <div className="shimmer" style={{ height: 28, width: '40%', borderRadius: 5 }} />
+          <div className="shimmer" style={{ height: 12, width: '65%', borderRadius: 4 }} />
+          <div className="shimmer" style={{ height: 11, width: '50%', borderRadius: 4 }} />
         </div>
       ))}
     </div>
