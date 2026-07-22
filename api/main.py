@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics, admin_health, admin_overview, admin_action_hub, plate, instacart_feedback, instacart
+from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics, admin_health, admin_overview, admin_action_hub, plate, instacart_feedback, instacart, teamcoach_auth
 from api.services import db_migrations
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -117,6 +117,7 @@ app.include_router(admin_analytics.router, prefix="/api/admin",           tags=[
 app.include_router(admin_health.router,    prefix="/api/admin",           tags=["28. Admin Health"])
 app.include_router(admin_overview.router,  prefix="/api/admin",           tags=["29. Admin Overview"])
 app.include_router(admin_action_hub.router, prefix="/api/admin",          tags=["30. Admin Action Hub"])
+app.include_router(teamcoach_auth.router, prefix="/api/team-coach/auth", tags=["33. TeamCoach Auth"])
 
 
 _scheduler = BackgroundScheduler()
