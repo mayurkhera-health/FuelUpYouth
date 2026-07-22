@@ -1,17 +1,20 @@
 import React from 'react'
 
 const T = {
-  bg:        '#123826',
-  neon:      '#31E65A',
-  primary:   '#173226',
-  muted:     '#6D7A72',
+  bg:        '#F7F5ED',   // warm cream page bg
+  lime:      '#CBEA58',   // performance lime — used sparingly
+  primary:   '#17231D',
+  muted:     '#65716B',
   surface:   '#FFFFFF',
-  border:    '#DDE5E0',
-  attention: '#F59E0B',
-  attnBg:    '#FFF7E6',
+  border:    '#DCE4DE',
+  attention: '#B86600',   // amber — attention only
+  attnBg:    '#FFF4DD',
   attn:      '#B86600',
-  success:   '#1E9E57',
-  successBg: '#EAF7EF',
+  success:   '#1E5A45',
+  successBg: '#EAF2EC',
+  successBdr:'#BFD9C6',
+  darkGreen: '#123D2F',
+  brandGreen:'#1E5A45',
 }
 
 // ── helpers (no business logic changed) ──────────────────────────────────────
@@ -39,9 +42,9 @@ function fmtDate(d) {
 }
 
 function barColor(pct, threshold) {
-  if (pct >= threshold)        return T.neon
+  if (pct >= threshold)        return T.lime
   if (pct >= threshold * 0.6) return T.attention
-  return '#e91e63'
+  return T.attention
 }
 
 function greeting() {
@@ -72,7 +75,7 @@ function StatusPill({ good, attention, noData }) {
         display: 'inline-flex', alignItems: 'center', gap: 4,
         background: T.successBg, color: T.success,
         fontSize: 13, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
-        border: '1px solid #c5e8d2',
+        border: `1px solid ${T.successBdr}`,
       }}>
         ● On track
       </span>
@@ -83,7 +86,7 @@ function StatusPill({ good, attention, noData }) {
       display: 'inline-flex', alignItems: 'center', gap: 4,
       background: T.attnBg, color: T.attention,
       fontSize: 13, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
-      border: '1px solid #fde5a0',
+      border: '1px solid #F5CB6B',
     }}>
       ● Needs attention
     </span>
@@ -100,7 +103,7 @@ function ProgressBar({ value, max, threshold }) {
       <div style={{
         height: '100%',
         width: `${filled}%`,
-        background: good ? T.neon : T.attention,
+        background: good ? T.lime : T.attention,
         borderRadius: 4,
         transition: 'width .4s ease',
       }} />
@@ -235,15 +238,15 @@ function TeamSummaryCard({ team: t, onSelect }) {
         position: 'absolute', left: 0, top: 0, right: 0, bottom: 0,
         background: hasData
           ? good
-            ? 'linear-gradient(to right, rgba(49,230,90,0.07) 0%, transparent 44%)'
-            : 'linear-gradient(to right, rgba(245,158,11,0.09) 0%, transparent 44%)'
+            ? 'linear-gradient(to right, rgba(30,90,69,0.05) 0%, transparent 44%)'
+            : 'linear-gradient(to right, rgba(184,102,0,0.06) 0%, transparent 44%)'
           : 'none',
         borderRadius: 16,
         pointerEvents: 'none',
       }} />
       <div style={{
         position: 'absolute', left: 0, top: 0, bottom: 0, width: 6,
-        background: hasData ? (good ? T.neon : T.attention) : T.border,
+        background: hasData ? (good ? T.lime : T.attention) : T.border,
       }} />
 
       {/* Header row */}
@@ -267,7 +270,7 @@ function TeamSummaryCard({ team: t, onSelect }) {
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 5,
             fontSize: 15, fontWeight: 700, color: T.primary,
-            background: T.neon, padding: '7px 15px', borderRadius: 8,
+            background: T.lime, padding: '7px 15px', borderRadius: 8,
           }}>
             View team →
           </span>
@@ -384,7 +387,7 @@ function WeekOverWeekTable({ teams, snap }) {
           <div style={{ fontWeight: 700, fontSize: 15, color: T.primary }}>Week-over-Week</div>
           <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>Logging rate vs. prior week</div>
         </div>
-        {snap && <div style={{ fontSize: 11, color: '#ccc' }}>Snapshot: {fmtDate(snap)}</div>}
+        {snap && <div style={{ fontSize: 11, color: T.muted }}>Snapshot: {fmtDate(snap)}</div>}
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
@@ -436,9 +439,9 @@ function WeekOverWeekTable({ teams, snap }) {
 // ── main ──────────────────────────────────────────────────────────────────────
 
 const sectionHeading = {
-  fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.35)',
-  textTransform: 'uppercase', letterSpacing: '.08em',
-  marginBottom: 16, marginTop: 0,
+  fontSize: 12, fontWeight: 700, color: T.muted,
+  textTransform: 'uppercase', letterSpacing: '.09em',
+  marginBottom: 14, marginTop: 0,
 }
 
 export default function TeamSelector({ teamsData, onSelect, loading, coachName }) {
@@ -448,26 +451,21 @@ export default function TeamSelector({ teamsData, onSelect, loading, coachName }
     <div style={{
       minHeight: '100vh',
       background: T.bg,
-      backgroundImage: [
-        'radial-gradient(ellipse 75% 50% at 78% -5%, rgba(49,230,90,0.06) 0%, transparent 55%)',
-        'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
-      ].join(', '),
-      backgroundSize: 'auto, 32px 32px',
     }}>
       <div className="dashboard-wrap">
 
         {/* Header — H1 for accessibility */}
         <header style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontWeight: 500, marginBottom: 4 }}>
+          <div style={{ fontSize: 14, color: T.muted, fontWeight: 500, marginBottom: 4 }}>
             {greeting()}{coachName ? `, ${coachName.split(' ')[0]}` : ''}
           </div>
           <h1 style={{
-            fontWeight: 700, fontSize: 40, color: '#fff', lineHeight: 1.05,
+            fontWeight: 700, fontSize: 36, color: T.primary, lineHeight: 1.05,
             margin: 0, letterSpacing: '-.01em',
           }}>
             Dashboard
           </h1>
-          <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', marginTop: 6, fontWeight: 500 }}>
+          <div style={{ fontSize: 14, color: T.muted, marginTop: 5, fontWeight: 500 }}>
             {season || 'Current season'} · Engagement overview
           </div>
         </header>
@@ -487,7 +485,7 @@ export default function TeamSelector({ teamsData, onSelect, loading, coachName }
         )}
 
         {!loading && teams.length === 0 && (
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginTop: 48, textAlign: 'center' }}>
+          <p style={{ color: T.muted, fontSize: 15, marginTop: 48, textAlign: 'center' }}>
             No teams assigned to your account.
           </p>
         )}

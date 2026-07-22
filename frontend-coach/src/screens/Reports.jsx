@@ -1,10 +1,15 @@
 import React, { useState } from 'react'
 
 const T = {
-  emerald: '#0f2a1f',
-  neon:    '#3dfc3d',
-  orange:  '#ff9800',
-  border:  '#dadad8',
+  primary:    '#17231D',
+  darkGreen:  '#123D2F',
+  brandGreen: '#1E5A45',
+  lime:       '#CBEA58',
+  attn:       '#B86600',
+  muted:      '#65716B',
+  surface:    '#FFFFFF',
+  border:     '#DCE4DE',
+  successBg:  '#EAF2EC',
 }
 
 // ── CSV export helper ─────────────────────────────────────────────────────────
@@ -50,7 +55,7 @@ function buildReports(teams, season) {
       title: 'Weekly Engagement Summary',
       description: 'Current week logging activity for all teams — roster size, athletes in app, athletes who logged, and percentage vs. threshold.',
       badge: 'CSV',
-      badgeColor: '#1a7a4a',
+      badgeColor: T.brandGreen,
       download: () => downloadCSV(
         `weekly-engagement-${today()}.csv`,
         ['Team', 'Roster', 'App Joined', 'Logged This Week', 'Logging %', 'Threshold %', 'Status'],
@@ -71,7 +76,7 @@ function buildReports(teams, season) {
       title: 'Week-over-Week Comparison',
       description: 'Side-by-side comparison of prior week vs. this week logging rates, showing directional change per team.',
       badge: 'CSV',
-      badgeColor: '#1a7a4a',
+      badgeColor: T.brandGreen,
       download: () => downloadCSV(
         `week-over-week-${today()}.csv`,
         ['Team', 'Prior Week %', 'This Week %', 'Change (pp)', 'Direction'],
@@ -95,7 +100,7 @@ function buildReports(teams, season) {
       title: 'Attention Alert Report',
       description: 'Teams flagged as needing attention — sorted by attention score. Use to prioritize outreach.',
       badge: 'CSV',
-      badgeColor: T.orange,
+      badgeColor: T.attn,
       download: () => {
         const flagged = [...teams].sort((a, b) => b.attention_score - a.attention_score)
         downloadCSV(
@@ -118,7 +123,7 @@ function buildReports(teams, season) {
       title: 'Season Overview',
       description: `Aggregate season stats across all ${teams.length} teams — total athletes, app adoption, and overall engagement rate.`,
       badge: 'CSV',
-      badgeColor: '#1a7a4a',
+      badgeColor: T.brandGreen,
       download: () => downloadCSV(
         `season-overview-${today()}.csv`,
         ['Metric', 'Value'],
@@ -165,7 +170,7 @@ function ReportCard({ report, disabled }) {
           {report.icon}
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 16, color: T.emerald, marginBottom: 2 }}>
+          <div style={{ fontWeight: 700, fontSize: 16, color: T.darkGreen, marginBottom: 2 }}>
             {report.title}
           </div>
           <span style={{
@@ -188,9 +193,9 @@ function ReportCard({ report, disabled }) {
           padding: '11px 0', borderRadius: 10, fontSize: 14, fontWeight: 700,
           cursor: disabled ? 'default' : 'pointer', border: 'none',
           background: disabled ? '#f0f0f0'
-                    : clicked ? '#d4ffd4'
-                    : T.emerald,
-          color: disabled ? '#ccc' : clicked ? '#1a5c2a' : T.neon,
+                    : clicked ? T.successBg
+                    : T.darkGreen,
+          color: disabled ? '#bbb' : clicked ? T.brandGreen : T.lime,
           transition: 'background .2s, color .2s',
         }}
       >
@@ -208,17 +213,17 @@ export default function Reports({ teamsData }) {
   const reports = buildReports(teams, season)
 
   return (
-    <div style={{ minHeight: '100vh', background: '#123826' }}>
+    <div style={{ minHeight: '100vh', background: '#F7F5ED' }}>
       <div className="dashboard-wrap">
         <header style={{ marginBottom: 28 }}>
-          <h1 style={{ fontWeight: 700, fontSize: 40, color: '#fff', lineHeight: 1.05,
+          <h1 style={{ fontWeight: 700, fontSize: 36, color: T.primary, lineHeight: 1.05,
                        margin: 0, letterSpacing: '-.01em' }}>
             Reports
           </h1>
-          <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', marginTop: 6, fontWeight: 500 }}>
+          <div style={{ fontSize: 14, color: T.muted, marginTop: 5, fontWeight: 500 }}>
             {season || 'Current season'} · Export data as CSV
           </div>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.28)', marginTop: 6, fontStyle: 'italic' }}>
+          <div style={{ fontSize: 13, color: T.muted, marginTop: 4, fontStyle: 'italic' }}>
             Files download instantly to your device — no account needed.
           </div>
         </header>

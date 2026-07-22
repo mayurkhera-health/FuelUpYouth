@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react'
 import { fetchAthleteDetail } from '../api.js'
 
 const T = {
-  bg:        '#123826',
-  primary:   '#173226',
-  muted:     '#6D7A72',
+  bg:        '#F7F5ED',
+  primary:   '#17231D',
+  muted:     '#65716B',
   surface:   '#FFFFFF',
-  border:    '#DDE5E0',
-  neon:      '#31E65A',
-  success:   '#1E9E57',
-  successBg: '#EAF7EF',
+  border:    '#DCE4DE',
+  lime:      '#CBEA58',
+  success:   '#1E5A45',
+  successBg: '#EAF2EC',
   attn:      '#B86600',
   attnBg:    '#FFF4DD',
 }
@@ -122,8 +122,6 @@ export default function AthleteDetail({ team, athlete: athleteStub, onBack }) {
   return (
     <div style={{
       minHeight: '100vh', background: T.bg,
-      backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)',
-      backgroundSize: '32px 32px',
     }}>
       <div className="roster-wrap">
 
@@ -135,14 +133,14 @@ export default function AthleteDetail({ team, athlete: athleteStub, onBack }) {
               aria-label="Back to roster"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(255,255,255,0.7)', fontSize: 26, lineHeight: 1,
+                color: T.muted, fontSize: 26, lineHeight: 1,
                 padding: '10px 10px 10px 0',
                 minWidth: 44, minHeight: 44,
                 display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
                 flexShrink: 0,
               }}
             >‹</button>
-            <h1 style={{ fontWeight: 700, fontSize: 28, color: '#fff', lineHeight: 1.1, margin: 0 }}>
+            <h1 style={{ fontWeight: 700, fontSize: 28, color: T.primary, lineHeight: 1.1, margin: 0 }}>
               {name}
             </h1>
           </div>
@@ -222,14 +220,14 @@ export default function AthleteDetail({ team, athlete: athleteStub, onBack }) {
 
         {/* Error */}
         {!loading && error && (
-          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 15, textAlign: 'center', marginTop: 40 }}>
+          <p style={{ color: T.muted, fontSize: 15, textAlign: 'center', marginTop: 40 }}>
             Couldn't load athlete data.
           </p>
         )}
 
         {/* Disclaimer */}
         {!loading && detail && (
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', marginTop: 14, fontStyle: 'italic', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: T.muted, marginTop: 14, fontStyle: 'italic', lineHeight: 1.5 }}>
             Metrics reflect app logging activity only — not verified nutrition intake.
           </p>
         )}

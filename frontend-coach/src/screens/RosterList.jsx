@@ -12,14 +12,14 @@ function mapStatus(a) {
 }
 
 const T = {
-  bg:        '#123826',
-  primary:   '#173226',
-  muted:     '#6D7A72',
+  bg:        '#F7F5ED',
+  primary:   '#17231D',
+  muted:     '#65716B',
   surface:   '#FFFFFF',
-  border:    '#DDE5E0',
-  neon:      '#31E65A',
-  success:   '#1E9E57',
-  successBg: '#EAF7EF',
+  border:    '#DCE4DE',
+  lime:      '#CBEA58',
+  success:   '#1E5A45',
+  successBg: '#EAF2EC',
   attn:      '#B86600',
   attnBg:    '#FFF4DD',
 }
@@ -29,14 +29,14 @@ const STATUS_CONFIG = {
     label: 'Active this week',
     color: T.success,
     bg:    T.successBg,
-    border: '#c5e8d2',
+    border: '#BFD9C6',
     icon: '●',
   },
   'no-activity': {
     label: 'No recent activity',
     color: T.attn,
     bg:    T.attnBg,
-    border: '#fde5a0',
+    border: '#F5CB6B',
     icon: '○',
   },
   'not-joined': {
@@ -71,7 +71,7 @@ function Avatar({ name }) {
       aria-hidden="true"
       style={{
         width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
-        background: '#EAF7EF',
+        background: T.successBg,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 14, fontWeight: 700, color: T.success,
         userSelect: 'none',
@@ -144,8 +144,6 @@ export default function RosterList({ team, onBack, onSelectAthlete }) {
     <div style={{
       minHeight: '100vh',
       background: T.bg,
-      backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)',
-      backgroundSize: '32px 32px',
     }}>
       <div className="roster-wrap">
 
@@ -157,7 +155,7 @@ export default function RosterList({ team, onBack, onSelectAthlete }) {
               aria-label="Back to dashboard"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(255,255,255,0.7)', fontSize: 26, lineHeight: 1,
+                color: T.muted, fontSize: 26, lineHeight: 1,
                 padding: '10px 10px 10px 0',
                 minWidth: 44, minHeight: 44,
                 display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
@@ -165,7 +163,7 @@ export default function RosterList({ team, onBack, onSelectAthlete }) {
               }}
             >‹</button>
             <h1 style={{
-              fontWeight: 700, fontSize: 32, color: '#fff',
+              fontWeight: 700, fontSize: 32, color: T.primary,
               lineHeight: 1.1, margin: 0, letterSpacing: '-.01em',
             }}>
               {team.name}
@@ -173,7 +171,7 @@ export default function RosterList({ team, onBack, onSelectAthlete }) {
           </div>
           {!loading && (
             <div style={{
-              fontSize: 15, color: 'rgba(255,255,255,0.5)',
+              fontSize: 15, color: T.muted,
               marginTop: 6, marginLeft: 2, fontWeight: 500,
             }}>
               {subtitleParts.join(' · ')}
@@ -189,7 +187,7 @@ export default function RosterList({ team, onBack, onSelectAthlete }) {
         )}
 
         {!loading && roster.length === 0 && (
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, textAlign: 'center', marginTop: 40 }}>
+          <p style={{ color: T.muted, fontSize: 15, textAlign: 'center', marginTop: 40 }}>
             No athletes on this roster yet.
           </p>
         )}
@@ -229,7 +227,7 @@ export default function RosterList({ team, onBack, onSelectAthlete }) {
                     e.currentTarget.style.boxShadow = ''
                     e.currentTarget.style.borderColor = notJoined ? '#c8d4cc' : T.border
                   }}
-                  onFocus={e => { e.currentTarget.style.outline = `2px solid ${T.neon}`; e.currentTarget.style.outlineOffset = '2px' }}
+                  onFocus={e => { e.currentTarget.style.outline = `2px solid ${T.lime}`; e.currentTarget.style.outlineOffset = '2px' }}
                   onBlur={e => { e.currentTarget.style.outline = '' }}
                 >
                   {/* Left: avatar + info */}
@@ -264,7 +262,7 @@ export default function RosterList({ team, onBack, onSelectAthlete }) {
         {/* Disclaimer */}
         {!loading && roster.length > 0 && (
           <p style={{
-            fontSize: 12, color: 'rgba(255,255,255,0.28)',
+            fontSize: 12, color: T.muted,
             marginTop: 20, fontStyle: 'italic', lineHeight: 1.5,
           }}>
             Activity status reflects app usage only, not verified nutrition intake.

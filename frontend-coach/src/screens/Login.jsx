@@ -1,38 +1,55 @@
 import React, { useState } from 'react'
 import { login } from '../api.js'
 
-const T = { emerald: '#0f2a1f', neon: '#3dfc3d', surface: '#faf9f7', border: '#dadad8' }
+const T = {
+  pageBg:     '#F7F5ED',
+  darkGreen:  '#123D2F',
+  lime:       '#CBEA58',
+  primary:    '#17231D',
+  muted:      '#65716B',
+  surface:    '#FFFFFF',
+  border:     '#DCE4DE',
+  error:      '#C0392B',
+}
 
 const s = {
-  wrap:  { minHeight: '100vh', display: 'flex', alignItems: 'center',
-           justifyContent: 'center', background: T.surface, padding: '20px' },
-  card:  { background: '#fff', borderRadius: 16, padding: '36px 32px',
-           width: '100%', maxWidth: 380,
-           border: `1px solid ${T.border}`,
-           boxShadow: '0 4px 24px rgba(0,0,0,.06)' },
-  logoRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 },
-  logoMark: { width: 36, height: 36, background: T.emerald, borderRadius: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 16, fontWeight: 800, color: T.neon },
-  brand: { fontWeight: 800, fontSize: 20, color: T.emerald },
-  sub:   { color: '#aaa', fontSize: 13, marginBottom: 28 },
-  label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 6 },
+  wrap: {
+    minHeight: '100vh', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', background: T.pageBg, padding: '20px',
+  },
+  card: {
+    background: T.surface, borderRadius: 20, padding: '40px 36px',
+    width: '100%', maxWidth: 380,
+    border: `1px solid ${T.border}`,
+    boxShadow: '0 4px 24px rgba(23, 35, 29, 0.08)',
+  },
+  logoRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 },
+  logoMark: {
+    width: 38, height: 38, background: T.darkGreen, borderRadius: 10,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 17, fontWeight: 800, color: T.lime,
+  },
+  brand: { fontWeight: 800, fontSize: 20, color: T.primary },
+  sub:   { color: T.muted, fontSize: 14, marginBottom: 32, lineHeight: 1.5 },
+  label: { display: 'block', fontSize: 13, fontWeight: 600, color: T.primary, marginBottom: 6 },
   input: {
-    width: '100%', padding: '11px 14px',
+    width: '100%', padding: '12px 14px',
     border: `1.5px solid ${T.border}`, borderRadius: 10,
-    fontSize: 15, outline: 'none', marginBottom: 14,
-    fontFamily: 'inherit', background: '#fff',
+    fontSize: 15, outline: 'none', marginBottom: 16,
+    fontFamily: 'inherit', background: T.surface, color: T.primary,
     transition: 'border-color .15s',
+    boxSizing: 'border-box',
   },
   btn: {
-    width: '100%', padding: '13px 0',
-    background: T.emerald, color: T.neon,
-    border: 'none', borderRadius: 10,
+    width: '100%', padding: '14px 0',
+    background: T.darkGreen, color: T.lime,
+    border: 'none', borderRadius: 12,
     fontSize: 15, fontWeight: 700, cursor: 'pointer',
     marginTop: 4, letterSpacing: '.02em',
-    boxShadow: `0 2px 10px rgba(15,42,31,.2)`,
+    boxShadow: '0 4px 16px rgba(18, 61, 47, 0.2)',
+    transition: 'opacity .15s',
   },
-  err: { color: '#e91e63', fontSize: 13, marginTop: 12, textAlign: 'center' },
+  err: { color: T.error, fontSize: 13, marginTop: 12, textAlign: 'center' },
 }
 
 export default function Login({ onLogin }) {
@@ -70,7 +87,7 @@ export default function Login({ onLogin }) {
           <label style={s.label}>Password</label>
           <input style={s.input} type="password" value={password}
                  onChange={e => setPassword(e.target.value)} required />
-          <button style={s.btn} type="submit" disabled={loading}>
+          <button style={{ ...s.btn, opacity: loading ? 0.7 : 1 }} type="submit" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
           {error && <div style={s.err}>{error}</div>}

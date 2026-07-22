@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 
 const T = {
-  sidebar: '#082C1F',
-  neon:    '#31E65A',
+  sidebar: '#123D2F',
+  lime:    '#CBEA58',
   muted:   'rgba(255,255,255,0.45)',
-  mutedLo: 'rgba(255,255,255,0.2)',
-  primary: '#173226',
-  border:  '#DDE5E0',
-  muted2:  '#6D7A72',
+  mutedLo: 'rgba(255,255,255,0.18)',
+  primary: '#17231D',
+  border:  '#DCE4DE',
+  muted2:  '#65716B',
 }
 
 const W = 240
@@ -55,7 +55,7 @@ function Toggle({ checked, onChange, label, description }) {
         onClick={() => onChange(!checked)}
         style={{
           width: 44, height: 24, borderRadius: 12, flexShrink: 0, cursor: 'pointer',
-          background: checked ? '#31E65A' : '#DDE5E0', border: 'none',
+          background: checked ? '#CBEA58' : '#DCE4DE', border: 'none',
           position: 'relative', transition: 'background .2s',
         }}
       >
@@ -132,13 +132,13 @@ function SettingsModal({ coachName, onClose, onLogout }) {
           {section('Profile')}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 14,
-            padding: '14px 16px', background: '#f8faf8',
+            padding: '14px 16px', background: '#EAF2EC',
             borderRadius: 12, border: `1px solid ${T.border}`,
           }}>
             <div style={{
               width: 48, height: 48, borderRadius: '50%',
-              background: '#EAF7EF', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#1E9E57',
+              background: '#BFD9C6', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#1E5A45',
             }}>
               {initials(coachName)}
             </div>
@@ -174,7 +174,7 @@ function SettingsModal({ coachName, onClose, onLogout }) {
           {/* About */}
           {section('About')}
           <div style={{
-            padding: '12px 16px', background: '#f8faf8',
+            padding: '12px 16px', background: '#EAF2EC',
             borderRadius: 12, border: `1px solid ${T.border}`,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -187,7 +187,7 @@ function SettingsModal({ coachName, onClose, onLogout }) {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, color: T.muted2 }}>Support</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#1E9E57' }}>support@fuelupyouth.com</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1E5A45' }}>support@fuelupyouth.com</span>
             </div>
           </div>
 
@@ -244,7 +244,7 @@ function NavItems({ activeView, hasTeam, callbacks, onNav }) {
         {active && (
           <div style={{
             position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
-            width: 3, height: 20, background: T.neon, borderRadius: '0 3px 3px 0',
+            width: 3, height: 20, background: T.lime, borderRadius: '0 3px 3px 0',
           }} />
         )}
         <button
@@ -253,7 +253,7 @@ function NavItems({ activeView, hasTeam, callbacks, onNav }) {
             display: 'flex', alignItems: 'center', gap: 12,
             padding: '10px 18px 10px 16px', marginInline: 8, borderRadius: 8,
             color: active ? '#fff' : T.muted,
-            background: active ? 'rgba(49,230,90,0.1)' : 'none',
+            background: active ? 'rgba(203,234,88,0.13)' : 'none',
             border: 'none', cursor: 'pointer',
             width: 'calc(100% - 16px)', textAlign: 'left',
             fontSize: 14, fontWeight: active ? 600 : 500,
@@ -262,7 +262,7 @@ function NavItems({ activeView, hasTeam, callbacks, onNav }) {
         >
           <span style={{
             fontSize: 16, width: 22, textAlign: 'center', flexShrink: 0,
-            color: active ? T.neon : 'rgba(255,255,255,0.4)',
+            color: active ? T.lime : 'rgba(255,255,255,0.4)',
           }}>{item.icon}</span>
           {item.label}
         </button>
@@ -286,7 +286,7 @@ function Sidebar({ activeView, onDashboard, onRoster, onReports, onLogout, hasTe
         display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
       }}>
         <div style={{
-          width: 32, height: 32, background: T.neon, borderRadius: 8,
+          width: 32, height: 32, background: T.lime, borderRadius: 8,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 16, fontWeight: 800, color: T.sidebar, flexShrink: 0,
         }}>F</div>
@@ -309,9 +309,9 @@ function Sidebar({ activeView, onDashboard, onRoster, onReports, onLogout, hasTe
         {coachName && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <div style={{
-              width: 34, height: 34, borderRadius: '50%', background: 'rgba(49,230,90,0.15)',
+              width: 34, height: 34, borderRadius: '50%', background: 'rgba(203,234,88,0.15)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 14, fontWeight: 700, color: T.neon, flexShrink: 0,
+              fontSize: 14, fontWeight: 700, color: T.lime, flexShrink: 0,
             }}>{initials(coachName)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', lineHeight: 1.2,
@@ -353,7 +353,7 @@ function IconRail({ activeView, onDashboard, onRoster, onReports, onLogout, hasT
         width: '100%', display: 'flex', justifyContent: 'center',
       }}>
         <div style={{
-          width: 32, height: 32, background: T.neon, borderRadius: 8,
+          width: 32, height: 32, background: T.lime, borderRadius: 8,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 16, fontWeight: 800, color: T.sidebar,
         }}>F</div>
@@ -368,13 +368,13 @@ function IconRail({ activeView, onDashboard, onRoster, onReports, onLogout, hasT
             <button key={item.key} onClick={handler} title={item.label} aria-label={item.label} style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
               padding: '10px 0', width: 56, borderRadius: 10,
-              background: active ? 'rgba(49,230,90,0.12)' : 'none',
+              background: active ? 'rgba(203,234,88,0.13)' : 'none',
               border: 'none', cursor: 'pointer', marginBottom: 2, transition: 'background .1s',
             }}>
-              <span style={{ fontSize: 18, color: active ? T.neon : 'rgba(255,255,255,0.4)' }}>{item.icon}</span>
+              <span style={{ fontSize: 18, color: active ? T.lime : 'rgba(255,255,255,0.4)' }}>{item.icon}</span>
               <span style={{
                 fontSize: 9, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase',
-                color: active ? T.neon : 'rgba(255,255,255,0.3)',
+                color: active ? T.lime : 'rgba(255,255,255,0.3)',
               }}>{item.label}</span>
             </button>
           )
@@ -387,9 +387,9 @@ function IconRail({ activeView, onDashboard, onRoster, onReports, onLogout, hasT
       }}>
         <GearBtn onClick={onSettings} small />
         <div style={{
-          width: 34, height: 34, borderRadius: '50%', background: 'rgba(49,230,90,0.15)',
+          width: 34, height: 34, borderRadius: '50%', background: 'rgba(203,234,88,0.15)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 13, fontWeight: 700, color: T.neon, cursor: 'pointer',
+          fontSize: 13, fontWeight: 700, color: T.lime, cursor: 'pointer',
         }} onClick={onLogout} title="Sign out" aria-label="Sign out">
           {initials(coachName)}
         </div>
@@ -422,7 +422,7 @@ function TopBarAndDrawer({ activeView, onDashboard, onRoster, onReports, onLogou
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
-            width: 28, height: 28, background: T.neon, borderRadius: 7,
+            width: 28, height: 28, background: T.lime, borderRadius: 7,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 14, fontWeight: 800, color: T.sidebar,
           }}>F</div>
@@ -446,7 +446,7 @@ function TopBarAndDrawer({ activeView, onDashboard, onRoster, onReports, onLogou
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
-              width: 28, height: 28, background: T.neon, borderRadius: 7,
+              width: 28, height: 28, background: T.lime, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 14, fontWeight: 800, color: T.sidebar,
             }}>F</div>
@@ -468,9 +468,9 @@ function TopBarAndDrawer({ activeView, onDashboard, onRoster, onReports, onLogou
           {coachName && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <div style={{
-                width: 34, height: 34, borderRadius: '50%', background: 'rgba(49,230,90,0.15)',
+                width: 34, height: 34, borderRadius: '50%', background: 'rgba(203,234,88,0.15)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 14, fontWeight: 700, color: T.neon, flexShrink: 0,
+                fontSize: 14, fontWeight: 700, color: T.lime, flexShrink: 0,
               }}>{initials(coachName)}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', lineHeight: 1.2 }}>{coachName}</div>
@@ -517,7 +517,7 @@ export default function AppShell({ activeView, onDashboard, onRoster, onReports,
       />
 
       <main className="main-content" style={{
-        marginLeft: W, flex: 1, background: '#123826', minHeight: '100vh',
+        marginLeft: W, flex: 1, background: '#F7F5ED', minHeight: '100vh',
       }}>
         {children}
       </main>
