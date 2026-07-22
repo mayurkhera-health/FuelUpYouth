@@ -24,7 +24,7 @@ const s = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     fontSize: 14, fontWeight: 800, color: T.emerald,
   },
-  brandText: { color: '#fff', fontWeight: 700, fontSize: 16 },
+  brandText: { color: '#fff', fontWeight: 700, fontSize: 18 },
 
   topLinks: {
     display: 'flex', alignItems: 'center', gap: 4,

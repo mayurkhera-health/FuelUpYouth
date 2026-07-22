@@ -40,8 +40,8 @@ function ProgressBar({ value, max, threshold }) {
   return (
     <div style={{ marginTop: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>Logged this week</span>
-        <span style={{ fontSize: 12, fontWeight: 700,
+        <span style={{ fontSize: 14, color: '#888', fontWeight: 600 }}>Logged this week</span>
+        <span style={{ fontSize: 14, fontWeight: 700,
           color: good ? T.emerald : T.orange }}>
           {value} / {max}
         </span>
@@ -106,56 +106,56 @@ const s = {
     ].join(', '),
     backgroundSize: 'auto, 30px 30px',
   },
-  wrap:  { padding: '24px 20px', maxWidth: 680, margin: '0 auto' },
-  header: { marginBottom: 24 },
-  title:  { fontWeight: 800, fontSize: 26, color: '#fff', lineHeight: 1.1 },
-  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.65)', marginTop: 6, fontWeight: 500 },
+  wrap:  { padding: '36px 32px', maxWidth: 960, margin: '0 auto' },
+  header: { marginBottom: 32 },
+  title:  { fontWeight: 800, fontSize: 36, color: '#fff', lineHeight: 1.1 },
+  subtitle: { fontSize: 16, color: 'rgba(255,255,255,0.65)', marginTop: 8, fontWeight: 500 },
 
   // Team card
   card: (attention) => ({
     background: T.card,
-    borderRadius: 12,
-    padding: '18px 20px 16px',
-    marginBottom: 10,
+    borderRadius: 14,
+    padding: '22px 24px 20px',
+    marginBottom: 12,
     cursor: 'pointer',
     border: `1px solid ${attention ? T.orange : 'rgba(255,255,255,0.08)'}`,
-    borderLeft: `4px solid ${attention ? T.orange : T.neon}`,
-    boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+    borderLeft: `5px solid ${attention ? T.orange : T.neon}`,
+    boxShadow: '0 2px 8px rgba(0,0,0,.08)',
     transition: 'box-shadow .15s, transform .1s',
   }),
   cardTop:   { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' },
-  teamName:  { fontWeight: 700, fontSize: 17, color: T.emerald },
-  attnBadge: { fontSize: 11, fontWeight: 700, color: T.orange,
+  teamName:  { fontWeight: 700, fontSize: 22, color: T.emerald },
+  attnBadge: { fontSize: 12, fontWeight: 700, color: T.orange,
                textTransform: 'uppercase', letterSpacing: '.05em' },
-  rightCol:  { display: 'flex', alignItems: 'center', gap: 6 },
-  trend:     (color) => ({ fontSize: 13, fontWeight: 700, color }),
-  chevron:   { color: T.border, fontSize: 18 },
-  cardMeta:  { fontSize: 12, color: '#aaa', marginTop: 3, fontWeight: 600 },
+  rightCol:  { display: 'flex', alignItems: 'center', gap: 8 },
+  trend:     (color) => ({ fontSize: 15, fontWeight: 700, color }),
+  chevron:   { color: T.border, fontSize: 20 },
+  cardMeta:  { fontSize: 14, color: '#aaa', marginTop: 4, fontWeight: 600 },
 
-  statusRow: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 },
+  statusRow: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 },
   statusDot: (good) => ({
-    width: 7, height: 7, borderRadius: '50%',
+    width: 8, height: 8, borderRadius: '50%',
     background: good ? T.neon : T.orange, flexShrink: 0,
   }),
-  statusText: (good) => ({ fontSize: 12, fontWeight: 600,
+  statusText: (good) => ({ fontSize: 14, fontWeight: 600,
     color: good ? '#1a7a4a' : '#a35c00' }),
 
   // Season overview
   overview: {
-    background: T.emerald, borderRadius: 14, padding: '24px 20px',
-    marginTop: 28, color: '#fff',
+    background: T.emerald, borderRadius: 16, padding: '28px 24px',
+    marginTop: 32, color: '#fff',
   },
-  ovTitle: { fontWeight: 700, fontSize: 16, marginBottom: 4 },
-  ovSub:   { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 20, fontWeight: 500 },
-  ovBody:  { display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' },
-  ovGrid:  { flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
-             minWidth: 160 },
-  stat:    { background: 'rgba(255,255,255,0.07)', borderRadius: 10, padding: '12px 14px' },
-  statVal: { fontWeight: 800, fontSize: 22, color: T.neon, lineHeight: 1 },
-  statLbl: { fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4,
+  ovTitle: { fontWeight: 700, fontSize: 20, marginBottom: 4 },
+  ovSub:   { fontSize: 15, color: 'rgba(255,255,255,0.65)', marginBottom: 24, fontWeight: 500 },
+  ovBody:  { display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' },
+  ovGrid:  { flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14,
+             minWidth: 200 },
+  stat:    { background: 'rgba(255,255,255,0.07)', borderRadius: 12, padding: '16px 18px' },
+  statVal: { fontWeight: 800, fontSize: 28, color: T.neon, lineHeight: 1 },
+  statLbl: { fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 6,
              textTransform: 'uppercase', letterSpacing: '.04em' },
 
-  snap: { fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 16 },
+  snap: { fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 16 },
 }
 
 export default function TeamSelector({ teamsData, onSelect, loading }) {

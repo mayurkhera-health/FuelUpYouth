@@ -38,23 +38,23 @@ function ProgressBar({ value, max, threshold }) {
 }
 
 const s = {
-  wrap:  { padding: '24px 20px', maxWidth: 560, margin: '0 auto' },
-  nav:   { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 },
-  back:  { background: 'none', border: 'none', fontSize: 22,
+  wrap:  { padding: '36px 32px', maxWidth: 720, margin: '0 auto' },
+  nav:   { display: 'flex', alignItems: 'center', gap: 14, marginBottom: 32 },
+  back:  { background: 'none', border: 'none', fontSize: 26,
            cursor: 'pointer', color: 'rgba(255,255,255,0.8)', padding: '0 4px' },
-  title: { fontWeight: 800, fontSize: 22, color: '#fff' },
+  title: { fontWeight: 800, fontSize: 30, color: '#fff' },
 
   card: {
-    background: T.card, borderRadius: 14, padding: 24,
-    marginBottom: 14, border: `1px solid ${T.border}`,
-    boxShadow: '0 1px 6px rgba(0,0,0,.05)',
+    background: T.card, borderRadius: 16, padding: 32,
+    marginBottom: 16, border: `1px solid ${T.border}`,
+    boxShadow: '0 2px 10px rgba(0,0,0,.07)',
   },
-  cardLabel: { fontSize: 12, fontWeight: 600, color: '#aaa',
-               textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 },
+  cardLabel: { fontSize: 13, fontWeight: 600, color: '#aaa',
+               textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 },
 
-  bigRow:  { display: 'flex', alignItems: 'baseline', gap: 6 },
-  bigNum:  { fontSize: 52, fontWeight: 800, color: T.emerald, lineHeight: 1 },
-  bigDenom: { fontSize: 24, color: '#ccc', fontWeight: 400 },
+  bigRow:  { display: 'flex', alignItems: 'baseline', gap: 8 },
+  bigNum:  { fontSize: 64, fontWeight: 800, color: T.emerald, lineHeight: 1 },
+  bigDenom: { fontSize: 30, color: '#ccc', fontWeight: 400 },
 
   trendRow: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 14,
               padding: '10px 12px', borderRadius: 8, background: T.surface },
