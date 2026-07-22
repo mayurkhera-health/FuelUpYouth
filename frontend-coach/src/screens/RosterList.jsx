@@ -4,9 +4,10 @@ import { fetchRoster } from '../api.js'
 // active       = logged in past 7 days
 // no-activity  = joined but no recent log (covers inactive + no_data)
 // not-joined   = no roster_membership row
+const T = { emerald: '#0f2a1f', neon: '#3dfc3d', orange: '#ff9800' }
 const STATUS = {
-  active:        { label: 'Logged',      color: '#1a7a4a', bg: '#eaf4ee', dashed: false },
-  'no-activity': { label: 'No activity', color: '#888',    bg: '#f2f2f2', dashed: false },
+  active:        { label: 'Logged',      color: T.emerald, bg: T.neon,    dashed: false },
+  'no-activity': { label: 'No activity', color: '#fff',    bg: T.orange,  dashed: false },
   'not-joined':  { label: 'Not joined',  color: '#aaa',    bg: 'transparent', dashed: true },
 }
 
@@ -17,36 +18,36 @@ function mapStatus(a) {
 }
 
 const s = {
-  wrap: { padding: '28px 40px', maxWidth: 720 },
+  wrap: { padding: '24px 20px', maxWidth: 720, margin: '0 auto' },
   nav:  { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 },
   back: { background: 'none', border: 'none', fontSize: 22,
-          cursor: 'pointer', color: '#1a7a4a', padding: '0 4px', lineHeight: 1 },
-  title:    { fontWeight: 700, fontSize: 20, color: '#111' },
-  sub:      { fontSize: 13, color: '#888', marginBottom: 24, marginLeft: 36 },
+          cursor: 'pointer', color: T.emerald, padding: '0 4px', lineHeight: 1 },
+  title:    { fontWeight: 800, fontSize: 22, color: T.emerald },
+  sub:      { fontSize: 13, color: '#888', marginBottom: 20, marginLeft: 36 },
   list:     { display: 'flex', flexDirection: 'column', gap: 6 },
   row: (dashed) => ({
     background: '#fff',
-    borderRadius: 8,
-    border: dashed ? '1.5px dashed #ddd' : '1px solid #e8e8e8',
+    borderRadius: 10,
+    border: dashed ? '1.5px dashed #dadad8' : '1px solid #dadad8',
     padding: '0 16px',
-    height: 44,
+    height: 48,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
   }),
   left: { display: 'flex', alignItems: 'baseline', gap: 6, overflow: 'hidden' },
-  name: { fontWeight: 600, fontSize: 15, color: '#111', whiteSpace: 'nowrap' },
+  name: { fontWeight: 600, fontSize: 15, color: '#1a1a1a', whiteSpace: 'nowrap' },
   demo: { fontSize: 13, color: '#888', whiteSpace: 'nowrap' },
   pill: (st) => ({
-    flexShrink: 0, fontSize: 12, fontWeight: 600,
-    padding: '3px 11px', borderRadius: 20,
+    flexShrink: 0, fontSize: 11, fontWeight: 700,
+    padding: '4px 12px', borderRadius: 20,
     color: st.color, background: st.bg,
-    border: st.dashed ? '1px solid #ddd' : 'none',
-    whiteSpace: 'nowrap',
+    border: st.dashed ? '1px solid #dadad8' : 'none',
+    whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '.04em',
   }),
   footnote: { fontSize: 12, color: '#bbb', marginTop: 20, fontStyle: 'italic' },
-  empty:    { color: '#999', fontSize: 14, textAlign: 'center', marginTop: 40 },
+  empty:    { color: '#aaa', fontSize: 14, textAlign: 'center', marginTop: 40 },
 }
 
 function demoLine(a) {
