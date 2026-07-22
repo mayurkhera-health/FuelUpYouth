@@ -148,7 +148,7 @@ def test_mission_items_iron_critical_for_girls():
     items = get_mission_items("rest", [], tl, [], {}, 0, "girl")
     iron_items = [i for i in items if i["item_type"] == "iron_lunch"]
     assert len(iron_items) >= 1
-    assert iron_items[0]["state"] == "critical"
+    assert iron_items[0]["state"] == "urgent"
 
 
 def test_mission_items_iron_not_flagged_for_boys():
@@ -247,7 +247,7 @@ def _make_today_conn():
         )
     """)
     # get_streak reads these two unguarded
-    conn.execute("CREATE TABLE confirmations (athlete_id INTEGER, log_date TEXT)")
+    conn.execute("CREATE TABLE confirmations (athlete_id INTEGER, log_date TEXT, window_key TEXT, window_type TEXT)")
     conn.execute("CREATE TABLE report_config (key TEXT, value TEXT)")
     conn.commit()
     return conn
