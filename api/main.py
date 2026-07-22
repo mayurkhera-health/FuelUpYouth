@@ -50,11 +50,17 @@ async def lifespan(app: FastAPI):
                            id="health", replace_existing=True)
         _scheduler.add_job(run_health_daily, "cron", hour=9,
                            id="health_daily", replace_existing=True)
+        from api.services.snapshot_job import generate_all_snapshots
+        _scheduler.add_job(
+            generate_all_snapshots, "cron", hour=23,
+            timezone="America/Los_Angeles",
+            id="teamcoach_snapshot", replace_existing=True,
+        )
         if not _scheduler.running:
             _scheduler.start()
         configure_calendar_sync_startup(_scheduler)
         logger.info("Schedulers started (notifications 15-min, calendar sync 6-hr, health 15-min + daily, "
-                    "grocery reset 15-min, grocery reminder 15-min).")
+                    "grocery reset 15-min, grocery reminder 15-min, teamcoach snapshot 11pm PT).")
     except Exception:
         logger.exception("Scheduler failed to start")
 
