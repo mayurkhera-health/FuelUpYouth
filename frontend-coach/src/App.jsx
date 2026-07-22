@@ -54,7 +54,7 @@ export default function App() {
       coachName={coachName}
     >
       {view === 'dashboard' && (
-        <TeamSelector teamsData={teamsData} onSelect={onSelectTeam} loading={!teamsData} />
+        <TeamSelector teamsData={teamsData} onSelect={onSelectTeam} loading={!teamsData} coachName={coachName} />
       )}
       {view === 'overview' && (
         <TeamOverview

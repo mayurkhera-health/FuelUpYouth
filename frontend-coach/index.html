@@ -17,12 +17,12 @@
         -webkit-font-smoothing: antialiased;
       }
 
-      /* Bottom nav visible only on mobile */
+      /* Sidebar desktop / bottom-nav mobile */
       .bottom-nav { display: none; }
       @media (max-width: 640px) {
+        .sidebar { display: none; }
         .bottom-nav { display: flex; }
-        .top-nav-links { display: none; }
-        .main-content { padding-bottom: 72px; }
+        .main-content { margin-left: 0 !important; padding-bottom: 72px; }
       }
 
       /* Shimmer loading animation */

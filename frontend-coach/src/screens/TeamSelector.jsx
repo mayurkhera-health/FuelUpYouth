@@ -158,7 +158,14 @@ const s = {
   snap: { fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 16 },
 }
 
-export default function TeamSelector({ teamsData, onSelect, loading }) {
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+export default function TeamSelector({ teamsData, onSelect, loading, coachName }) {
   const { generated_at, season, teams = [] } = teamsData || {}
 
   // Aggregate stats for Season Overview
@@ -173,6 +180,9 @@ export default function TeamSelector({ teamsData, onSelect, loading }) {
     <div style={s.page}>
       <div style={s.wrap}>
       <div style={s.header}>
+        <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontWeight: 500, marginBottom: 4 }}>
+          {greeting()}{coachName ? `, ${coachName.split(' ')[0]}` : ''} 👋
+        </div>
         <div style={s.title}>My Teams</div>
         <div style={s.subtitle}>
           {season || 'Current season'} · Monitoring engagement trends
