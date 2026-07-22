@@ -62,10 +62,10 @@ function CardProgressBar({ value, max, threshold }) {
   const filled = max > 0 ? Math.min(100, (value / max) * 100) : 0
   const good   = filled >= threshold
   return (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 14, color: '#888', fontWeight: 600 }}>Logged this week</span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: good ? T.emerald : T.orange }}>
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+        <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>Logged this week</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: good ? T.emerald : T.orange }}>
           {value} / {max}
         </span>
       </div>
@@ -97,15 +97,15 @@ function SummaryTiles({ teams }) {
   ]
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
       {tiles.map(t => (
         <div key={t.label} style={{
-          background: T.card, borderRadius: 14, padding: '20px 22px',
-          border: `1px solid ${T.border}`, boxShadow: '0 1px 6px rgba(0,0,0,.05)',
+          background: T.card, borderRadius: 12, padding: '14px 18px',
+          border: `1px solid ${T.border}`, boxShadow: '0 1px 5px rgba(0,0,0,.04)',
         }}>
-          <div style={{ fontSize: 34, fontWeight: 800, color: t.color, lineHeight: 1 }}>{t.value}</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#333', marginTop: 8 }}>{t.label}</div>
-          <div style={{ fontSize: 12, color: '#aaa', marginTop: 3 }}>{t.sub}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: t.color, lineHeight: 1 }}>{t.value}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#333', marginTop: 6 }}>{t.label}</div>
+          <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{t.sub}</div>
         </div>
       ))}
     </div>
@@ -116,30 +116,30 @@ function EngagementChart({ teams }) {
   const threshold = teams[0]?.threshold_pct ?? 70
   return (
     <div style={{
-      background: T.card, borderRadius: 16, padding: '24px 28px',
-      border: `1px solid ${T.border}`, boxShadow: '0 2px 10px rgba(0,0,0,.06)',
-      marginBottom: 16,
+      background: T.card, borderRadius: 14, padding: '18px 22px',
+      border: `1px solid ${T.border}`, boxShadow: '0 1px 6px rgba(0,0,0,.05)',
+      marginBottom: 10,
     }}>
-      <div style={{ fontWeight: 700, fontSize: 17, color: T.emerald, marginBottom: 4 }}>Team Engagement</div>
-      <div style={{ fontSize: 13, color: '#aaa', marginBottom: 20 }}>
+      <div style={{ fontWeight: 700, fontSize: 15, color: T.emerald, marginBottom: 2 }}>Team Engagement</div>
+      <div style={{ fontSize: 12, color: '#aaa', marginBottom: 14 }}>
         % of athletes who logged above the weekly threshold
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {teams.map(t => {
           const p   = logPct(t)
           const col = barColor(p, threshold)
           return (
             <div key={t.id}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
-                <span style={{ fontWeight: 600, fontSize: 15, color: T.emerald }}>{t.name}</span>
-                <span style={{ fontWeight: 700, fontSize: 15, color: col }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                <span style={{ fontWeight: 600, fontSize: 13, color: T.emerald }}>{t.name}</span>
+                <span style={{ fontWeight: 700, fontSize: 13, color: col }}>
                   {p}%{' '}
                   <span style={{ color: '#aaa', fontWeight: 500 }}>
                     ({t.current_week?.players_above_threshold ?? 0}/{t.roster_count ?? 0})
                   </span>
                 </span>
               </div>
-              <div style={{ position: 'relative', height: 12, background: '#f0f0f0', borderRadius: 6 }}>
+              <div style={{ position: 'relative', height: 8, background: '#f0f0f0', borderRadius: 4 }}>
                 <div style={{
                   position: 'absolute', left: `${threshold}%`, top: -4, bottom: -4,
                   width: 2, background: '#ccc', borderRadius: 1, zIndex: 2,
@@ -147,14 +147,14 @@ function EngagementChart({ teams }) {
                 <div style={{
                   position: 'absolute', left: 0, top: 0, bottom: 0,
                   width: `${Math.min(p, 100)}%`,
-                  background: col, borderRadius: 6, transition: 'width .5s ease',
+                  background: col, borderRadius: 4, transition: 'width .5s ease',
                 }} />
               </div>
             </div>
           )
         })}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
         <div style={{ width: 2, height: 12, background: '#ccc', borderRadius: 1 }} />
         <span style={{ fontSize: 12, color: '#aaa' }}>Target threshold: {threshold}%</span>
       </div>
@@ -163,18 +163,18 @@ function EngagementChart({ teams }) {
 }
 
 function WeekOverWeekTable({ teams, snap }) {
-  const th = { fontSize: 12, fontWeight: 700, color: '#aaa', textTransform: 'uppercase',
-               letterSpacing: '.05em', padding: '0 0 12px', textAlign: 'left' }
-  const td = { padding: '14px 0', borderTop: `1px solid ${T.border}`, verticalAlign: 'middle' }
+  const th = { fontSize: 11, fontWeight: 700, color: '#aaa', textTransform: 'uppercase',
+               letterSpacing: '.05em', padding: '0 0 8px', textAlign: 'left' }
+  const td = { padding: '10px 0', borderTop: `1px solid ${T.border}`, verticalAlign: 'middle' }
   return (
     <div style={{
-      background: T.card, borderRadius: 16, padding: '24px 28px',
-      border: `1px solid ${T.border}`, boxShadow: '0 2px 10px rgba(0,0,0,.06)',
+      background: T.card, borderRadius: 14, padding: '18px 22px',
+      border: `1px solid ${T.border}`, boxShadow: '0 1px 6px rgba(0,0,0,.05)',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 17, color: T.emerald }}>Week-over-Week</div>
-          <div style={{ fontSize: 13, color: '#aaa', marginTop: 2 }}>Logging rate vs. prior week</div>
+          <div style={{ fontWeight: 700, fontSize: 15, color: T.emerald }}>Week-over-Week</div>
+          <div style={{ fontSize: 12, color: '#aaa', marginTop: 2 }}>Logging rate vs. prior week</div>
         </div>
         {snap && <div style={{ fontSize: 12, color: '#ccc' }}>Snapshot: {fmtDate(snap)}</div>}
       </div>
@@ -239,36 +239,36 @@ const s = {
     ].join(', '),
     backgroundSize: 'auto, 30px 30px',
   },
-  wrap:     { padding: '36px 32px', maxWidth: 960, margin: '0 auto' },
-  header:   { marginBottom: 28 },
-  hi:       { fontSize: 15, color: 'rgba(255,255,255,0.5)', fontWeight: 500, marginBottom: 4 },
-  title:    { fontWeight: 800, fontSize: 36, color: '#fff', lineHeight: 1.1 },
-  subtitle: { fontSize: 16, color: 'rgba(255,255,255,0.65)', marginTop: 8, fontWeight: 500 },
+  wrap:     { padding: '20px 32px', maxWidth: 960, margin: '0 auto' },
+  header:   { marginBottom: 14 },
+  hi:       { fontSize: 13, color: 'rgba(255,255,255,0.45)', fontWeight: 500, marginBottom: 2 },
+  title:    { fontWeight: 800, fontSize: 28, color: '#fff', lineHeight: 1.1 },
+  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.55)', marginTop: 4, fontWeight: 500 },
 
-  sectionLabel: { fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+  sectionLabel: { fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)',
                   textTransform: 'uppercase', letterSpacing: '.08em',
-                  marginTop: 32, marginBottom: 12 },
+                  marginTop: 20, marginBottom: 8 },
 
   card: (attention) => ({
-    background: T.card, borderRadius: 14, padding: '22px 24px 20px', marginBottom: 12,
+    background: T.card, borderRadius: 12, padding: '14px 20px 12px', marginBottom: 8,
     cursor: 'pointer',
     border: `1px solid ${attention ? T.orange : 'rgba(255,255,255,0.08)'}`,
-    borderLeft: `5px solid ${attention ? T.orange : T.neon}`,
-    boxShadow: '0 2px 8px rgba(0,0,0,.08)',
+    borderLeft: `4px solid ${attention ? T.orange : T.neon}`,
+    boxShadow: '0 1px 5px rgba(0,0,0,.07)',
     transition: 'box-shadow .15s',
   }),
-  cardTop:   { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' },
-  teamName:  { fontWeight: 700, fontSize: 22, color: T.emerald },
-  cardMeta:  { fontSize: 14, color: '#aaa', marginTop: 4, fontWeight: 600 },
+  cardTop:   { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  teamName:  { fontWeight: 700, fontSize: 17, color: T.emerald },
+  cardMeta:  { fontSize: 13, color: '#aaa', marginTop: 2, fontWeight: 600 },
   rightCol:  { display: 'flex', alignItems: 'center', gap: 8 },
-  trend:     (color) => ({ fontSize: 15, fontWeight: 700, color }),
-  chevron:   { color: T.border, fontSize: 20 },
-  statusRow: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 },
+  trend:     (color) => ({ fontSize: 13, fontWeight: 700, color }),
+  chevron:   { color: T.border, fontSize: 18 },
+  statusRow: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 },
   statusDot: (good) => ({
-    width: 8, height: 8, borderRadius: '50%',
+    width: 7, height: 7, borderRadius: '50%',
     background: good ? T.neon : T.orange, flexShrink: 0,
   }),
-  statusText: (good) => ({ fontSize: 14, fontWeight: 600, color: good ? '#1a7a4a' : '#a35c00' }),
+  statusText: (good) => ({ fontSize: 13, fontWeight: 600, color: good ? '#1a7a4a' : '#a35c00' }),
 }
 
 export default function TeamSelector({ teamsData, onSelect, loading, coachName }) {
