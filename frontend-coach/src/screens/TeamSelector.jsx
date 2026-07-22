@@ -40,7 +40,7 @@ function ProgressBar({ value, max, threshold }) {
   return (
     <div style={{ marginTop: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 12, color: '#888', fontWeight: 500 }}>Logged this week</span>
+        <span style={{ fontSize: 12, color: '#888', fontWeight: 600 }}>Logged this week</span>
         <span style={{ fontSize: 12, fontWeight: 700,
           color: good ? T.emerald : T.orange }}>
           {value} / {max}
@@ -101,7 +101,7 @@ const s = {
   wrap:  { padding: '24px 20px', maxWidth: 680, margin: '0 auto' },
   header: { marginBottom: 24 },
   title:  { fontWeight: 800, fontSize: 26, color: '#fff', lineHeight: 1.1 },
-  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 6 },
+  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.65)', marginTop: 6, fontWeight: 500 },
 
   // Team card
   card: (attention) => ({
@@ -122,7 +122,7 @@ const s = {
   rightCol:  { display: 'flex', alignItems: 'center', gap: 6 },
   trend:     (color) => ({ fontSize: 13, fontWeight: 700, color }),
   chevron:   { color: T.border, fontSize: 18 },
-  cardMeta:  { fontSize: 12, color: '#aaa', marginTop: 3 },
+  cardMeta:  { fontSize: 12, color: '#aaa', marginTop: 3, fontWeight: 600 },
 
   statusRow: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 },
   statusDot: (good) => ({
@@ -138,7 +138,7 @@ const s = {
     marginTop: 28, color: '#fff',
   },
   ovTitle: { fontWeight: 700, fontSize: 16, marginBottom: 4 },
-  ovSub:   { fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 20 },
+  ovSub:   { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginBottom: 20, fontWeight: 500 },
   ovBody:  { display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' },
   ovGrid:  { flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
              minWidth: 160 },
