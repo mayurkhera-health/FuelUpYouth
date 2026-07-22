@@ -4,24 +4,24 @@ const T = {
   emerald: '#0f2a1f',
   neon:    '#3dfc3d',
   orange:  '#ff9800',
-  surface: '#faf9f7',
   card:    '#ffffff',
   border:  '#dadad8',
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────────────────────
 
-function pct(above, total) {
-  if (!above || !total) return 0
+function logPct(t) {
+  const above = t.current_week?.players_above_threshold ?? 0
+  const total = t.roster_count ?? 1
   return Math.round((above / total) * 100)
 }
 
 function trendGlyph(cur, prior) {
   if (!cur || !prior) return null
   const diff = cur.players_above_threshold - prior.players_above_threshold
-  if (diff > 0) return { glyph: '▲', color: T.neon, label: `+${diff}` }
-  if (diff < 0) return { glyph: '▼', color: T.orange, label: `${diff}` }
-  return { glyph: '▬', color: '#aaa', label: '0' }
+  if (diff > 0) return { glyph: '▲', color: T.neon,    label: `+${diff}` }
+  if (diff < 0) return { glyph: '▼', color: T.orange,  label: `${diff}` }
+  return               { glyph: '▬', color: '#aaa',    label: '0' }
 }
 
 function fmtDate(d) {
@@ -32,57 +32,20 @@ function fmtDate(d) {
   return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function barColor(pct, threshold) {
+  if (pct >= threshold)          return T.neon
+  if (pct >= threshold * 0.6)   return T.orange
+  return '#e91e63'
+}
+
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
 // ── sub-components ────────────────────────────────────────────────────────────
-
-function ProgressBar({ value, max, threshold }) {
-  const filled = max > 0 ? Math.min(100, (value / max) * 100) : 0
-  const good   = filled >= threshold
-  return (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 14, color: '#888', fontWeight: 600 }}>Logged this week</span>
-        <span style={{ fontSize: 14, fontWeight: 700,
-          color: good ? T.emerald : T.orange }}>
-          {value} / {max}
-        </span>
-      </div>
-      <div style={{ height: 8, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%',
-          width: `${filled}%`,
-          background: good ? T.neon : T.orange,
-          borderRadius: 4,
-          transition: 'width .4s ease',
-        }} />
-      </div>
-    </div>
-  )
-}
-
-function CircularGauge({ pct: value, size = 112 }) {
-  const r   = 42
-  const circ = 2 * Math.PI * r
-  const dash = (Math.min(value, 100) / 100) * circ
-  const good = value >= 70
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100">
-      <circle cx="50" cy="50" r={r} fill="none" stroke={T.border} strokeWidth="9" />
-      <circle cx="50" cy="50" r={r} fill="none"
-        stroke={good ? T.neon : T.orange} strokeWidth="9"
-        strokeDasharray={`${dash} ${circ - dash}`}
-        strokeLinecap="round"
-        transform="rotate(-90 50 50)" />
-      <text x="50" y="47" textAnchor="middle" fontSize="18" fontWeight="800"
-        fill={T.emerald} fontFamily="Hanken Grotesk, sans-serif">
-        {Math.round(value)}%
-      </text>
-      <text x="50" y="62" textAnchor="middle" fontSize="9" fill="#888"
-        fontFamily="Hanken Grotesk, sans-serif">
-        OVERALL
-      </text>
-    </svg>
-  )
-}
 
 function ShimmerCard() {
   return (
@@ -95,7 +58,177 @@ function ShimmerCard() {
   )
 }
 
-// ── main component ────────────────────────────────────────────────────────────
+function CardProgressBar({ value, max, threshold }) {
+  const filled = max > 0 ? Math.min(100, (value / max) * 100) : 0
+  const good   = filled >= threshold
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{ fontSize: 14, color: '#888', fontWeight: 600 }}>Logged this week</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: good ? T.emerald : T.orange }}>
+          {value} / {max}
+        </span>
+      </div>
+      <div style={{ height: 8, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', width: `${filled}%`,
+          background: good ? T.neon : T.orange,
+          borderRadius: 4, transition: 'width .4s ease',
+        }} />
+      </div>
+    </div>
+  )
+}
+
+function SummaryTiles({ teams }) {
+  const totalRoster = teams.reduce((s, t) => s + (t.roster_count ?? 0), 0)
+  const totalJoined = teams.reduce((s, t) => s + (t.joined_count ?? 0), 0)
+  const totalLogged = teams.reduce((s, t) => s + (t.current_week?.players_above_threshold ?? 0), 0)
+  const attnCount   = teams.filter(t => t.needs_attention).length
+  const overallPct  = totalRoster > 0 ? Math.round((totalLogged / totalRoster) * 100) : 0
+
+  const tiles = [
+    { label: 'Total Athletes',   value: totalRoster, sub: `${totalJoined} in app`,      color: T.emerald },
+    { label: 'Logged This Week', value: totalLogged, sub: `${overallPct}% of roster`,   color: totalLogged > 0 ? '#1a7a4a' : T.orange },
+    { label: 'On Track',         value: teams.filter(t => !t.needs_attention).length,
+                                 sub: `of ${teams.length} teams`,                        color: '#1a7a4a' },
+    { label: 'Need Attention',   value: attnCount,   sub: attnCount > 0 ? 'Action required' : 'All clear',
+                                                                                          color: attnCount > 0 ? T.orange : '#1a7a4a' },
+  ]
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+      {tiles.map(t => (
+        <div key={t.label} style={{
+          background: T.card, borderRadius: 14, padding: '20px 22px',
+          border: `1px solid ${T.border}`, boxShadow: '0 1px 6px rgba(0,0,0,.05)',
+        }}>
+          <div style={{ fontSize: 34, fontWeight: 800, color: t.color, lineHeight: 1 }}>{t.value}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#333', marginTop: 8 }}>{t.label}</div>
+          <div style={{ fontSize: 12, color: '#aaa', marginTop: 3 }}>{t.sub}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function EngagementChart({ teams }) {
+  const threshold = teams[0]?.threshold_pct ?? 70
+  return (
+    <div style={{
+      background: T.card, borderRadius: 16, padding: '24px 28px',
+      border: `1px solid ${T.border}`, boxShadow: '0 2px 10px rgba(0,0,0,.06)',
+      marginBottom: 16,
+    }}>
+      <div style={{ fontWeight: 700, fontSize: 17, color: T.emerald, marginBottom: 4 }}>Team Engagement</div>
+      <div style={{ fontSize: 13, color: '#aaa', marginBottom: 20 }}>
+        % of athletes who logged above the weekly threshold
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        {teams.map(t => {
+          const p   = logPct(t)
+          const col = barColor(p, threshold)
+          return (
+            <div key={t.id}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
+                <span style={{ fontWeight: 600, fontSize: 15, color: T.emerald }}>{t.name}</span>
+                <span style={{ fontWeight: 700, fontSize: 15, color: col }}>
+                  {p}%{' '}
+                  <span style={{ color: '#aaa', fontWeight: 500 }}>
+                    ({t.current_week?.players_above_threshold ?? 0}/{t.roster_count ?? 0})
+                  </span>
+                </span>
+              </div>
+              <div style={{ position: 'relative', height: 12, background: '#f0f0f0', borderRadius: 6 }}>
+                <div style={{
+                  position: 'absolute', left: `${threshold}%`, top: -4, bottom: -4,
+                  width: 2, background: '#ccc', borderRadius: 1, zIndex: 2,
+                }} />
+                <div style={{
+                  position: 'absolute', left: 0, top: 0, bottom: 0,
+                  width: `${Math.min(p, 100)}%`,
+                  background: col, borderRadius: 6, transition: 'width .5s ease',
+                }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 16 }}>
+        <div style={{ width: 2, height: 12, background: '#ccc', borderRadius: 1 }} />
+        <span style={{ fontSize: 12, color: '#aaa' }}>Target threshold: {threshold}%</span>
+      </div>
+    </div>
+  )
+}
+
+function WeekOverWeekTable({ teams, snap }) {
+  const th = { fontSize: 12, fontWeight: 700, color: '#aaa', textTransform: 'uppercase',
+               letterSpacing: '.05em', padding: '0 0 12px', textAlign: 'left' }
+  const td = { padding: '14px 0', borderTop: `1px solid ${T.border}`, verticalAlign: 'middle' }
+  return (
+    <div style={{
+      background: T.card, borderRadius: 16, padding: '24px 28px',
+      border: `1px solid ${T.border}`, boxShadow: '0 2px 10px rgba(0,0,0,.06)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 17, color: T.emerald }}>Week-over-Week</div>
+          <div style={{ fontSize: 13, color: '#aaa', marginTop: 2 }}>Logging rate vs. prior week</div>
+        </div>
+        {snap && <div style={{ fontSize: 12, color: '#ccc' }}>Snapshot: {fmtDate(snap)}</div>}
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={th}>Team</th>
+            <th style={{ ...th, textAlign: 'center' }}>Prior Week</th>
+            <th style={{ ...th, textAlign: 'center' }}>This Week</th>
+            <th style={{ ...th, textAlign: 'right' }}>Change</th>
+          </tr>
+        </thead>
+        <tbody>
+          {teams.map(t => {
+            const cur   = logPct(t)
+            const priorAbove = t.prior_week?.players_above_threshold ?? 0
+            const priorTotal = t.roster_count ?? 1
+            const prior = t.prior_week ? Math.round((priorAbove / priorTotal) * 100) : null
+            const diff  = prior !== null ? cur - prior : null
+            const trend = diff === null ? { text: '—', color: '#aaa' }
+                        : diff > 0 ? { text: `▲ +${diff}%`, color: '#1a7a4a' }
+                        : diff < 0 ? { text: `▼ ${diff}%`, color: T.orange }
+                        :             { text: '▬ 0%', color: '#aaa' }
+            return (
+              <tr key={t.id}>
+                <td style={{ ...td, fontWeight: 600, fontSize: 15, color: T.emerald }}>
+                  {t.name}
+                  {t.needs_attention && (
+                    <span style={{ marginLeft: 8, fontSize: 11, color: T.orange, fontWeight: 700 }}>
+                      ⚑
+                    </span>
+                  )}
+                </td>
+                <td style={{ ...td, textAlign: 'center', color: '#888', fontSize: 15 }}>
+                  {prior !== null ? `${prior}%` : '—'}
+                </td>
+                <td style={{ ...td, textAlign: 'center', fontWeight: 700, fontSize: 15,
+                             color: barColor(cur, t.threshold_pct ?? 70) }}>
+                  {cur}%
+                </td>
+                <td style={{ ...td, textAlign: 'right', fontWeight: 700, fontSize: 14,
+                             color: trend.color }}>
+                  {trend.text}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ── main ──────────────────────────────────────────────────────────────────────
 
 const s = {
   page: {
@@ -106,171 +239,116 @@ const s = {
     ].join(', '),
     backgroundSize: 'auto, 30px 30px',
   },
-  wrap:  { padding: '36px 32px', maxWidth: 960, margin: '0 auto' },
-  header: { marginBottom: 32 },
-  title:  { fontWeight: 800, fontSize: 36, color: '#fff', lineHeight: 1.1 },
+  wrap:     { padding: '36px 32px', maxWidth: 960, margin: '0 auto' },
+  header:   { marginBottom: 28 },
+  hi:       { fontSize: 15, color: 'rgba(255,255,255,0.5)', fontWeight: 500, marginBottom: 4 },
+  title:    { fontWeight: 800, fontSize: 36, color: '#fff', lineHeight: 1.1 },
   subtitle: { fontSize: 16, color: 'rgba(255,255,255,0.65)', marginTop: 8, fontWeight: 500 },
 
-  // Team card
+  sectionLabel: { fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+                  textTransform: 'uppercase', letterSpacing: '.08em',
+                  marginTop: 32, marginBottom: 12 },
+
   card: (attention) => ({
-    background: T.card,
-    borderRadius: 14,
-    padding: '22px 24px 20px',
-    marginBottom: 12,
+    background: T.card, borderRadius: 14, padding: '22px 24px 20px', marginBottom: 12,
     cursor: 'pointer',
     border: `1px solid ${attention ? T.orange : 'rgba(255,255,255,0.08)'}`,
     borderLeft: `5px solid ${attention ? T.orange : T.neon}`,
     boxShadow: '0 2px 8px rgba(0,0,0,.08)',
-    transition: 'box-shadow .15s, transform .1s',
+    transition: 'box-shadow .15s',
   }),
   cardTop:   { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' },
   teamName:  { fontWeight: 700, fontSize: 22, color: T.emerald },
-  attnBadge: { fontSize: 12, fontWeight: 700, color: T.orange,
-               textTransform: 'uppercase', letterSpacing: '.05em' },
+  cardMeta:  { fontSize: 14, color: '#aaa', marginTop: 4, fontWeight: 600 },
   rightCol:  { display: 'flex', alignItems: 'center', gap: 8 },
   trend:     (color) => ({ fontSize: 15, fontWeight: 700, color }),
   chevron:   { color: T.border, fontSize: 20 },
-  cardMeta:  { fontSize: 14, color: '#aaa', marginTop: 4, fontWeight: 600 },
-
   statusRow: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 },
   statusDot: (good) => ({
     width: 8, height: 8, borderRadius: '50%',
     background: good ? T.neon : T.orange, flexShrink: 0,
   }),
-  statusText: (good) => ({ fontSize: 14, fontWeight: 600,
-    color: good ? '#1a7a4a' : '#a35c00' }),
-
-  // Season overview
-  overview: {
-    background: T.emerald, borderRadius: 16, padding: '28px 24px',
-    marginTop: 32, color: '#fff',
-  },
-  ovTitle: { fontWeight: 700, fontSize: 20, marginBottom: 4 },
-  ovSub:   { fontSize: 15, color: 'rgba(255,255,255,0.65)', marginBottom: 24, fontWeight: 500 },
-  ovBody:  { display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' },
-  ovGrid:  { flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14,
-             minWidth: 200 },
-  stat:    { background: 'rgba(255,255,255,0.07)', borderRadius: 12, padding: '16px 18px' },
-  statVal: { fontWeight: 800, fontSize: 28, color: T.neon, lineHeight: 1 },
-  statLbl: { fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 6,
-             textTransform: 'uppercase', letterSpacing: '.04em' },
-
-  snap: { fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 16 },
-}
-
-function greeting() {
-  const h = new Date().getHours()
-  if (h < 12) return 'Good morning'
-  if (h < 17) return 'Good afternoon'
-  return 'Good evening'
+  statusText: (good) => ({ fontSize: 14, fontWeight: 600, color: good ? '#1a7a4a' : '#a35c00' }),
 }
 
 export default function TeamSelector({ teamsData, onSelect, loading, coachName }) {
   const { generated_at, season, teams = [] } = teamsData || {}
 
-  // Aggregate stats for Season Overview
-  const totalRoster  = teams.reduce((s, t) => s + (t.roster_count ?? 0), 0)
-  const totalAbove   = teams.reduce((s, t) =>
-    s + (t.current_week ? t.current_week.players_above_threshold : 0), 0)
-  const totalJoined  = teams.reduce((s, t) => s + (t.joined_count ?? 0), 0)
-  const attentionCt  = teams.filter(t => t.needs_attention).length
-  const overallPct   = totalRoster > 0 ? (totalAbove / totalRoster) * 100 : 0
-
   return (
     <div style={s.page}>
       <div style={s.wrap}>
-      <div style={s.header}>
-        <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', fontWeight: 500, marginBottom: 4 }}>
-          {greeting()}{coachName ? `, ${coachName.split(' ')[0]}` : ''} 👋
+
+        {/* Greeting */}
+        <div style={s.header}>
+          <div style={s.hi}>{greeting()}{coachName ? `, ${coachName.split(' ')[0]}` : ''} 👋</div>
+          <div style={s.title}>Dashboard</div>
+          <div style={s.subtitle}>{season || 'Current season'} · Engagement overview</div>
         </div>
-        <div style={s.title}>My Teams</div>
-        <div style={s.subtitle}>
-          {season || 'Current season'} · Monitoring engagement trends
-        </div>
-      </div>
 
-      {loading && [0, 1].map(i => <ShimmerCard key={i} />)}
-
-      {!loading && teams.map(t => {
-        const above = t.current_week ? t.current_week.players_above_threshold : 0
-        const total = t.roster_count ?? t.joined_count ?? 0
-        const fillPct = pct(above, total)
-        const good    = fillPct >= (t.threshold_pct ?? 70)
-        const trend   = trendGlyph(t.current_week, t.prior_week)
-
-        return (
-          <div
-            key={t.id}
-            style={s.card(t.needs_attention)}
-            onClick={() => onSelect(t)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={e => e.key === 'Enter' && onSelect(t)}
-          >
-            <div style={s.cardTop}>
-              <div>
-                <div style={s.teamName}>{t.name}</div>
-                <div style={s.cardMeta}>{total} athlete{total !== 1 ? 's' : ''}</div>
+        {/* Summary tiles */}
+        {!loading && teams.length > 0 && <SummaryTiles teams={teams} />}
+        {loading && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 24 }}>
+            {[0,1,2,3].map(i => (
+              <div key={i} style={{ background: T.card, borderRadius: 14, padding: '20px 22px',
+                                    border: `1px solid ${T.border}` }}>
+                <div className="shimmer" style={{ height: 34, width: '40%', marginBottom: 10 }} />
+                <div className="shimmer" style={{ height: 14, width: '70%' }} />
               </div>
-              <div style={s.rightCol}>
-                {trend && <span style={s.trend(trend.color)}>{trend.glyph} {trend.label}</span>}
-                <span style={s.chevron}>›</span>
-              </div>
-            </div>
-
-            <ProgressBar value={above} max={total} threshold={t.threshold_pct ?? 70} />
-
-            <div style={s.statusRow}>
-              <div style={s.statusDot(good)} />
-              <span style={s.statusText(good)}>
-                {good
-                  ? `${fillPct}% — On track`
-                  : t.needs_attention
-                    ? `${fillPct}% — Needs attention`
-                    : `${fillPct}% — Below target`}
-              </span>
-            </div>
+            ))}
           </div>
-        )
-      })}
+        )}
 
-      {!loading && teams.length === 0 && (
-        <p style={{ color: '#aaa', fontSize: 14, marginTop: 32, textAlign: 'center' }}>
-          No teams assigned to your account.
-        </p>
-      )}
-
-      {/* Season Overview */}
-      {!loading && teams.length > 0 && (
-        <div style={s.overview}>
-          <div style={s.ovTitle}>Season Overview</div>
-          <div style={s.ovSub}>Aggregate across all your teams</div>
-          <div style={s.ovBody}>
-            <CircularGauge pct={overallPct} />
-            <div style={s.ovGrid}>
-              <div style={s.stat}>
-                <div style={s.statVal}>{totalRoster}</div>
-                <div style={s.statLbl}>Total athletes</div>
+        {/* Team cards */}
+        <div style={s.sectionLabel}>Your Teams</div>
+        {loading && [0, 1].map(i => <ShimmerCard key={i} />)}
+        {!loading && teams.map(t => {
+          const above   = t.current_week?.players_above_threshold ?? 0
+          const total   = t.roster_count ?? t.joined_count ?? 0
+          const fillPct = total > 0 ? Math.round((above / total) * 100) : 0
+          const good    = fillPct >= (t.threshold_pct ?? 70)
+          const trend   = trendGlyph(t.current_week, t.prior_week)
+          return (
+            <div key={t.id} style={s.card(t.needs_attention)}
+                 onClick={() => onSelect(t)} role="button" tabIndex={0}
+                 onKeyDown={e => e.key === 'Enter' && onSelect(t)}>
+              <div style={s.cardTop}>
+                <div>
+                  <div style={s.teamName}>{t.name}</div>
+                  <div style={s.cardMeta}>{total} athlete{total !== 1 ? 's' : ''}</div>
+                </div>
+                <div style={s.rightCol}>
+                  {trend && <span style={s.trend(trend.color)}>{trend.glyph} {trend.label}</span>}
+                  <span style={s.chevron}>›</span>
+                </div>
               </div>
-              <div style={s.stat}>
-                <div style={s.statVal}>{totalAbove}</div>
-                <div style={s.statLbl}>Logged this week</div>
-              </div>
-              <div style={s.stat}>
-                <div style={s.statVal}>{attentionCt}</div>
-                <div style={s.statLbl}>Need attention</div>
-              </div>
-              <div style={s.stat}>
-                <div style={s.statVal}>{totalJoined}</div>
-                <div style={s.statLbl}>App joined</div>
+              <CardProgressBar value={above} max={total} threshold={t.threshold_pct ?? 70} />
+              <div style={s.statusRow}>
+                <div style={s.statusDot(good)} />
+                <span style={s.statusText(good)}>
+                  {good ? `${fillPct}% — On track`
+                   : t.needs_attention ? `${fillPct}% — Needs attention`
+                   : `${fillPct}% — Below target`}
+                </span>
               </div>
             </div>
-          </div>
-          {generated_at && (
-            <div style={s.snap}>Snapshot: {fmtDate(generated_at)}</div>
-          )}
-        </div>
-      )}
+          )
+        })}
+        {!loading && teams.length === 0 && (
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginTop: 32, textAlign: 'center' }}>
+            No teams assigned to your account.
+          </p>
+        )}
+
+        {/* Analytics */}
+        {!loading && teams.length > 0 && (
+          <>
+            <div style={s.sectionLabel}>Analytics</div>
+            <EngagementChart teams={teams} />
+            <WeekOverWeekTable teams={teams} snap={generated_at} />
+          </>
+        )}
+
       </div>
     </div>
   )
