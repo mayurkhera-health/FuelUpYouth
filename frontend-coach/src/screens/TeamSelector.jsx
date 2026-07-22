@@ -59,7 +59,7 @@ function StatusPill({ good, attention, noData }) {
       <span style={{
         display: 'inline-flex', alignItems: 'center', gap: 4,
         background: '#f5f5f5', color: T.muted,
-        fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
+        fontSize: 13, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
         border: `1px solid ${T.border}`,
       }}>
         <span>● No data yet</span>
@@ -71,7 +71,7 @@ function StatusPill({ good, attention, noData }) {
       <span style={{
         display: 'inline-flex', alignItems: 'center', gap: 4,
         background: T.successBg, color: T.success,
-        fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
+        fontSize: 13, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
         border: '1px solid #c5e8d2',
       }}>
         ● On track
@@ -82,7 +82,7 @@ function StatusPill({ good, attention, noData }) {
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
       background: T.attnBg, color: T.attention,
-      fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
+      fontSize: 13, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
       border: '1px solid #fde5a0',
     }}>
       ● Needs attention
@@ -141,7 +141,7 @@ function MetricCard({ label, value, sub, icon, variant = 'default', pct }) {
       }}>{icon}</div>
 
       {/* Number */}
-      <div style={{ fontSize: 34, fontWeight: 700, color: v.numColor, lineHeight: 1 }}>
+      <div style={{ fontSize: 42, fontWeight: 700, color: v.numColor, lineHeight: 1 }}>
         {value}
       </div>
 
@@ -162,8 +162,8 @@ function MetricCard({ label, value, sub, icon, variant = 'default', pct }) {
 
       {/* Label + sub */}
       <div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: T.primary, marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 11, color: v.subColor, fontWeight: variant === 'attention' ? 600 : 400 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: T.primary, marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 13, color: v.subColor, fontWeight: variant === 'attention' ? 600 : 400 }}>
           {sub}
         </div>
       </div>
@@ -292,25 +292,25 @@ function TeamSummaryCard({ team: t, onSelect }) {
       {/* Header row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div style={{ minWidth: 0 }}>
-          <h3 style={{ fontWeight: 700, fontSize: 20, color: T.primary, margin: 0, lineHeight: 1.25,
+          <h3 style={{ fontWeight: 700, fontSize: 24, color: T.primary, margin: 0, lineHeight: 1.25,
                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {t.name}
           </h3>
-          <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>
+          <div style={{ fontSize: 14, color: T.muted, marginTop: 3 }}>
             {total} athlete{total !== 1 ? 's' : ''}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {trend && (
-            <span style={{ fontSize: 12, fontWeight: 700, color: trend.color }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: trend.color }}>
               {trend.glyph} {trend.label}
             </span>
           )}
           <StatusPill good={good} attention={t.needs_attention} noData={!hasData} />
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 5,
-            fontSize: 13, fontWeight: 700, color: T.primary,
-            background: T.neon, padding: '6px 13px', borderRadius: 8,
+            fontSize: 15, fontWeight: 700, color: T.primary,
+            background: T.neon, padding: '7px 15px', borderRadius: 8,
           }}>
             View team →
           </span>
@@ -318,7 +318,7 @@ function TeamSummaryCard({ team: t, onSelect }) {
       </div>
 
       {/* Metrics + progress */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 20px', fontSize: 13, color: T.muted, marginTop: 10 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 20px', fontSize: 15, color: T.muted, marginTop: 10 }}>
         <span>
           <strong style={{ color: T.primary, fontWeight: 700 }}>{above}</strong>
           {' '}of {total} logged
@@ -334,7 +334,7 @@ function TeamSummaryCard({ team: t, onSelect }) {
 
       {/* Insight line */}
       <div style={{
-        marginTop: 9, fontSize: 12, color: good ? T.success : T.attn,
+        marginTop: 9, fontSize: 14, color: good ? T.success : T.attn,
         fontWeight: 500, fontStyle: 'italic',
       }}>
         {insight}
@@ -479,9 +479,9 @@ function WeekOverWeekTable({ teams, snap }) {
 // ── main ──────────────────────────────────────────────────────────────────────
 
 const sectionHeading = {
-  fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+  fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.35)',
   textTransform: 'uppercase', letterSpacing: '.08em',
-  marginBottom: 14, marginTop: 0,
+  marginBottom: 16, marginTop: 0,
 }
 
 export default function TeamSelector({ teamsData, onSelect, loading, coachName }) {
