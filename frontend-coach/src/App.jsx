@@ -5,6 +5,7 @@ import Login from './screens/Login.jsx'
 import TeamSelector from './screens/TeamSelector.jsx'
 import TeamOverview from './screens/TeamOverview.jsx'
 import RosterList from './screens/RosterList.jsx'
+import Reports from './screens/Reports.jsx'
 
 export default function App() {
   const [view, setView]               = useState('login')
@@ -39,16 +40,18 @@ export default function App() {
   function onSelectTeam(t)   { setSelectedTeam(t); setView('overview') }
   function onLogout()        { clearToken(); setTeamsData(null); setSelectedTeam(null); setCoachNameState(''); setView('login') }
   function onDashboard()     { setView('dashboard') }
+  function onReports()       { setView('reports') }
 
   if (view === 'login') return <Login onLogin={onLogin} />
 
-  const activeView = view === 'roster' ? 'roster' : 'dashboard'
+  const activeView = view === 'roster' ? 'roster' : view === 'reports' ? 'reports' : 'dashboard'
 
   return (
     <AppShell
       activeView={activeView}
       onDashboard={onDashboard}
       onRoster={() => setView('roster')}
+      onReports={onReports}
       onLogout={onLogout}
       hasTeam={!!selectedTeam}
       coachName={coachName}
@@ -66,6 +69,9 @@ export default function App() {
       )}
       {view === 'roster' && (
         <RosterList team={selectedTeam} onBack={() => setView('overview')} />
+      )}
+      {view === 'reports' && (
+        <Reports teamsData={teamsData} />
       )}
     </AppShell>
   )

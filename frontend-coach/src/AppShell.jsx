@@ -11,7 +11,7 @@ const W = 240  // sidebar width
 const NAV = [
   { key: 'dashboard', label: 'Dashboard', icon: '⊞' },
   { key: 'roster',    label: 'Roster',    icon: '◉',  requiresTeam: true },
-  { key: 'reports',   label: 'Reports',   icon: '▤',  disabled: true },
+  { key: 'reports',   label: 'Reports',   icon: '▤' },
 ]
 
 const s = {
@@ -132,13 +132,14 @@ function initials(name) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
-function navAction(key, { onDashboard, onRoster }) {
+function navAction(key, { onDashboard, onRoster, onReports }) {
   if (key === 'dashboard') return onDashboard
   if (key === 'roster')    return onRoster
+  if (key === 'reports')   return onReports
   return null
 }
 
-export default function AppShell({ activeView, onDashboard, onRoster, onLogout, hasTeam, coachName, children }) {
+export default function AppShell({ activeView, onDashboard, onRoster, onReports, onLogout, hasTeam, coachName, children }) {
   return (
     <div style={s.root}>
 
@@ -159,7 +160,7 @@ export default function AppShell({ activeView, onDashboard, onRoster, onLogout, 
             if (item.requiresTeam && !hasTeam) return null
             const active   = activeView === item.key
             const disabled = !!item.disabled
-            const action   = disabled ? undefined : navAction(item.key, { onDashboard, onRoster })
+            const action   = disabled ? undefined : navAction(item.key, { onDashboard, onRoster, onReports })
             return (
               <div key={item.key} style={{ position: 'relative' }}>
                 {active && <div style={s.activeBar} />}
