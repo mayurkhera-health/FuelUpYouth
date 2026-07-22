@@ -27,3 +27,4 @@ frontend/.env.local.verify
 api/data/recipes.json.bak
 fuelup.db.bak*
 .claude/
+skills-lock.json
