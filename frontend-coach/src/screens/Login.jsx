@@ -1,58 +1,43 @@
 import React, { useState } from 'react'
 import { login } from '../api.js'
-import illoSrc from '../assets/login-illustration.png'
 
 const T = {
-  pageBg:     '#F7F5ED',
-  darkGreen:  '#123D2F',
-  lime:       '#CBEA58',
-  primary:    '#17231D',
-  muted:      '#65716B',
-  surface:    '#FFFFFF',
-  border:     '#DCE4DE',
-  error:      '#C0392B',
+  pageBg:    '#EDE9DF',
+  darkGreen: '#123D2F',
+  lime:      '#CBEA58',
+  primary:   '#17231D',
+  muted:     '#65716B',
+  surface:   '#FFFFFF',
+  border:    '#DCE4DE',
+  error:     '#C0392B',
+}
+
+// Organic blob shapes — purely decorative, aria-hidden
+function Blob({ style }) {
+  return <div aria-hidden="true" style={{ position: 'absolute', pointerEvents: 'none', ...style }} />
 }
 
 const s = {
   page: {
     minHeight: '100vh',
     display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     background: T.pageBg,
     overflow: 'hidden',
     position: 'relative',
-  },
-  // Left illustration panel — hidden on mobile via CSS class
-  // backgroundSize: '250% auto' scales the PNG so only its left ~40%
-  // (the coach+athletes illustration) fills the panel — the login card
-  // baked into the right side of the mockup PNG is clipped away.
-  illoPanel: {
-    flex: '0 0 52%',
-    position: 'relative',
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'left center',
-    backgroundSize: '250% auto',
-    backgroundColor: T.pageBg,
-  },
-  // Right panel — fills remaining space, card centered within it
-  rightPanel: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '40px 32px',
-    position: 'relative',
-    zIndex: 1,
-    boxSizing: 'border-box',
-    minWidth: 0,
+    padding: '40px 20px',
   },
   card: {
     background: T.surface,
     borderRadius: 20,
     padding: '40px 36px',
     width: '100%',
-    maxWidth: 380,
-    border: `1px solid ${T.border}`,
-    boxShadow: '0 8px 32px rgba(23, 35, 29, 0.12)',
+    maxWidth: 400,
+    border: `1px solid rgba(220,228,222,0.8)`,
+    boxShadow: '0 4px 24px rgba(23, 35, 29, 0.08)',
+    position: 'relative',
+    zIndex: 1,
   },
   logoRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 },
   logoMark: {
@@ -105,34 +90,58 @@ export default function Login({ onLogin }) {
 
   return (
     <div style={s.page}>
-      {/* Illustration — hidden on mobile */}
-      <div
-        className="login-illo-panel"
-        style={{ ...s.illoPanel, backgroundImage: `url(${illoSrc})` }}
-        aria-hidden="true"
-      />
+      {/* ── Decorative background blobs ── */}
+      {/* Top-left large organic shape */}
+      <Blob style={{
+        width: 620, height: 560,
+        top: -160, left: -160,
+        background: 'radial-gradient(ellipse at 40% 40%, rgba(180,215,150,0.38) 0%, rgba(160,200,130,0.18) 45%, transparent 72%)',
+        borderRadius: '62% 38% 54% 46% / 48% 62% 38% 52%',
+        transform: 'rotate(-15deg)',
+      }} />
+      {/* Top-right accent */}
+      <Blob style={{
+        width: 420, height: 380,
+        top: -80, right: -100,
+        background: 'radial-gradient(ellipse at 55% 45%, rgba(190,220,155,0.30) 0%, rgba(170,210,140,0.12) 50%, transparent 72%)',
+        borderRadius: '45% 55% 38% 62% / 55% 42% 58% 45%',
+        transform: 'rotate(20deg)',
+      }} />
+      {/* Bottom-left subtle organic */}
+      <Blob style={{
+        width: 340, height: 300,
+        bottom: -80, left: -60,
+        background: 'radial-gradient(ellipse at 45% 50%, rgba(140,185,110,0.22) 0%, transparent 65%)',
+        borderRadius: '50% 50% 40% 60% / 60% 40% 60% 40%',
+        transform: 'rotate(10deg)',
+      }} />
+      {/* Bottom-right faint wash */}
+      <Blob style={{
+        width: 280, height: 260,
+        bottom: -60, right: -40,
+        background: 'radial-gradient(ellipse at 50% 50%, rgba(200,228,170,0.20) 0%, transparent 65%)',
+        borderRadius: '55% 45% 60% 40% / 45% 60% 40% 55%',
+      }} />
 
-      {/* Login card */}
-      <div style={s.rightPanel}>
-        <div style={s.card}>
-          <div style={s.logoRow}>
-            <div style={s.logoMark}>F</div>
-            <span style={s.brand}>FuelUp Coach</span>
-          </div>
-          <div style={s.sub}>Coach dashboard · Sign in to continue</div>
-          <form onSubmit={handleSubmit}>
-            <label style={s.label}>Email</label>
-            <input style={s.input} type="email" value={email}
-                   onChange={e => setEmail(e.target.value)} required autoFocus />
-            <label style={s.label}>Password</label>
-            <input style={s.input} type="password" value={password}
-                   onChange={e => setPassword(e.target.value)} required />
-            <button style={{ ...s.btn, opacity: loading ? 0.7 : 1 }} type="submit" disabled={loading}>
-              {loading ? 'Signing in…' : 'Sign In'}
-            </button>
-            {error && <div style={s.err}>{error}</div>}
-          </form>
+      {/* ── Login card ── */}
+      <div style={s.card}>
+        <div style={s.logoRow}>
+          <div style={s.logoMark}>F</div>
+          <span style={s.brand}>FuelUp Coach</span>
         </div>
+        <div style={s.sub}>Coach dashboard · Sign in to continue</div>
+        <form onSubmit={handleSubmit}>
+          <label style={s.label}>Email</label>
+          <input style={s.input} type="email" value={email}
+                 onChange={e => setEmail(e.target.value)} required autoFocus />
+          <label style={s.label}>Password</label>
+          <input style={s.input} type="password" value={password}
+                 onChange={e => setPassword(e.target.value)} required />
+          <button style={{ ...s.btn, opacity: loading ? 0.7 : 1 }} type="submit" disabled={loading}>
+            {loading ? 'Signing in…' : 'Sign In'}
+          </button>
+          {error && <div style={s.err}>{error}</div>}
+        </form>
       </div>
     </div>
   )
