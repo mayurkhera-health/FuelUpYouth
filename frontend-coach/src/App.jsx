@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { setToken, clearToken, fetchTeams } from './api.js'
+import AppShell from './AppShell.jsx'
 import Login from './screens/Login.jsx'
 import TeamSelector from './screens/TeamSelector.jsx'
 import TeamOverview from './screens/TeamOverview.jsx'
@@ -26,24 +27,36 @@ export default function App() {
   }
 
   function onLogin(token) { setToken(token); loadTeams() }
-
   function onSelectTeam(team) { setSelectedTeam(team); setView('overview') }
+  function onLogout() { clearToken(); setTeams([]); setSelectedTeam(null); setView('login') }
 
-  function onLogout() {
-    clearToken(); setTeams([]); setSelectedTeam(null); setView('login')
+  function onDashboard() {
+    if (selectedTeam) setView('overview')
+    else if (teams.length > 1) setView('selector')
   }
 
   if (view === 'login') return <Login onLogin={onLogin} />
-  if (view === 'selector') return <TeamSelector teams={teams} onSelect={onSelectTeam} />
-  if (view === 'overview') return (
-    <TeamOverview
-      team={selectedTeam}
-      onViewRoster={() => setView('roster')}
-      onSwitchTeam={teams.length > 1 ? () => setView('selector') : null}
+
+  const activeView = view === 'roster' ? 'roster' : 'dashboard'
+
+  return (
+    <AppShell
+      activeView={activeView}
+      onDashboard={onDashboard}
+      onRoster={() => setView('roster')}
       onLogout={onLogout}
-    />
-  )
-  if (view === 'roster') return (
-    <RosterList team={selectedTeam} onBack={() => setView('overview')} />
+      hasTeam={!!selectedTeam}
+    >
+      {view === 'selector' && <TeamSelector teams={teams} onSelect={onSelectTeam} />}
+      {view === 'overview' && (
+        <TeamOverview
+          team={selectedTeam}
+          onViewRoster={() => setView('roster')}
+          onSwitchTeam={teams.length > 1 ? () => setView('selector') : null}
+          onLogout={null}
+        />
+      )}
+      {view === 'roster' && <RosterList team={selectedTeam} onBack={() => setView('overview')} />}
+    </AppShell>
   )
 }

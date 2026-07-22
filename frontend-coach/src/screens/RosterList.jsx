@@ -8,8 +8,8 @@ const STATUS = {
 }
 
 const s = {
-  wrap:  { minHeight: '100vh', background: '#f5f5f5',
-           maxWidth: 480, margin: '0 auto', padding: 24 },
+  wrap:  { padding: '32px 40px' },
+  inner2: { maxWidth: 560 },
   nav:   { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 },
   back:  { background: 'none', border: 'none', fontSize: 24,
            cursor: 'pointer', color: '#1a7a4a', padding: '0 4px' },

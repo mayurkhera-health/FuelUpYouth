@@ -1,7 +1,7 @@
 import React from 'react'
 
 const s = {
-  wrap:  { minHeight: '100vh', padding: '32px 24px', background: '#f5f5f5', maxWidth: 480, margin: '0 auto' },
+  wrap:  { padding: '32px 40px', maxWidth: 560 },
   title: { fontWeight: 700, fontSize: 22, color: '#1a7a4a', marginBottom: 6 },
   sub:   { color: '#888', fontSize: 14, marginBottom: 28 },
   card:  { background: '#fff', borderRadius: 10, padding: '16px 20px',

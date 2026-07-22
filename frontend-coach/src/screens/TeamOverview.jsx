@@ -2,16 +2,14 @@ import React, { useEffect, useState } from 'react'
 import { fetchEngagement } from '../api.js'
 
 const s = {
-  wrap:   { minHeight: '100vh', padding: '24px', background: '#f5f5f5',
-            maxWidth: 480, margin: '0 auto' },
+  wrap:   { padding: '32px 40px', maxWidth: 560 },
   nav:    { display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             marginBottom: 24 },
-  title:  { fontWeight: 700, fontSize: 20 },
+  title:  { fontWeight: 700, fontSize: 22 },
   navRight: { display: 'flex', gap: 12, alignItems: 'center' },
   navBtn: { background: 'none', border: 'none', fontSize: 13, cursor: 'pointer',
             color: '#1a7a4a', padding: '4px 0' },
-  logoutBtn: { background: 'none', border: 'none', fontSize: 13, cursor: 'pointer',
-               color: '#888', padding: '4px 0' },
+  logoutBtn: { display: 'none' },
   card:   { background: '#fff', borderRadius: 12, padding: 24, marginBottom: 16,
             boxShadow: '0 1px 4px rgba(0,0,0,.06)' },
   big:    { fontSize: 42, fontWeight: 700, color: '#1a7a4a', lineHeight: 1 },
