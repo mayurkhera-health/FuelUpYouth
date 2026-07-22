@@ -175,6 +175,11 @@ class SPAStaticFiles(StaticFiles):
         return response
 
 
+# Serve TeamCoach React app at /coach/ — must be before the catch-all / mount
+_coach_static_dir = Path(__file__).parent.parent / "frontend-coach" / "dist"
+if _coach_static_dir.exists():
+    app.mount("/coach", StaticFiles(directory=str(_coach_static_dir), html=True), name="teamcoach-static")
+
 # Serve React frontend — must be last so API routes take precedence
 _static_dir = Path(__file__).parent.parent / "frontend" / "dist"
 if _static_dir.exists():

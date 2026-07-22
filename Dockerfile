@@ -6,6 +6,12 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
+WORKDIR /app/frontend-coach
+COPY frontend-coach/package*.json ./
+RUN npm ci
+COPY frontend-coach/ ./
+RUN npm run build
+
 # ── Stage 2: Python FastAPI backend ───────────────────────────────────────────
 FROM python:3.12-slim
 
@@ -21,6 +27,7 @@ RUN pip install --upgrade pip && \
 
 COPY . /code
 COPY --from=frontend-builder /app/frontend/dist /code/frontend/dist
+COPY --from=frontend-builder /app/frontend-coach/dist /code/frontend-coach/dist
 
 RUN mkdir -p /data
 
