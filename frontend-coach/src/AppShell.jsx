@@ -49,7 +49,7 @@ const s = {
     flexShrink: 0,
   },
 
-  main: { flex: 1, background: T.surface },
+  main: { flex: 1, background: '#1b2d22' },
 
   // Bottom nav (shown on mobile via CSS class)
   bottomNav: {

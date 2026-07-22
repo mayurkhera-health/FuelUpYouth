@@ -21,9 +21,9 @@ const s = {
   wrap: { padding: '24px 20px', maxWidth: 720, margin: '0 auto' },
   nav:  { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 },
   back: { background: 'none', border: 'none', fontSize: 22,
-          cursor: 'pointer', color: T.emerald, padding: '0 4px', lineHeight: 1 },
-  title:    { fontWeight: 800, fontSize: 22, color: T.emerald },
-  sub:      { fontSize: 13, color: '#888', marginBottom: 20, marginLeft: 36 },
+          cursor: 'pointer', color: 'rgba(255,255,255,0.8)', padding: '0 4px', lineHeight: 1 },
+  title:    { fontWeight: 800, fontSize: 22, color: '#fff' },
+  sub:      { fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 20, marginLeft: 36 },
   list:     { display: 'flex', flexDirection: 'column', gap: 6 },
   row: (dashed) => ({
     background: '#fff',
@@ -46,8 +46,8 @@ const s = {
     border: st.dashed ? '1px solid #dadad8' : 'none',
     whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '.04em',
   }),
-  footnote: { fontSize: 12, color: '#bbb', marginTop: 20, fontStyle: 'italic' },
-  empty:    { color: '#aaa', fontSize: 14, textAlign: 'center', marginTop: 40 },
+  footnote: { fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 20, fontStyle: 'italic' },
+  empty:    { color: 'rgba(255,255,255,0.4)', fontSize: 14, textAlign: 'center', marginTop: 40 },
 }
 
 function demoLine(a) {

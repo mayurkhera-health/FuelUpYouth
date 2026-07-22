@@ -41,8 +41,8 @@ const s = {
   wrap:  { padding: '24px 20px', maxWidth: 560, margin: '0 auto' },
   nav:   { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 },
   back:  { background: 'none', border: 'none', fontSize: 22,
-           cursor: 'pointer', color: T.emerald, padding: '0 4px' },
-  title: { fontWeight: 800, fontSize: 22, color: T.emerald },
+           cursor: 'pointer', color: 'rgba(255,255,255,0.8)', padding: '0 4px' },
+  title: { fontWeight: 800, fontSize: 22, color: '#fff' },
 
   card: {
     background: T.card, borderRadius: 14, padding: 24,

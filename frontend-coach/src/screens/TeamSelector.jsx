@@ -100,8 +100,8 @@ function ShimmerCard() {
 const s = {
   wrap:  { padding: '24px 20px', maxWidth: 680, margin: '0 auto' },
   header: { marginBottom: 24 },
-  title:  { fontWeight: 800, fontSize: 26, color: T.emerald, lineHeight: 1.1 },
-  subtitle: { fontSize: 14, color: '#888', marginTop: 6 },
+  title:  { fontWeight: 800, fontSize: 26, color: '#fff', lineHeight: 1.1 },
+  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 6 },
 
   // Team card
   card: (attention) => ({
@@ -110,7 +110,7 @@ const s = {
     padding: '18px 20px 16px',
     marginBottom: 10,
     cursor: 'pointer',
-    border: `1px solid ${attention ? T.orange : T.border}`,
+    border: `1px solid ${attention ? T.orange : 'rgba(255,255,255,0.08)'}`,
     borderLeft: `4px solid ${attention ? T.orange : T.neon}`,
     boxShadow: '0 1px 4px rgba(0,0,0,.05)',
     transition: 'box-shadow .15s, transform .1s',
