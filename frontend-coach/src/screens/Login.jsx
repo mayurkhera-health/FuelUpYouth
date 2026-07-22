@@ -23,23 +23,24 @@ const s = {
   },
   // Left illustration panel — hidden on mobile via CSS class
   illoPanel: {
-    flex: '1 1 55%',
+    flex: '0 0 52%',
     position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     overflow: 'hidden',
-    // hidden below 768px via .login-illo-panel CSS class
+    background: T.pageBg,
   },
   illoImg: {
     width: '100%',
     height: '100%',
-    objectFit: 'cover',
-    objectPosition: 'center center',
+    objectFit: 'contain',
+    objectPosition: 'left center',
     display: 'block',
   },
-  // Right panel holding the card
+  // Right panel — fills remaining space, card centered within it
   rightPanel: {
-    flex: '0 0 auto',
-    width: '100%',
-    maxWidth: 480,
+    flex: 1,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -47,6 +48,7 @@ const s = {
     position: 'relative',
     zIndex: 1,
     boxSizing: 'border-box',
+    minWidth: 0,
   },
   card: {
     background: T.surface,
