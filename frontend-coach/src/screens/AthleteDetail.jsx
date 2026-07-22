@@ -22,7 +22,7 @@ function makeInitials(name) {
 }
 
 function fmtDate(iso) {
-  if (!iso) return '—'
+  if (!iso) return null
   const d = new Date(iso + 'T12:00:00')
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
@@ -43,83 +43,51 @@ function daysAgo(iso) {
   return `${diff} days ago`
 }
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
+// ── Mini bar ──────────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub, icon, variant = 'default' }) {
-  const variants = {
-    default:   { bg: T.surface,    border: T.border,    numColor: T.primary,   subColor: T.muted },
-    success:   { bg: T.successBg,  border: '#c5e8d2',   numColor: T.success,   subColor: T.muted },
-    attention: { bg: T.attnBg,     border: '#fde5a0',   numColor: T.attn,      subColor: T.attn  },
-    dark:      { bg: '#1e4a30',    border: '#2a6040',   numColor: T.neon,      subColor: 'rgba(49,230,90,0.55)' },
-  }
-  const v = variants[variant] || variants.default
+function MiniBar({ pct, color }) {
+  return (
+    <div style={{ height: 5, background: T.border, borderRadius: 3, overflow: 'hidden', marginTop: 5, width: '100%' }}>
+      <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width .4s ease' }} />
+    </div>
+  )
+}
+
+// ── Stat row ──────────────────────────────────────────────────────────────────
+
+function StatRow({ icon, label, value, valueColor, bar, last }) {
   return (
     <div style={{
-      background: v.bg, border: `1px solid ${v.border}`, borderRadius: 16,
-      padding: '20px 22px', boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-      display: 'flex', flexDirection: 'column', gap: 4,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '11px 0',
+      borderBottom: last ? 'none' : `1px solid ${T.border}`,
+      gap: 12,
     }}>
-      <div style={{ fontSize: 13, color: v.subColor, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>
-        {icon} {label}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>{icon}</span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 13, color: T.muted, fontWeight: 500 }}>{label}</div>
+          {bar && <MiniBar pct={bar.pct} color={bar.color} />}
+        </div>
       </div>
-      <div style={{ fontSize: 40, fontWeight: 800, color: v.numColor, lineHeight: 1.1 }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: valueColor || T.primary, flexShrink: 0, textAlign: 'right' }}>
         {value}
       </div>
-      {sub && (
-        <div style={{ fontSize: 13, color: v.subColor, fontWeight: 500 }}>{sub}</div>
-      )}
     </div>
   )
 }
 
 // ── Shimmer ───────────────────────────────────────────────────────────────────
 
-function ShimmerCard() {
+function ShimmerStats() {
   return (
-    <div style={{ background: T.surface, borderRadius: 16, border: `1px solid ${T.border}`, padding: '20px 22px' }}>
-      <div className="shimmer" style={{ height: 13, width: '50%', borderRadius: 4, marginBottom: 10 }} />
-      <div className="shimmer" style={{ height: 40, width: '35%', borderRadius: 6 }} />
-    </div>
-  )
-}
-
-// ── Activity timeline bar ─────────────────────────────────────────────────────
-
-function ActivityBar({ days7, days30 }) {
-  const pct7  = Math.min(100, Math.round((days7  / 7)  * 100))
-  const pct30 = Math.min(100, Math.round((days30 / 30) * 100))
-  const color7  = pct7  >= 60 ? T.success : pct7  > 0 ? T.attn : T.muted
-  const color30 = pct30 >= 60 ? T.success : pct30 > 0 ? T.attn : T.muted
-  return (
-    <div style={{
-      background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16,
-      padding: '20px 22px', boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-    }}>
-      <div style={{ fontSize: 13, color: T.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 16 }}>
-        📅 Logging Activity
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {[
-          { label: 'This week', days: days7,  of: 7,  pct: pct7,  color: color7 },
-          { label: 'Last 30 days', days: days30, of: 30, pct: pct30, color: color30 },
-        ].map(row => (
-          <div key={row.label}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 14, color: T.primary, fontWeight: 600 }}>{row.label}</span>
-              <span style={{ fontSize: 14, color: row.color, fontWeight: 700 }}>
-                {row.days} / {row.of} days ({row.pct}%)
-              </span>
-            </div>
-            <div style={{ height: 8, background: T.border, borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%', width: `${row.pct}%`,
-                background: row.color, borderRadius: 4,
-                transition: 'width .4s ease',
-              }} />
-            </div>
-          </div>
-        ))}
-      </div>
+    <div style={{ background: T.surface, borderRadius: 14, border: `1px solid ${T.border}`, padding: '16px 20px' }}>
+      {[0,1,2,3,4,5].map(i => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: i < 5 ? `1px solid ${T.border}` : 'none' }}>
+          <div className="shimmer" style={{ height: 13, width: '40%', borderRadius: 4 }} />
+          <div className="shimmer" style={{ height: 13, width: '20%', borderRadius: 4 }} />
+        </div>
+      ))}
     </div>
   )
 }
@@ -137,9 +105,19 @@ export default function AthleteDetail({ team, athlete: athleteStub, onBack }) {
       .catch(e => { setError(e.message); setLoading(false) })
   }, [team.id, athleteStub.athlete_id])
 
-  const name = detail?.first_name || athleteStub.first_name || '—'
+  const name   = detail?.first_name || athleteStub.first_name || '—'
   const status = detail?.logging_status
-  const good = status === 'active'
+  const good   = status === 'active'
+
+  const pct7  = detail ? Math.min(100, Math.round((detail.days_logged_7d  / 7)  * 100)) : 0
+  const pct30 = detail ? Math.min(100, Math.round((detail.days_logged_30d / 30) * 100)) : 0
+  const color7  = pct7  >= 60 ? T.success : pct7  > 0 ? T.attn : T.border
+  const color30 = pct30 >= 60 ? T.success : pct30 > 0 ? T.attn : T.border
+
+  const lastAgo  = daysAgo(detail?.last_logged_at)
+  const lastDate = fmtDate(detail?.last_logged_at)
+  const lastValue = lastAgo ? (lastDate ? `${lastAgo} · ${lastDate}` : lastAgo) : 'No logs yet'
+  const lastColor = lastAgo === 'Today' || lastAgo === 'Yesterday' ? T.success : lastAgo ? T.primary : T.muted
 
   return (
     <div style={{
@@ -150,8 +128,8 @@ export default function AthleteDetail({ team, athlete: athleteStub, onBack }) {
       <div className="roster-wrap">
 
         {/* Header */}
-        <header style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+        <header style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button
               onClick={onBack}
               aria-label="Back to roster"
@@ -164,65 +142,83 @@ export default function AthleteDetail({ team, athlete: athleteStub, onBack }) {
                 flexShrink: 0,
               }}
             >‹</button>
-            <h1 style={{
-              fontWeight: 700, fontSize: 32, color: '#fff',
-              lineHeight: 1.1, margin: 0, letterSpacing: '-.01em',
-            }}>
+            <h1 style={{ fontWeight: 700, fontSize: 28, color: '#fff', lineHeight: 1.1, margin: 0 }}>
               {name}
             </h1>
           </div>
+        </header>
 
-          {/* Athlete identity card */}
-          {!loading && detail && (
+        {/* Identity + stats: one card */}
+        {!loading && !error && detail && (
+          <div style={{
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            borderRadius: 16,
+            boxShadow: '0 1px 6px rgba(0,0,0,.06)',
+            overflow: 'hidden',
+          }}>
+
+            {/* Identity strip */}
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 16,
-              background: 'rgba(255,255,255,0.07)', borderRadius: 14,
-              border: '1px solid rgba(255,255,255,0.1)',
+              display: 'flex', alignItems: 'center', gap: 14,
               padding: '16px 20px',
+              borderBottom: `1px solid ${T.border}`,
+              background: good ? T.successBg : status === 'inactive' ? T.attnBg : '#f9f9f9',
             }}>
-              {/* Avatar */}
               <div style={{
-                width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
-                background: good ? T.successBg : '#f5f5f5',
+                width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+                background: good ? '#d0f0db' : '#e8e8e8',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 18, fontWeight: 700, color: good ? T.success : T.muted,
+                fontSize: 15, fontWeight: 700, color: good ? T.success : T.muted,
                 userSelect: 'none',
               }}>
                 {makeInitials(name)}
               </div>
-              {/* Info */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.75)', fontWeight: 500 }}>
+                <div style={{ fontSize: 14, color: T.primary, fontWeight: 600 }}>
                   {[detail.age && `${detail.age} yrs`, detail.gender, detail.position].filter(Boolean).join(' · ')}
                 </div>
                 {detail.competition_level && (
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
-                    {detail.competition_level}
-                  </div>
+                  <div style={{ fontSize: 12, color: T.muted, marginTop: 1 }}>{detail.competition_level}</div>
                 )}
               </div>
-              {/* Status */}
-              <div style={{ flexShrink: 0 }}>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  background: good ? T.successBg : (status === 'inactive' ? T.attnBg : '#f5f5f5'),
-                  color: good ? T.success : (status === 'inactive' ? T.attn : T.muted),
-                  border: `1px solid ${good ? '#c5e8d2' : (status === 'inactive' ? '#fde5a0' : T.border)}`,
-                  fontSize: 13, fontWeight: 600, padding: '5px 12px', borderRadius: 20,
-                }}>
-                  {good ? '● Active this week' : status === 'inactive' ? '○ No recent activity' : '○ Not in app'}
-                </span>
-              </div>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                background: good ? '#d0f0db' : status === 'inactive' ? '#fde5a0' : '#e8e8e8',
+                color: good ? T.success : status === 'inactive' ? T.attn : T.muted,
+                fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+                border: `1px solid ${good ? '#aee0be' : status === 'inactive' ? '#f5cb6b' : T.border}`,
+                flexShrink: 0,
+              }}>
+                {good ? '● Active' : status === 'inactive' ? '○ No recent activity' : '○ Not in app'}
+              </span>
             </div>
-          )}
-        </header>
 
-        {/* Loading shimmer */}
-        {loading && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            {[0,1,2,3,4,5].map(i => <ShimmerCard key={i} />)}
+            {/* Stat rows */}
+            <div style={{ padding: '0 20px' }}>
+              <StatRow icon="🔥" label="Current streak"    value={`${detail.current_streak} day${detail.current_streak !== 1 ? 's' : ''}`}          valueColor={detail.current_streak > 0 ? T.success : T.muted} />
+              <StatRow icon="⭐" label="Best streak"       value={`${detail.best_streak} day${detail.best_streak !== 1 ? 's' : ''}`}                 valueColor={detail.best_streak > 0 ? T.primary : T.muted} />
+              <StatRow icon="📅" label="This week"         value={`${detail.days_logged_7d} / 7 days`}   valueColor={color7}  bar={{ pct: pct7,  color: color7  }} />
+              <StatRow icon="📆" label="Last 30 days"      value={`${detail.days_logged_30d} / 30 days`} valueColor={color30} bar={{ pct: pct30, color: color30 }} />
+              <StatRow icon="📊" label="Total days logged" value={`${detail.total_days_logged} day${detail.total_days_logged !== 1 ? 's' : ''}`}     valueColor={T.primary} />
+              <StatRow icon="🕐" label="Last logged"       value={lastValue} valueColor={lastColor} last />
+            </div>
+
+            {/* Joined footer */}
+            {detail.joined_at && (
+              <div style={{
+                borderTop: `1px solid ${T.border}`,
+                padding: '10px 20px',
+                fontSize: 12, color: T.muted, fontStyle: 'italic',
+              }}>
+                Joined FuelUp {fmtJoined(detail.joined_at)}
+              </div>
+            )}
           </div>
         )}
+
+        {/* Loading */}
+        {loading && <ShimmerStats />}
 
         {/* Error */}
         {!loading && error && (
@@ -231,67 +227,9 @@ export default function AthleteDetail({ team, athlete: athleteStub, onBack }) {
           </p>
         )}
 
-        {/* Stats */}
-        {!loading && detail && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-            {/* Streak row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <StatCard
-                label="Current streak"
-                value={detail.current_streak}
-                sub={detail.current_streak === 1 ? 'day' : 'days in a row'}
-                icon="🔥"
-                variant={detail.current_streak >= 7 ? 'success' : detail.current_streak > 0 ? 'default' : 'default'}
-              />
-              <StatCard
-                label="Best streak"
-                value={detail.best_streak}
-                sub={detail.best_streak === 1 ? 'day' : 'days in a row'}
-                icon="⭐"
-                variant={detail.best_streak >= 14 ? 'success' : 'default'}
-              />
-            </div>
-
-            {/* Activity bars */}
-            <ActivityBar days7={detail.days_logged_7d} days30={detail.days_logged_30d} />
-
-            {/* Total + last logged */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <StatCard
-                label="Total days logged"
-                value={detail.total_days_logged}
-                sub="all time"
-                icon="📊"
-                variant={detail.total_days_logged > 0 ? 'default' : 'default'}
-              />
-              <StatCard
-                label="Last logged"
-                value={daysAgo(detail.last_logged_at) ?? '—'}
-                sub={detail.last_logged_at ? fmtDate(detail.last_logged_at) : 'No logs yet'}
-                icon="🕐"
-                variant={detail.last_logged_at ? (daysAgo(detail.last_logged_at) === 'Today' || daysAgo(detail.last_logged_at) === 'Yesterday' ? 'success' : 'default') : 'default'}
-              />
-            </div>
-
-            {/* Joined */}
-            {detail.joined_at && (
-              <div style={{
-                fontSize: 13, color: 'rgba(255,255,255,0.3)',
-                textAlign: 'center', marginTop: 4, fontStyle: 'italic',
-              }}>
-                Joined FuelUp {fmtJoined(detail.joined_at)}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Disclaimer */}
         {!loading && detail && (
-          <p style={{
-            fontSize: 12, color: 'rgba(255,255,255,0.25)',
-            marginTop: 20, fontStyle: 'italic', lineHeight: 1.5,
-          }}>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', marginTop: 14, fontStyle: 'italic', lineHeight: 1.5 }}>
             Metrics reflect app logging activity only — not verified nutrition intake.
           </p>
         )}
