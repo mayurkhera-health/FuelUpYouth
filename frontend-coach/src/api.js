@@ -47,3 +47,9 @@ export async function fetchEngagement(teamId) {
   if (!res.ok) throw new Error('Failed to load engagement data')
   return res.json()
 }
+
+export async function fetchAthleteDetail(teamId, athleteId) {
+  const res = await apiFetch(`/api/team-coach/teams/${teamId}/athletes/${athleteId}`)
+  if (!res.ok) throw new Error('Failed to load athlete detail')
+  return res.json()
+}

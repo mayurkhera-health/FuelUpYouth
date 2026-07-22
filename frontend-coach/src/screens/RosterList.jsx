@@ -121,7 +121,7 @@ function ShimmerRow() {
 
 // ── RosterList ────────────────────────────────────────────────────────────────
 
-export default function RosterList({ team, onBack }) {
+export default function RosterList({ team, onBack, onSelectAthlete }) {
   const [roster, setRoster]   = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -204,6 +204,9 @@ export default function RosterList({ team, onBack }) {
                 <div
                   key={a.athlete_id}
                   role="listitem"
+                  tabIndex={0}
+                  onClick={() => onSelectAthlete?.(a)}
+                  onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onSelectAthlete?.(a)}
                   style={{
                     background: T.surface,
                     borderRadius: 14,
@@ -214,7 +217,20 @@ export default function RosterList({ team, onBack }) {
                     justifyContent: 'space-between',
                     gap: 14,
                     opacity: notJoined ? 0.75 : 1,
+                    cursor: 'pointer',
+                    transition: 'box-shadow 140ms ease-out, border-color 140ms ease-out',
+                    outline: 'none',
                   }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.10)'
+                    e.currentTarget.style.borderColor = '#bdd4c4'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.boxShadow = ''
+                    e.currentTarget.style.borderColor = notJoined ? '#c8d4cc' : T.border
+                  }}
+                  onFocus={e => { e.currentTarget.style.outline = `2px solid ${T.neon}`; e.currentTarget.style.outlineOffset = '2px' }}
+                  onBlur={e => { e.currentTarget.style.outline = '' }}
                 >
                   {/* Left: avatar + info */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
@@ -234,8 +250,11 @@ export default function RosterList({ team, onBack }) {
                     </div>
                   </div>
 
-                  {/* Right: status pill */}
-                  <StatusPill statusKey={statusKey} />
+                  {/* Right: status pill + chevron */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                    <StatusPill statusKey={statusKey} />
+                    <span style={{ fontSize: 18, color: T.muted, lineHeight: 1 }}>›</span>
+                  </div>
                 </div>
               )
             })}

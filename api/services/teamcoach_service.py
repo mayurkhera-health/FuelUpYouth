@@ -197,6 +197,91 @@ def _logging_status(conn, athlete_id: int) -> str:
     return "active"
 
 
+def _compute_current_streak(dates: list) -> int:
+    """Consecutive completed days ending on today or yesterday (grace period)."""
+    from datetime import date, timedelta
+    if not dates:
+        return 0
+    date_set = set(dates)
+    today = date.today()
+    cursor = today if today.isoformat() in date_set else today - timedelta(days=1)
+    streak = 0
+    while cursor.isoformat() in date_set:
+        streak += 1
+        cursor -= timedelta(days=1)
+    return streak
+
+
+def _compute_best_streak(dates: list) -> int:
+    """Longest consecutive day run across all history."""
+    import datetime
+    from datetime import timedelta
+    if not dates:
+        return 0
+    sorted_dates = sorted(datetime.date.fromisoformat(d) for d in set(dates))
+    if len(sorted_dates) == 1:
+        return 1
+    best = current = 1
+    for i in range(1, len(sorted_dates)):
+        if sorted_dates[i] - sorted_dates[i - 1] == timedelta(days=1):
+            current += 1
+            best = max(best, current)
+        else:
+            current = 1
+    return best
+
+
+def get_athlete_detail(team_id: int, athlete_id: int) -> dict | None:
+    """Per-athlete engagement detail for the coach detail view.
+    Returns engagement/activity metrics only — no nutrition/clinical data.
+    Scoped to team_id to prevent cross-team data leakage.
+    """
+    from datetime import date, timedelta
+    conn = get_read_conn()
+    try:
+        row = conn.execute(
+            """SELECT a.id, a.first_name, a.age, a.gender, a.position,
+                      a.competition_level, rm.joined_at
+               FROM roster_membership rm
+               JOIN athletes a ON a.id = rm.athlete_id
+               WHERE rm.team_id = ? AND rm.athlete_id = ?""",
+            (team_id, athlete_id),
+        ).fetchone()
+        if not row:
+            return None
+
+        logs = conn.execute(
+            """SELECT DISTINCT date FROM fueling_window_log
+               WHERE athlete_id = ? AND completed = 1
+               ORDER BY date DESC""",
+            (athlete_id,),
+        ).fetchall()
+        dates = [r["date"] for r in logs]
+
+        today = date.today()
+        week_ago  = (today - timedelta(days=7)).isoformat()
+        month_ago = (today - timedelta(days=30)).isoformat()
+
+        return {
+            "athlete_id": athlete_id,
+            "first_name": row["first_name"],
+            "age": row["age"],
+            "gender": row["gender"],
+            "position": row["position"],
+            "competition_level": row["competition_level"],
+            "joined_at": row["joined_at"],
+            "logging_status": _logging_status(conn, athlete_id),
+            "last_logged_at": dates[0] if dates else None,
+            "current_streak": _compute_current_streak(dates),
+            "best_streak": _compute_best_streak(dates),
+            "days_logged_7d":   sum(1 for d in dates if d >= week_ago),
+            "days_logged_30d":  sum(1 for d in dates if d >= month_ago),
+            "total_days_logged": len(dates),
+        }
+    finally:
+        conn.close()
+
+
 def get_engagement(team_id: int) -> dict:
     """Read latest two snapshot rows for current + prior week trend.
     Never queries fueling_window_log — reads team_engagement_snapshot only.

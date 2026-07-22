@@ -5,13 +5,15 @@ import Login from './screens/Login.jsx'
 import TeamSelector from './screens/TeamSelector.jsx'
 import TeamOverview from './screens/TeamOverview.jsx'
 import RosterList from './screens/RosterList.jsx'
+import AthleteDetail from './screens/AthleteDetail.jsx'
 import Reports from './screens/Reports.jsx'
 
 export default function App() {
   const [view, setView]               = useState('login')
   const [teamsData, setTeamsData]     = useState(null)   // {generated_at, season, teams:[]}
-  const [selectedTeam, setSelectedTeam] = useState(null)
-  const [coachName, setCoachNameState]  = useState(getCoachName)
+  const [selectedTeam, setSelectedTeam]         = useState(null)
+  const [selectedAthlete, setSelectedAthlete]   = useState(null)
+  const [coachName, setCoachNameState]           = useState(getCoachName)
 
   useEffect(() => {
     if (localStorage.getItem('tc_token')) loadTeams()
@@ -37,14 +39,15 @@ export default function App() {
     setCoachNameState(coach_name)
     loadTeams()
   }
-  function onSelectTeam(t)   { setSelectedTeam(t); setView('overview') }
-  function onLogout()        { clearToken(); setTeamsData(null); setSelectedTeam(null); setCoachNameState(''); setView('login') }
-  function onDashboard()     { setView('dashboard') }
-  function onReports()       { setView('reports') }
+  function onSelectTeam(t)       { setSelectedTeam(t); setView('overview') }
+  function onSelectAthlete(a)    { setSelectedAthlete(a); setView('athlete') }
+  function onLogout()            { clearToken(); setTeamsData(null); setSelectedTeam(null); setSelectedAthlete(null); setCoachNameState(''); setView('login') }
+  function onDashboard()         { setView('dashboard') }
+  function onReports()           { setView('reports') }
 
   if (view === 'login') return <Login onLogin={onLogin} />
 
-  const activeView = view === 'roster' ? 'roster' : view === 'reports' ? 'reports' : 'dashboard'
+  const activeView = (view === 'roster' || view === 'athlete') ? 'roster' : view === 'reports' ? 'reports' : 'dashboard'
 
   return (
     <AppShell
@@ -68,7 +71,18 @@ export default function App() {
         />
       )}
       {view === 'roster' && (
-        <RosterList team={selectedTeam} onBack={() => setView('overview')} />
+        <RosterList
+          team={selectedTeam}
+          onBack={() => setView('overview')}
+          onSelectAthlete={onSelectAthlete}
+        />
+      )}
+      {view === 'athlete' && selectedAthlete && (
+        <AthleteDetail
+          team={selectedTeam}
+          athlete={selectedAthlete}
+          onBack={() => setView('roster')}
+        />
       )}
       {view === 'reports' && (
         <Reports teamsData={teamsData} />
