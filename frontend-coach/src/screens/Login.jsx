@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { login } from '../api.js'
+import illoSrc from '../assets/login-illustration.png'
 
 const T = {
   pageBg:     '#F7F5ED',
@@ -110,7 +111,7 @@ export default function Login({ onLogin }) {
       {/* Illustration — hidden on mobile */}
       <div className="login-illo-panel" style={s.illoPanel} aria-hidden="true">
         <img
-          src="/login-illustration.png"
+          src={illoSrc}
           alt=""
           style={s.illoImg}
           draggable={false}
