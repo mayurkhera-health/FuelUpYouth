@@ -274,8 +274,13 @@ function TeamSummaryCard({ team: t, onSelect }) {
       <ProgressBar value={above} max={total} threshold={t.threshold_pct ?? 70} />
 
       {/* Action hint */}
-      <div style={{ marginTop: 8, fontSize: 12, color: T.muted, fontWeight: 500 }}>
-        View team →
+      <div style={{
+        marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 5,
+        fontSize: 13, fontWeight: 700,
+        color: good ? T.success : T.attention,
+        letterSpacing: '.01em',
+      }}>
+        View team <span style={{ fontSize: 16, lineHeight: 1 }}>→</span>
       </div>
     </div>
   )
