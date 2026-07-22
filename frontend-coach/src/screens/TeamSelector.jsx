@@ -129,12 +129,21 @@ function MetricCard({ label, value, sub, icon, variant = 'default' }) {
       flexDirection: 'column',
       justifyContent: 'space-between',
       boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
+      {/* Ghost watermark */}
+      <div style={{
+        position: 'absolute', right: 10, bottom: 4,
+        fontSize: 80, fontWeight: 800, lineHeight: 1,
+        color: v.numColor, opacity: 0.07,
+        userSelect: 'none', pointerEvents: 'none',
+      }}>{icon}</div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ fontSize: 34, fontWeight: 700, color: v.numColor, lineHeight: 1 }}>
           {value}
         </div>
-        <div style={{ fontSize: 18, color: v.numColor, opacity: 0.35 }}>{icon}</div>
       </div>
       <div>
         <div style={{ fontSize: 15, fontWeight: 600, color: T.primary, marginBottom: 2 }}>{label}</div>
@@ -240,7 +249,17 @@ function TeamSummaryCard({ team: t, onSelect }) {
       onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onSelect(t)}
       aria-label={`${t.name}: ${good ? 'On track' : 'Needs attention'}. ${above} of ${total} athletes logged this week. Open team detail.`}
     >
-      {/* 6px status rail */}
+      {/* Status gradient wash + rail */}
+      <div style={{
+        position: 'absolute', left: 0, top: 0, right: 0, bottom: 0,
+        background: hasData
+          ? good
+            ? 'linear-gradient(to right, rgba(49,230,90,0.07) 0%, transparent 44%)'
+            : 'linear-gradient(to right, rgba(245,158,11,0.09) 0%, transparent 44%)'
+          : 'none',
+        borderRadius: 16,
+        pointerEvents: 'none',
+      }} />
       <div style={{
         position: 'absolute', left: 0, top: 0, bottom: 0, width: 6,
         background: hasData ? (good ? T.neon : T.attention) : T.border,
