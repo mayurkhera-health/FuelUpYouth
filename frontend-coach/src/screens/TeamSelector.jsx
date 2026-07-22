@@ -110,7 +110,7 @@ function ProgressBar({ value, max, threshold }) {
 
 // ── MetricCard ────────────────────────────────────────────────────────────────
 
-function MetricCard({ label, value, sub, icon, variant = 'default' }) {
+function MetricCard({ label, value, sub, icon, variant = 'default', pct }) {
   const styles = {
     default:   { numColor: T.primary,   bg: T.surface,   border: T.border,    subColor: T.muted },
     success:   { numColor: T.success,   bg: T.successBg, border: '#c5e8d2',   subColor: T.muted },
@@ -123,7 +123,7 @@ function MetricCard({ label, value, sub, icon, variant = 'default' }) {
       background: v.bg,
       border: `1px solid ${v.border}`,
       borderRadius: 16,
-      padding: '16px 20px',
+      padding: '16px 20px 14px',
       minHeight: 118,
       display: 'flex',
       flexDirection: 'column',
@@ -140,14 +140,30 @@ function MetricCard({ label, value, sub, icon, variant = 'default' }) {
         userSelect: 'none', pointerEvents: 'none',
       }}>{icon}</div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ fontSize: 34, fontWeight: 700, color: v.numColor, lineHeight: 1 }}>
-          {value}
-        </div>
+      {/* Number */}
+      <div style={{ fontSize: 34, fontWeight: 700, color: v.numColor, lineHeight: 1 }}>
+        {value}
       </div>
+
+      {/* Mini bar */}
+      {pct !== undefined && (
+        <div style={{
+          height: 4, borderRadius: 2, overflow: 'hidden',
+          background: 'rgba(0,0,0,0.08)', margin: '10px 0 6px',
+        }}>
+          <div style={{
+            height: '100%', borderRadius: 2,
+            width: `${Math.min(Math.max(pct, 0), 100)}%`,
+            background: v.numColor, opacity: 0.65,
+            transition: 'width .5s ease',
+          }} />
+        </div>
+      )}
+
+      {/* Label + sub */}
       <div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: T.primary, marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 12, color: v.subColor, fontWeight: variant === 'attention' ? 600 : 400 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: T.primary, marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 11, color: v.subColor, fontWeight: variant === 'attention' ? 600 : 400 }}>
           {sub}
         </div>
       </div>
@@ -165,14 +181,19 @@ function MetricGrid({ teams }) {
   const onTrack     = teams.filter(t => !t.needs_attention).length
   const overallPct  = totalRoster > 0 ? Math.round((totalLogged / totalRoster) * 100) : 0
 
+  const joinedPct  = totalRoster > 0 ? Math.round((totalJoined  / totalRoster)   * 100) : 0
+  const onTrackPct = teams.length  > 0 ? Math.round((onTrack     / teams.length) * 100) : 0
+  const attnPct    = teams.length  > 0 ? Math.round((attnCount   / teams.length) * 100) : 0
+
   return (
     <div className="metric-grid">
       <MetricCard
         label="Rostered athletes"
         value={totalRoster}
-        sub={`${totalJoined} using the app`}
+        sub={`${joinedPct}% in the app`}
         icon="◉"
         variant="default"
+        pct={joinedPct}
       />
       <MetricCard
         label="Logged this week"
@@ -180,13 +201,15 @@ function MetricGrid({ teams }) {
         sub={`${overallPct}% of roster`}
         icon="☑"
         variant={totalLogged > 0 ? 'success' : 'default'}
+        pct={overallPct}
       />
       <MetricCard
         label="On track"
         value={onTrack}
-        sub={`Across ${teams.length} team${teams.length !== 1 ? 's' : ''}`}
+        sub={`${onTrackPct}% of teams`}
         icon="✓"
         variant={onTrack > 0 ? 'success' : 'default'}
+        pct={onTrackPct}
       />
       <MetricCard
         label="Need attention"
@@ -194,6 +217,7 @@ function MetricGrid({ teams }) {
         sub={attnCount > 0 ? 'Review teams →' : 'All teams on track'}
         icon="⚑"
         variant={attnCount > 0 ? 'attention' : 'default'}
+        pct={attnPct}
       />
     </div>
   )
