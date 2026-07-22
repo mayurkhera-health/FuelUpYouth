@@ -1,12 +1,14 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 
 const T = {
-  emerald:    '#0f2a1f',
-  emeraldMid: '#162e20',
-  neon:       '#3dfc3d',
+  sidebar: '#082C1F',
+  neon:    '#31E65A',
+  muted:   'rgba(255,255,255,0.45)',
+  mutedLo: 'rgba(255,255,255,0.2)',
 }
 
-const W = 240  // sidebar width
+const W = 240   // full sidebar
+const R = 80    // icon rail
 
 const NAV = [
   { key: 'dashboard', label: 'Dashboard', icon: '⊞' },
@@ -14,204 +16,349 @@ const NAV = [
   { key: 'reports',   label: 'Reports',   icon: '▤' },
 ]
 
-const s = {
-  root: { display: 'flex', minHeight: '100vh' },
-
-  // ── Sidebar ────────────────────────────────────────────────────────────
-  sidebar: {
-    width: W, flexShrink: 0,
-    background: T.emerald,
-    display: 'flex', flexDirection: 'column',
-    position: 'fixed', top: 0, left: 0, bottom: 0,
-    zIndex: 100,
-    borderRight: '1px solid rgba(255,255,255,0.06)',
-  },
-
-  brand: {
-    padding: '20px 20px 18px',
-    borderBottom: '1px solid rgba(255,255,255,0.07)',
-    display: 'flex', alignItems: 'center', gap: 10,
-    flexShrink: 0,
-  },
-  logoMark: {
-    width: 32, height: 32, background: T.neon, borderRadius: 8,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 16, fontWeight: 800, color: T.emerald, flexShrink: 0,
-  },
-  brandText: { color: '#fff', fontWeight: 700, fontSize: 16, lineHeight: 1.2 },
-  brandSub:  { color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500 },
-
-  navSection: { flex: 1, padding: '10px 0', overflowY: 'auto' },
-  navLabel:   { fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.3)',
-                textTransform: 'uppercase', letterSpacing: '.1em',
-                padding: '14px 20px 6px' },
-
-  navItem: (active, disabled) => ({
-    display: 'flex', alignItems: 'center', gap: 12,
-    padding: '10px 18px 10px 16px',
-    marginInline: 8, borderRadius: 8,
-    color: disabled ? 'rgba(255,255,255,0.2)'
-         : active   ? '#fff'
-         :            'rgba(255,255,255,0.58)',
-    background: active ? 'rgba(61,252,61,0.1)' : 'none',
-    border: 'none', cursor: disabled ? 'default' : 'pointer',
-    width: 'calc(100% - 16px)', textAlign: 'left',
-    fontSize: 14, fontWeight: active ? 600 : 500,
-    transition: 'background .1s',
-  }),
-  navIcon: (active, disabled) => ({
-    fontSize: 16, width: 22, textAlign: 'center', flexShrink: 0,
-    color: disabled ? 'rgba(255,255,255,0.15)'
-         : active   ? T.neon
-         :            'rgba(255,255,255,0.4)',
-  }),
-  activeBar: {
-    position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
-    width: 3, height: 20, background: T.neon, borderRadius: '0 3px 3px 0',
-  },
-  comingSoon: {
-    marginLeft: 'auto', fontSize: 10, fontWeight: 600,
-    color: 'rgba(255,255,255,0.25)', letterSpacing: '.04em',
-  },
-
-  // ── Sidebar bottom ─────────────────────────────────────────────────────
-  sidebarBottom: {
-    padding: '14px 16px',
-    borderTop: '1px solid rgba(255,255,255,0.07)',
-    flexShrink: 0,
-  },
-  coachRow: {
-    display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10,
-  },
-  avatar: {
-    width: 34, height: 34, borderRadius: '50%',
-    background: 'rgba(61,252,61,0.15)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 14, fontWeight: 700, color: T.neon, flexShrink: 0,
-  },
-  coachName: { fontSize: 13, fontWeight: 600, color: '#fff', lineHeight: 1.2 },
-  coachRole: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 1 },
-  signOut: {
-    width: '100%', padding: '8px 0', background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: 'rgba(255,255,255,0.5)', cursor: 'pointer',
-    fontSize: 13, fontWeight: 500, borderRadius: 7,
-  },
-
-  // ── Main content ────────────────────────────────────────────────────────
-  main: {
-    marginLeft: W,
-    flex: 1,
-    background: '#1b2d22',
-    minHeight: '100vh',
-  },
-
-  // ── Mobile: hide sidebar, show bottom nav ───────────────────────────────
-  bottomNav: {
-    position: 'fixed', bottom: 0, left: 0, right: 0,
-    height: 64, background: T.emerald,
-    display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-    zIndex: 100, borderTop: '1px solid rgba(255,255,255,0.08)',
-  },
-  bnItem: (active) => ({
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-    padding: '6px 20px', borderRadius: 10,
-    background: active ? 'rgba(61,252,61,0.12)' : 'none',
-    border: 'none', cursor: 'pointer', minWidth: 64,
-  }),
-  bnIcon:  (active) => ({ fontSize: 20, color: active ? T.neon : 'rgba(255,255,255,0.4)' }),
-  bnLabel: (active) => ({
-    fontSize: 10, fontWeight: 600,
-    color: active ? T.neon : 'rgba(255,255,255,0.4)',
-    textTransform: 'uppercase', letterSpacing: '.05em',
-  }),
-}
-
 function initials(name) {
   if (!name) return 'C'
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
-function navAction(key, { onDashboard, onRoster, onReports }) {
-  if (key === 'dashboard') return onDashboard
-  if (key === 'roster')    return onRoster
-  if (key === 'reports')   return onReports
+function navHandler(key, callbacks) {
+  if (key === 'dashboard') return callbacks.onDashboard
+  if (key === 'roster')    return callbacks.onRoster
+  if (key === 'reports')   return callbacks.onReports
   return null
 }
 
-export default function AppShell({ activeView, onDashboard, onRoster, onReports, onLogout, hasTeam, coachName, children }) {
+// ── Sidebar (1440px+) ─────────────────────────────────────────────────────────
+
+function Sidebar({ activeView, onDashboard, onRoster, onReports, onLogout, hasTeam, coachName }) {
   return (
-    <div style={s.root}>
+    <aside className="nav-sidebar" style={{
+      width: W, flexShrink: 0, background: T.sidebar,
+      display: 'flex', flexDirection: 'column',
+      position: 'fixed', top: 0, left: 0, bottom: 0,
+      zIndex: 100, borderRight: '1px solid rgba(255,255,255,0.06)',
+    }}>
+      <div style={{
+        padding: '20px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)',
+        display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+      }}>
+        <div style={{
+          width: 32, height: 32, background: T.neon, borderRadius: 8,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 16, fontWeight: 800, color: T.sidebar, flexShrink: 0,
+        }}>F</div>
+        <div>
+          <div style={{ color: '#fff', fontWeight: 700, fontSize: 16, lineHeight: 1.2 }}>FuelUp Coach</div>
+          <div style={{ color: T.muted, fontSize: 11, fontWeight: 500 }}>Team Dashboard</div>
+        </div>
+      </div>
 
-      {/* ── Desktop sidebar (hidden on mobile via CSS) ── */}
-      <aside className="sidebar" style={s.sidebar}>
+      <nav style={{ flex: 1, padding: '10px 0', overflowY: 'auto' }}>
+        <div style={{
+          fontSize: 10, fontWeight: 700, color: T.mutedLo,
+          textTransform: 'uppercase', letterSpacing: '.1em', padding: '14px 20px 6px',
+        }}>Navigation</div>
+        <NavItems
+          activeView={activeView} hasTeam={hasTeam}
+          callbacks={{ onDashboard, onRoster, onReports }}
+        />
+      </nav>
 
-        <div style={s.brand}>
-          <div style={s.logoMark}>F</div>
-          <div>
-            <div style={s.brandText}>FuelUp Coach</div>
-            <div style={s.brandSub}>Team Dashboard</div>
+      <div style={{ padding: '14px 16px', borderTop: '1px solid rgba(255,255,255,0.07)', flexShrink: 0 }}>
+        {coachName && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: '50%', background: 'rgba(49,230,90,0.15)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, fontWeight: 700, color: T.neon, flexShrink: 0,
+            }}>
+              {initials(coachName)}
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', lineHeight: 1.2 }}>{coachName}</div>
+              <div style={{ fontSize: 11, color: T.muted, marginTop: 1 }}>Head Coach</div>
+            </div>
           </div>
+        )}
+        <button onClick={onLogout} style={{
+          width: '100%', padding: '8px 0', background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)', color: T.muted, cursor: 'pointer',
+          fontSize: 13, fontWeight: 500, borderRadius: 7,
+        }}>Sign out</button>
+      </div>
+    </aside>
+  )
+}
+
+// ── Nav items (shared between sidebar & drawer) ───────────────────────────────
+
+function NavItems({ activeView, hasTeam, callbacks, onNav }) {
+  return NAV.map(item => {
+    if (item.requiresTeam && !hasTeam) return null
+    const active   = activeView === item.key
+    const handler  = navHandler(item.key, callbacks)
+    const action   = () => { handler?.(); onNav?.() }
+
+    return (
+      <div key={item.key} style={{ position: 'relative' }}>
+        {active && (
+          <div style={{
+            position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
+            width: 3, height: 20, background: T.neon, borderRadius: '0 3px 3px 0',
+          }} />
+        )}
+        <button
+          onClick={action}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '10px 18px 10px 16px', marginInline: 8, borderRadius: 8,
+            color: active ? '#fff' : T.muted,
+            background: active ? 'rgba(49,230,90,0.1)' : 'none',
+            border: 'none', cursor: 'pointer',
+            width: 'calc(100% - 16px)', textAlign: 'left',
+            fontSize: 14, fontWeight: active ? 600 : 500,
+            transition: 'background .1s',
+          }}
+        >
+          <span style={{
+            fontSize: 16, width: 22, textAlign: 'center', flexShrink: 0,
+            color: active ? T.neon : 'rgba(255,255,255,0.4)',
+          }}>{item.icon}</span>
+          {item.label}
+        </button>
+      </div>
+    )
+  })
+}
+
+// ── Icon rail (1024–1439px) ───────────────────────────────────────────────────
+
+function IconRail({ activeView, onDashboard, onRoster, onReports, onLogout, hasTeam, coachName }) {
+  return (
+    <aside className="nav-icon-rail" style={{
+      width: R, flexShrink: 0, background: T.sidebar,
+      flexDirection: 'column', alignItems: 'center',
+      position: 'fixed', top: 0, left: 0, bottom: 0,
+      zIndex: 100, borderRight: '1px solid rgba(255,255,255,0.06)',
+    }}>
+      {/* Logo */}
+      <div style={{
+        padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.07)',
+        width: '100%', display: 'flex', justifyContent: 'center',
+      }}>
+        <div style={{
+          width: 32, height: 32, background: T.neon, borderRadius: 8,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 16, fontWeight: 800, color: T.sidebar,
+        }}>F</div>
+      </div>
+
+      {/* Nav icons */}
+      <nav style={{ flex: 1, padding: '10px 0', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        {NAV.map(item => {
+          if (item.requiresTeam && !hasTeam) return null
+          const active  = activeView === item.key
+          const handler = navHandler(item.key, { onDashboard, onRoster, onReports })
+          return (
+            <button
+              key={item.key}
+              onClick={handler}
+              title={item.label}
+              aria-label={item.label}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                padding: '10px 0', width: 56, borderRadius: 10,
+                background: active ? 'rgba(49,230,90,0.12)' : 'none',
+                border: 'none', cursor: 'pointer', marginBottom: 2,
+                transition: 'background .1s',
+              }}
+            >
+              <span style={{
+                fontSize: 18,
+                color: active ? T.neon : 'rgba(255,255,255,0.4)',
+              }}>{item.icon}</span>
+              <span style={{
+                fontSize: 9, fontWeight: 600, letterSpacing: '.04em',
+                textTransform: 'uppercase',
+                color: active ? T.neon : 'rgba(255,255,255,0.3)',
+              }}>{item.label}</span>
+            </button>
+          )
+        })}
+      </nav>
+
+      {/* Avatar */}
+      <div style={{ padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: '50%', background: 'rgba(49,230,90,0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 13, fontWeight: 700, color: T.neon, cursor: 'pointer',
+        }} onClick={onLogout} title="Sign out" aria-label="Sign out">
+          {initials(coachName)}
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+// ── Top bar + Drawer (<1024px) ────────────────────────────────────────────────
+
+function TopBarAndDrawer({ activeView, onDashboard, onRoster, onReports, onLogout, hasTeam, coachName }) {
+  const [open, setOpen] = useState(false)
+  const close = () => setOpen(false)
+
+  // Close drawer on Escape
+  useEffect(() => {
+    if (!open) return
+    const handler = e => { if (e.key === 'Escape') close() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open])
+
+  return (
+    <>
+      {/* Top bar */}
+      <header className="nav-top-bar" style={{
+        position: 'fixed', top: 0, left: 0, right: 0, height: 56,
+        background: T.sidebar, zIndex: 100,
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 28, height: 28, background: T.neon, borderRadius: 7,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 14, fontWeight: 800, color: T.sidebar,
+          }}>F</div>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>FuelUp Coach</span>
+        </div>
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Open navigation"
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: '#fff', fontSize: 22, lineHeight: 1, padding: 6,
+          }}
+        >☰</button>
+      </header>
+
+      {/* Overlay */}
+      <div
+        className={`nav-drawer-overlay${open ? ' open' : ''}`}
+        onClick={close}
+        aria-hidden="true"
+      />
+
+      {/* Drawer */}
+      <aside
+        className={`nav-drawer${open ? ' open' : ''}`}
+        style={{ background: T.sidebar, display: 'flex', flexDirection: 'column' }}
+        aria-label="Navigation"
+      >
+        <div style={{
+          padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 28, height: 28, background: T.neon, borderRadius: 7,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, fontWeight: 800, color: T.sidebar,
+            }}>F</div>
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>FuelUp Coach</span>
+          </div>
+          <button
+            onClick={close}
+            aria-label="Close navigation"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: T.muted, fontSize: 18, lineHeight: 1, padding: 4,
+            }}
+          >✕</button>
         </div>
 
-        <nav style={s.navSection}>
-          <div style={s.navLabel}>Navigation</div>
-          {NAV.map(item => {
-            if (item.requiresTeam && !hasTeam) return null
-            const active   = activeView === item.key
-            const disabled = !!item.disabled
-            const action   = disabled ? undefined : navAction(item.key, { onDashboard, onRoster, onReports })
-            return (
-              <div key={item.key} style={{ position: 'relative' }}>
-                {active && <div style={s.activeBar} />}
-                <button
-                  style={s.navItem(active, disabled)}
-                  onClick={action}
-                  disabled={disabled}
-                >
-                  <span style={s.navIcon(active, disabled)}>{item.icon}</span>
-                  {item.label}
-                  {disabled && <span style={s.comingSoon}>Soon</span>}
-                </button>
-              </div>
-            )
-          })}
+        <nav style={{ flex: 1, padding: '10px 0', overflowY: 'auto' }}>
+          <NavItems
+            activeView={activeView} hasTeam={hasTeam}
+            callbacks={{ onDashboard, onRoster, onReports }}
+            onNav={close}
+          />
         </nav>
 
-        <div style={s.sidebarBottom}>
+        <div style={{ padding: '14px 16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           {coachName && (
-            <div style={s.coachRow}>
-              <div style={s.avatar}>{initials(coachName)}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: '50%', background: 'rgba(49,230,90,0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14, fontWeight: 700, color: T.neon, flexShrink: 0,
+              }}>{initials(coachName)}</div>
               <div>
-                <div style={s.coachName}>{coachName}</div>
-                <div style={s.coachRole}>Head Coach</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', lineHeight: 1.2 }}>{coachName}</div>
+                <div style={{ fontSize: 11, color: T.muted, marginTop: 1 }}>Head Coach</div>
               </div>
             </div>
           )}
-          <button style={s.signOut} onClick={onLogout}>Sign out</button>
+          <button onClick={() => { onLogout(); close() }} style={{
+            width: '100%', padding: '8px 0', background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)', color: T.muted, cursor: 'pointer',
+            fontSize: 13, fontWeight: 500, borderRadius: 7,
+          }}>Sign out</button>
         </div>
       </aside>
+    </>
+  )
+}
 
-      {/* ── Main content ── */}
-      <main className="main-content" style={s.main}>{children}</main>
+// ── AppShell ──────────────────────────────────────────────────────────────────
 
-      {/* ── Mobile bottom nav ── */}
-      <nav className="bottom-nav" style={s.bottomNav}>
-        <button style={s.bnItem(activeView === 'dashboard')} onClick={onDashboard}>
-          <span style={s.bnIcon(activeView === 'dashboard')}>⊞</span>
-          <span style={s.bnLabel(activeView === 'dashboard')}>Teams</span>
-        </button>
-        {hasTeam && (
-          <button style={s.bnItem(activeView === 'roster')} onClick={onRoster}>
-            <span style={s.bnIcon(activeView === 'roster')}>◉</span>
-            <span style={s.bnLabel(activeView === 'roster')}>Roster</span>
-          </button>
-        )}
-        <button style={s.bnItem(false)} onClick={onLogout}>
-          <span style={s.bnIcon(false)}>↩</span>
-          <span style={s.bnLabel(false)}>Sign out</span>
-        </button>
-      </nav>
+export default function AppShell({ activeView, onDashboard, onRoster, onReports, onLogout, hasTeam, coachName, children }) {
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+
+      {/* Full sidebar — visible at 1440px+ via CSS */}
+      <Sidebar
+        activeView={activeView}
+        onDashboard={onDashboard}
+        onRoster={onRoster}
+        onReports={onReports}
+        onLogout={onLogout}
+        hasTeam={hasTeam}
+        coachName={coachName}
+      />
+
+      {/* Icon rail — visible at 1024–1439px via CSS */}
+      <IconRail
+        activeView={activeView}
+        onDashboard={onDashboard}
+        onRoster={onRoster}
+        onReports={onReports}
+        onLogout={onLogout}
+        hasTeam={hasTeam}
+        coachName={coachName}
+      />
+
+      {/* Top bar + drawer — visible <1024px via CSS */}
+      <TopBarAndDrawer
+        activeView={activeView}
+        onDashboard={onDashboard}
+        onRoster={onRoster}
+        onReports={onReports}
+        onLogout={onLogout}
+        hasTeam={hasTeam}
+        coachName={coachName}
+      />
+
+      {/* Main content */}
+      <main className="main-content" style={{
+        marginLeft: W,
+        flex: 1,
+        background: '#123826',
+        minHeight: '100vh',
+      }}>
+        {children}
+      </main>
 
     </div>
   )

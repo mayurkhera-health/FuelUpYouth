@@ -11,21 +11,120 @@
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body {
         font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #1b2d22;
+        background: #123826;
         color: #1a1a1a;
         font-weight: 500;
         -webkit-font-smoothing: antialiased;
       }
 
-      /* Sidebar desktop / bottom-nav mobile */
-      .bottom-nav { display: none; }
-      @media (max-width: 640px) {
-        .sidebar { display: none; }
-        .bottom-nav { display: flex; }
-        .main-content { margin-left: 0 !important; padding-bottom: 72px; }
+      /* ── Navigation tiers ────────────────────────────────────────────────── */
+
+      /* Hidden until a media query enables them */
+      .nav-icon-rail  { display: none !important; }
+      .nav-top-bar    { display: none !important; }
+      .nav-drawer-overlay {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 200;
+      }
+      .nav-drawer-overlay.open { display: block; }
+      .nav-drawer {
+        position: fixed; top: 0; left: 0; bottom: 0;
+        width: 280px; z-index: 201;
+        transform: translateX(-100%);
+        transition: transform 220ms ease-in-out;
+      }
+      .nav-drawer.open { transform: translateX(0); }
+
+      /* 1440px+: full sidebar (default — no overrides needed) */
+
+      /* 1024–1439px: icon rail */
+      @media (min-width: 1024px) and (max-width: 1439px) {
+        .nav-sidebar    { display: none !important; }
+        .nav-icon-rail  { display: flex !important; }
+        .main-content   { margin-left: 80px !important; }
       }
 
-      /* Shimmer loading animation */
+      /* <1024px: top bar + drawer */
+      @media (max-width: 1023px) {
+        .nav-sidebar    { display: none !important; }
+        .nav-icon-rail  { display: none !important; }
+        .nav-top-bar    { display: flex !important; }
+        .main-content   { margin-left: 0 !important; padding-top: 56px; }
+      }
+
+      /* ── Responsive metric grid ──────────────────────────────────────────── */
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 32px;
+      }
+      @media (max-width: 767px) {
+        .metric-grid {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+          margin-bottom: 24px;
+        }
+      }
+      @media (max-width: 359px) {
+        .metric-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* ── Responsive dashboard wrap ──────────────────────────────────────── */
+      .dashboard-wrap {
+        padding: 32px 40px;
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+      @media (max-width: 1023px) {
+        .dashboard-wrap { padding: 24px 24px; }
+      }
+      @media (max-width: 639px) {
+        .dashboard-wrap { padding: 18px 16px; }
+      }
+
+      /* ── Team cards ─────────────────────────────────────────────────────── */
+      .team-card {
+        background: #fff;
+        border-radius: 16px;
+        border: 1px solid #DDE5E0;
+        box-shadow: 0 1px 4px rgba(0,0,0,.05);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 16px;
+        padding: 20px 28px 18px 34px;
+        transition: box-shadow 150ms ease-out, border-color 150ms ease-out;
+        outline: none;
+      }
+      .team-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,.10);
+        border-color: #bdd4c4;
+      }
+      .team-card:focus-visible {
+        outline: 2px solid #31E65A;
+        outline-offset: 2px;
+      }
+      .team-card:active {
+        transform: translateY(1px);
+        box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      }
+      @media (max-width: 639px) {
+        .team-card { padding: 16px 18px 14px 26px; }
+        .team-card h3 { font-size: 17px !important; white-space: normal !important; }
+      }
+
+      /* ── Focus rings ─────────────────────────────────────────────────────── */
+      button:focus-visible {
+        outline: 2px solid #31E65A;
+        outline-offset: 2px;
+      }
+
+      /* ── Shimmer loading animation ───────────────────────────────────────── */
       @keyframes shimmer {
         0%   { background-position: -400px 0; }
         100% { background-position: 400px 0; }
@@ -34,7 +133,15 @@
         background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
         background-size: 800px 100%;
         animation: shimmer 1.4s infinite;
-        border-radius: 8px;
+        border-radius: 6px;
+      }
+
+      /* ── Reduced motion ──────────────────────────────────────────────────── */
+      @media (prefers-reduced-motion: reduce) {
+        .nav-drawer, .team-card, * {
+          transition: none !important;
+          animation: none !important;
+        }
       }
     </style>
   </head>
