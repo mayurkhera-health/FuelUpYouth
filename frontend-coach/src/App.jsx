@@ -7,8 +7,8 @@ import TeamOverview from './screens/TeamOverview.jsx'
 import RosterList from './screens/RosterList.jsx'
 
 export default function App() {
-  const [view, setView] = useState('login')
-  const [teams, setTeams] = useState([])
+  const [view, setView]               = useState('login')
+  const [teamsData, setTeamsData]     = useState(null)   // {generated_at, season, teams:[]}
   const [selectedTeam, setSelectedTeam] = useState(null)
 
   useEffect(() => {
@@ -18,22 +18,17 @@ export default function App() {
   async function loadTeams() {
     try {
       const data = await fetchTeams()
-      setTeams(data)
-      if (data.length === 1) { setSelectedTeam(data[0]); setView('overview') }
-      else setView('selector')
+      setTeamsData(data)
+      setView('dashboard')
     } catch {
       clearToken(); setView('login')
     }
   }
 
-  function onLogin(token) { setToken(token); loadTeams() }
-  function onSelectTeam(team) { setSelectedTeam(team); setView('overview') }
-  function onLogout() { clearToken(); setTeams([]); setSelectedTeam(null); setView('login') }
-
-  function onDashboard() {
-    if (selectedTeam) setView('overview')
-    else if (teams.length > 1) setView('selector')
-  }
+  function onLogin(token)    { setToken(token); loadTeams() }
+  function onSelectTeam(t)   { setSelectedTeam(t); setView('overview') }
+  function onLogout()        { clearToken(); setTeamsData(null); setSelectedTeam(null); setView('login') }
+  function onDashboard()     { setView('dashboard') }
 
   if (view === 'login') return <Login onLogin={onLogin} />
 
@@ -47,16 +42,20 @@ export default function App() {
       onLogout={onLogout}
       hasTeam={!!selectedTeam}
     >
-      {view === 'selector' && <TeamSelector teams={teams} onSelect={onSelectTeam} />}
+      {view === 'dashboard' && (
+        <TeamSelector teamsData={teamsData} onSelect={onSelectTeam} />
+      )}
       {view === 'overview' && (
         <TeamOverview
           team={selectedTeam}
           onViewRoster={() => setView('roster')}
-          onSwitchTeam={teams.length > 1 ? () => setView('selector') : null}
+          onSwitchTeam={() => setView('dashboard')}
           onLogout={null}
         />
       )}
-      {view === 'roster' && <RosterList team={selectedTeam} onBack={() => setView('overview')} />}
+      {view === 'roster' && (
+        <RosterList team={selectedTeam} onBack={() => setView('overview')} />
+      )}
     </AppShell>
   )
 }

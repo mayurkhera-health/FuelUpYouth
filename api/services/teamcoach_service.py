@@ -13,10 +13,38 @@ from api.database import get_read_conn
 ENFORCE_CONSENT = False
 
 
-def get_coach_teams(coach_id: int) -> list[dict]:
+# Tunable constants — update here without a schema migration.
+# Revisit post-pilot based on whether flagged teams match coach intuition.
+_ATTENTION_WEIGHT = 2   # weight on week-over-week player-count drop vs gap below threshold
+_ATTENTION_FLAG_FLOOR = 0  # flag if attention_score strictly exceeds this value
+
+
+def get_coach_teams(coach_id: int) -> dict:
+    """Return all teams for a coach, enriched with snapshot data and attention scoring.
+
+    Response shape:
+      {
+        "generated_at": str | None,   # most recent snapshot timestamp across all teams
+        "season": str | None,         # season label (shown once on dashboard)
+        "teams": [                    # sorted descending by attention_score
+          {
+            "id": int,
+            "name": str,
+            "threshold_pct": int,
+            "joined_count": int,      # athletes currently on roster_membership
+            "roster_count": int,      # from latest snapshot (or joined_count if no snap)
+            "current_week": { "players_above_threshold": int, "roster_count": int,
+                              "week_start": str } | None,
+            "prior_week": { "players_above_threshold": int } | None,
+            "attention_score": float, # (threshold_pct - current_pct) + drop*WEIGHT
+            "needs_attention": bool,  # true if attention_score > _ATTENTION_FLAG_FLOOR
+          }
+        ]
+      }
+    """
     conn = get_read_conn()
     try:
-        rows = conn.execute(
+        team_rows = conn.execute(
             """SELECT t.id, t.name, t.season, t.threshold_pct
                FROM teams t
                JOIN coach_team_access cta ON cta.team_id = t.id
@@ -24,7 +52,68 @@ def get_coach_teams(coach_id: int) -> list[dict]:
                ORDER BY t.name""",
             (coach_id,),
         ).fetchall()
-        return [dict(r) for r in rows]
+
+        result = []
+        latest_generated_at = None
+
+        for t in team_rows:
+            joined_count = conn.execute(
+                "SELECT COUNT(*) AS cnt FROM roster_membership WHERE team_id = ?",
+                (t["id"],),
+            ).fetchone()["cnt"]
+
+            snaps = conn.execute(
+                """SELECT week_start, players_above_threshold, roster_count, generated_at
+                   FROM team_engagement_snapshot
+                   WHERE team_id = ?
+                   ORDER BY week_start DESC LIMIT 2""",
+                (t["id"],),
+            ).fetchall()
+
+            cur = snaps[0] if snaps else None
+            prior = snaps[1] if len(snaps) > 1 else None
+
+            if cur and cur["generated_at"]:
+                if not latest_generated_at or cur["generated_at"] > latest_generated_at:
+                    latest_generated_at = cur["generated_at"]
+
+            roster_count = cur["roster_count"] if cur else joined_count
+
+            if cur and roster_count > 0:
+                cur_pct = cur["players_above_threshold"] / roster_count * 100
+                prior_count = prior["players_above_threshold"] if prior else cur["players_above_threshold"]
+                attention_score = (
+                    (t["threshold_pct"] - cur_pct)
+                    + (prior_count - cur["players_above_threshold"]) * _ATTENTION_WEIGHT
+                )
+            else:
+                attention_score = float(t["threshold_pct"])  # no snapshot → treat as fully below
+
+            result.append({
+                "id": t["id"],
+                "name": t["name"],
+                "threshold_pct": t["threshold_pct"],
+                "joined_count": joined_count,
+                "roster_count": roster_count,
+                "current_week": {
+                    "players_above_threshold": cur["players_above_threshold"],
+                    "roster_count": cur["roster_count"],
+                    "week_start": cur["week_start"],
+                } if cur else None,
+                "prior_week": {
+                    "players_above_threshold": prior["players_above_threshold"],
+                } if prior else None,
+                "attention_score": round(attention_score, 1),
+                "needs_attention": attention_score > _ATTENTION_FLAG_FLOOR,
+            })
+
+        result.sort(key=lambda x: x["attention_score"], reverse=True)
+
+        return {
+            "generated_at": latest_generated_at,
+            "season": team_rows[0]["season"] if team_rows else None,
+            "teams": result,
+        }
     finally:
         conn.close()
 
