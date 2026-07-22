@@ -4,15 +4,15 @@ from api.models import MealPlanSlotUpdate, MealPlanLogSlot, MealPlanGenerateRequ
 from api.database import get_conn
 from api.services import recipe_db, claude_ai
 from api.services.meal_timing import compute_meal_slots
+from api.utils.week import get_week_start
 
 router = APIRouter()
 
-DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 
-def _get_monday(date_str: str) -> date:
-    d = date.fromisoformat(date_str)
-    return d - timedelta(days=d.weekday())
+def _get_week_sunday(date_str: str) -> date:
+    return get_week_start(date.fromisoformat(date_str))
 
 
 def _build_week(athlete_id: int, week_start: date, conn) -> list:
@@ -106,13 +106,12 @@ def get_meal_plan(athlete_id: int, week_start: str = Query(None)):
             raise HTTPException(404, "Athlete not found.")
 
         if week_start:
-            monday = _get_monday(week_start)
+            sunday = _get_week_sunday(week_start)
         else:
-            today = date.today()
-            monday = today - timedelta(days=today.weekday())
+            sunday = get_week_start(date.today())
 
-        days = _build_week(athlete_id, monday, conn)
-        return {"athlete_id": athlete_id, "week_start": monday.isoformat(), "days": days}
+        days = _build_week(athlete_id, sunday, conn)
+        return {"athlete_id": athlete_id, "week_start": sunday.isoformat(), "days": days}
     finally:
         conn.close()
 
@@ -210,12 +209,12 @@ def generate_plan(data: MealPlanGenerateRequest):
             raise HTTPException(404, "Athlete not found.")
         athlete = dict(athlete_row)
 
-        monday = _get_monday(data.week_start)
+        sunday = _get_week_sunday(data.week_start)
 
         # Build week schedule context for Claude
         week_schedule = []
         for i in range(7):
-            day_date = monday + timedelta(days=i)
+            day_date = sunday + timedelta(days=i)
             date_str = day_date.isoformat()
             event = conn.execute(
                 "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time LIMIT 1",
@@ -284,10 +283,10 @@ def generate_plan(data: MealPlanGenerateRequest):
         conn.commit()
 
         # Return full week
-        days = _build_week(data.athlete_id, monday, conn)
+        days = _build_week(data.athlete_id, sunday, conn)
         return {
             "athlete_id": data.athlete_id,
-            "week_start": monday.isoformat(),
+            "week_start": sunday.isoformat(),
             "days": days,
             "ai_reasoning": ai_result.get("reasoning", ""),
         }

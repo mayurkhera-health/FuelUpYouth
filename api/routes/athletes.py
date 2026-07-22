@@ -109,13 +109,13 @@ def create_athlete(data: AthleteCreate, background_tasks: BackgroundTasks):
             """INSERT INTO athletes
                (parent_id, first_name, age, gender, weight_lbs, height_ft, height_in,
                 position, competition_level, sweat_profile, allergies, dietary_restrictions, supplement_use,
-                season_phase, food_preferences, date_of_birth, lifestyle_activity, diet_pref)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                season_phase, food_preferences, date_of_birth, lifestyle_activity, diet_pref, phone)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (data.parent_id, data.first_name, data.age, data.gender, data.weight_lbs,
              data.height_ft, data.height_in, data.position, data.competition_level,
              data.sweat_profile, data.allergies, data.dietary_restrictions, data.supplement_use,
              normalize_season_phase(data.season_phase), data.food_preferences, data.date_of_birth,
-             data.lifestyle_activity, data.diet_pref),
+             data.lifestyle_activity, data.diet_pref, data.phone),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE rowid = last_insert_rowid()").fetchone()
@@ -146,7 +146,7 @@ def update_athlete(athlete_id: int, data: AthleteCreate, background_tasks: Backg
     conn = get_conn()
     try:
         existing = conn.execute(
-            "SELECT season_phase, food_preferences FROM athletes WHERE id = ?", (athlete_id,)
+            "SELECT season_phase, food_preferences, phone FROM athletes WHERE id = ?", (athlete_id,)
         ).fetchone()
         if not existing:
             raise HTTPException(404, "Athlete not found.")
@@ -161,18 +161,21 @@ def update_athlete(athlete_id: int, data: AthleteCreate, background_tasks: Backg
         food_preferences = (
             data.food_preferences if data.food_preferences is not None else existing["food_preferences"]
         )
+        # Preserve existing phone when the client omits it (same pattern as
+        # season_phase / food_preferences — older builds don't send the field).
+        phone = data.phone if data.phone is not None else existing["phone"]
         conn.execute(
             """UPDATE athletes SET
                first_name=?, age=?, gender=?, weight_lbs=?, height_ft=?, height_in=?,
                position=?, competition_level=?, sweat_profile=?, allergies=?,
                dietary_restrictions=?, supplement_use=?, season_phase=?, food_preferences=?,
-               date_of_birth=?, lifestyle_activity=?, diet_pref=?, blueprint_json=NULL
+               date_of_birth=?, lifestyle_activity=?, diet_pref=?, phone=?, blueprint_json=NULL
                WHERE id=?""",
             (data.first_name, data.age, data.gender, data.weight_lbs, data.height_ft,
              data.height_in, data.position, data.competition_level, data.sweat_profile,
              data.allergies, data.dietary_restrictions, data.supplement_use,
              season_phase, food_preferences, data.date_of_birth, data.lifestyle_activity,
-             data.diet_pref, athlete_id),
+             data.diet_pref, phone, athlete_id),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM athletes WHERE id = ?", (athlete_id,)).fetchone()

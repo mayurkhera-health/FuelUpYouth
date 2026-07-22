@@ -3,7 +3,7 @@ import logging
 import random
 from datetime import datetime, timedelta
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from api.models import ParentCreate, ParentResponse, OTPRequest, OTPVerify
+from api.models import ParentCreate, ParentResponse, ParentProfileUpdate, OTPRequest, OTPVerify
 from api.database import get_conn
 from api.services.email import send_otp_email
 
@@ -156,6 +156,36 @@ def test_reset(email: str):
         conn.close()
 
 
+@router.delete("/{parent_id}")
+def delete_parent_account(parent_id: int):
+    """Permanently delete a parent account and all associated athlete data.
+    Required for Apple App Store Guideline 5.1.1(v) in-app account deletion."""
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT id FROM parents WHERE id = ?", (parent_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Parent not found.")
+        athlete_rows = conn.execute(
+            "SELECT id FROM athletes WHERE parent_id = ?", (parent_id,)
+        ).fetchall()
+        for a in athlete_rows:
+            aid = dict(a)["id"]
+            for table in (
+                "confirmations", "window_logs", "events", "daily_targets",
+                "meal_logs", "streak_state", "notification_log",
+                "pantry_list_items", "shopping_list_items",
+            ):
+                conn.execute(f"DELETE FROM {table} WHERE athlete_id = ?", (aid,))
+        conn.execute("DELETE FROM expo_push_tokens WHERE parent_id = ?", (parent_id,))
+        conn.execute("DELETE FROM otp_codes WHERE parent_id = ?", (parent_id,))
+        conn.execute("DELETE FROM athletes WHERE parent_id = ?", (parent_id,))
+        conn.execute("DELETE FROM parents WHERE id = ?", (parent_id,))
+        conn.commit()
+        return {"deleted": True}
+    finally:
+        conn.close()
+
+
 @router.patch("/{parent_id}/dismiss-schedule-reminder")
 def dismiss_schedule_reminder(parent_id: int):
     conn = get_conn()
@@ -182,6 +212,24 @@ def email_exists(email: str):
             "SELECT 1 FROM parents WHERE email = ?", (email.strip().lower(),)
         ).fetchone()
         return {"exists": row is not None}
+    finally:
+        conn.close()
+
+
+@router.patch("/{parent_id}/profile", response_model=ParentResponse)
+def update_parent_profile(parent_id: int, data: ParentProfileUpdate):
+    conn = get_conn()
+    try:
+        row = conn.execute("SELECT * FROM parents WHERE id = ?", (parent_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Parent not found.")
+        conn.execute(
+            "UPDATE parents SET full_name = ?, phone = ? WHERE id = ?",
+            (data.full_name.strip(), data.phone, parent_id),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM parents WHERE id = ?", (parent_id,)).fetchone()
+        return dict(row)
     finally:
         conn.close()
 

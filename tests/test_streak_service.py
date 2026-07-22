@@ -91,11 +91,12 @@ def test_best_streak_finds_longest_run():
     assert ss._best_streak(qual) == 3
 
 
-def test_week_strip_is_monday_to_sunday():
-    # Wednesday 2026-06-17; Monday of that week is 2026-06-15
+def test_week_strip_is_sunday_to_saturday():
+    # Wednesday 2026-06-17; Sunday of that week is 2026-06-14
+    # qual has Mon 2026-06-15 (index 1) and Wed 2026-06-17 (index 3)
     qual = {"2026-06-15", "2026-06-17"}
     strip = ss._week_strip(qual, date(2026, 6, 17))
-    assert strip == [True, False, True, False, False, False, False]
+    assert strip == [False, True, False, True, False, False, False]
 
 
 def test_current_streak_counts_consecutive_days():

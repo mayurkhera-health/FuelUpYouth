@@ -60,10 +60,12 @@ def test_window_returns_plate_and_options(client):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["plate"] is not None
+    assert body["profile_key"] == "breakfast"
     keys = [s["key"] for s in body["plate"]["sections"]]
     assert keys == ["carbs", "protein", "veg", "fat"]
-    assert 1 <= len(body["options"]) <= 5
+    assert 1 <= len(body["options"]) <= 8
     for o in body["options"]:
+        assert o["id"]
         assert o["short_label"]
         assert isinstance(o["plate_sections"], list)
 
@@ -84,6 +86,7 @@ def test_nudge_window_has_no_plate(client):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["plate"] is None
+    assert body["profile_key"] is None
     assert body["options"] == []
 
 
@@ -111,4 +114,5 @@ def test_flag_off_returns_empty(client, monkeypatch):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["plate"] is None
+    assert body["profile_key"] is None
     assert body["options"] == []

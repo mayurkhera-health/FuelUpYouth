@@ -153,6 +153,74 @@ def test_failed_feed_never_deletes(monkeypatch, _spy_windows):
     assert _spy_windows == []
 
 
+def test_name_time_fallback_adopts_manual_duplicate(monkeypatch, _spy_windows):
+    """BYGA rotates UUID4 UIDs on every export. The sync must recognize an already-
+    imported event by (name, date, start_time) and update it in place rather than
+    inserting a duplicate row."""
+    conn = _fresh_conn()
+    event_date = FUT1.strftime("%Y-%m-%d")
+    start_time = FUT1.strftime("%H:%M")
+
+    # Pre-existing manual copy (source='manual', different UID from what BYGA will send).
+    conn.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, "
+        "start_time, duration_hours, uid, source) VALUES "
+        "(1,'Team Practice','practice',?,?  ,1.5,'old-uid-from-client-import','manual')",
+        (event_date, start_time),
+    )
+    conn.commit()
+    manual_id = conn.execute("SELECT id FROM events").fetchone()[0]
+
+    # BYGA feed contains the same event but with a freshly-rotated UID.
+    _feed(monkeypatch, _cal(_vevent("byga-new-uid", FUT1, "Team Practice")))
+    counts = ics_sync.sync_platform(conn, 1, "byga", "http://x", "competitive")
+
+    # Exactly one row — no duplicate inserted.
+    rows = conn.execute("SELECT * FROM events").fetchall()
+    assert len(rows) == 1, f"Expected 1 row, got {len(rows)}"
+
+    row = dict(rows[0])
+    assert row["id"] == manual_id, "Existing row must be updated in place (same id)"
+    assert row["uid"] == "byga-new-uid", "UID must be updated to the feed's UID"
+    assert row["source"] == "byga", "Source must be updated to the platform"
+    assert row["synced_at"] is not None, "synced_at must be stamped"
+    assert row["event_date"] == event_date, "event_date must be preserved"
+
+    # Counts: one update, zero inserts.
+    assert counts["updated"] == 1
+    assert counts["inserted"] == 0
+
+    # Window recompute fired for the event date.
+    assert (1, event_date) in _spy_windows
+
+
+def test_name_time_fallback_skips_ambiguous_duplicates(monkeypatch, _spy_windows):
+    """When two manual rows share (name, date, start_time) the fallback skips
+    rather than adopting one arbitrarily — neither row's uid or source changes."""
+    conn = _fresh_conn()
+    event_date = FUT1.strftime("%Y-%m-%d")
+    start_time = FUT1.strftime("%H:%M")
+
+    for suffix in ("1", "2"):
+        conn.execute(
+            "INSERT INTO events (athlete_id, event_name, event_type, event_date, "
+            "start_time, duration_hours, uid, source) VALUES "
+            "(1,'Team Practice','practice',?,?,1.5,?,?)",
+            (event_date, start_time, f"old-uid-{suffix}", "manual"),
+        )
+    conn.commit()
+
+    _feed(monkeypatch, _cal(_vevent("byga-new-uid", FUT1, "Team Practice")))
+    ics_sync.sync_platform(conn, 1, "byga", "http://x", "competitive")
+
+    manual_rows = conn.execute(
+        "SELECT uid FROM events WHERE source='manual' ORDER BY id"
+    ).fetchall()
+    assert len(manual_rows) == 2, "Both manual rows must survive the sync"
+    assert {r["uid"] for r in manual_rows} == {"old-uid-1", "old-uid-2"}, \
+        "Manual row UIDs must not be overwritten by the fallback"
+
+
 def test_migrations_idempotent():
     conn = sqlite3.connect(":memory:")
     conn.execute("CREATE TABLE athletes (id INTEGER PRIMARY KEY)")

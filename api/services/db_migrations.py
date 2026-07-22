@@ -30,7 +30,14 @@ def run_all():
         _add_diet_pref_to_athletes(conn)
         _create_problem_reports(conn)
         _create_coach_feedback(conn)
+        _create_instacart_handoff_feedback(conn)
         _create_pantry_list_items(conn)
+        _create_recipe_selections(conn)
+        _create_recipe_lists(conn)
+        _create_recipe_list_items(conn)
+        _add_category_to_recipe_list_items(conn)
+        _add_ingredient_type_to_recipe_list_items(conn)
+        _create_recipe_list_item_sources(conn)
         _create_feature_requests(conn)
         _add_calendar_sync_to_athletes(conn)
         _add_source_to_events(conn)
@@ -44,6 +51,9 @@ def run_all():
         _create_fueliq_notification_prefs(conn)
         _create_fueliq_push_events(conn)
         _drop_fueliq_lessons_drop_week(conn)
+        _add_phone_to_athletes(conn)
+        _add_phone_to_parents(conn)
+        _create_teamcoach_tables(conn)
         conn.commit()
     finally:
         conn.close()
@@ -53,6 +63,7 @@ def run_all():
     # cannot change inside a transaction — so it owns its full transaction/pragma
     # lifecycle in isolation and must never share the batch connection.
     _migrate_athlete_logins_unique()
+    _fix_recipe_selections_unique_constraint()
 
 
 def _create_confirmations(conn):
@@ -411,6 +422,23 @@ def _add_blueprint_viewed_to_parents(conn):
         conn.execute("ALTER TABLE parents ADD COLUMN blueprint_first_viewed_at TEXT")
 
 
+def _add_phone_to_athletes(conn):
+    """Athlete contact phone for SMS reminders, emergency contact, and account
+    recovery. Nullable — optional at onboarding and in edit-profile. Stored as the
+    client-formatted string (e.g. '(408) 555-1234'); 10-digit US validated server-
+    side before write. Idempotent — safe every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(athletes)").fetchall()]
+    if "phone" not in cols:
+        conn.execute("ALTER TABLE athletes ADD COLUMN phone TEXT DEFAULT NULL")
+
+
+def _add_phone_to_parents(conn):
+    """Parent contact phone, editable from Settings. Nullable. Idempotent."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(parents)").fetchall()]
+    if "phone" not in cols:
+        conn.execute("ALTER TABLE parents ADD COLUMN phone TEXT DEFAULT NULL")
+
+
 def _create_admin_audit_log(conn):
     # Admin Module audit trail. This schema intentionally matches the richer table
     # already present in production from the earlier FuelUp-Admin deployment (46
@@ -509,6 +537,112 @@ def _create_health_tables(conn):
     )
 
 
+def _create_recipe_selections(conn):
+    """Recipe Selection: records which recipe an athlete has chosen for a
+    specific fueling window on a specific date. Drives the weekly grocery
+    list aggregation — ingredients from selected recipes are written to
+    shopping_list_items with source='recipe'. One selection per athlete
+    per date per fueling window — UNIQUE enforces this at the DB layer.
+    Idempotent — safe to run on every startup."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS recipe_selections (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id          INTEGER NOT NULL REFERENCES athletes(id),
+            week_start          TEXT    NOT NULL,
+            selection_date      TEXT    NOT NULL,
+            fueling_window_key  TEXT    NOT NULL,
+            recipe_id           TEXT    NOT NULL,
+            servings            INTEGER NOT NULL DEFAULT 1,
+            created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+            updated_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, selection_date, fueling_window_key)
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_recipe_selections_athlete_week
+            ON recipe_selections (athlete_id, week_start)
+    """)
+
+
+def _create_recipe_lists(conn):
+    """Recipe Lists: one grocery list per athlete per week, scoped to recipe
+    selections rather than pantry suggestions. Separate from shopping_lists so
+    recipe-derived items can be managed independently. UNIQUE enforces one list
+    per athlete per week at the DB layer. Idempotent — safe to run on every startup."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS recipe_lists (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id  INTEGER NOT NULL REFERENCES athletes(id),
+            week_start  TEXT    NOT NULL,
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, week_start)
+        )
+    """)
+
+
+def _create_recipe_list_items(conn):
+    """Recipe List Items: ingredients derived from recipe selections, one row per
+    ingredient name per list. Separate from shopping_list_items so recipe-sourced
+    items have their own checked state and lifecycle. Idempotent — safe to run on
+    every startup."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS recipe_list_items (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            list_id     INTEGER NOT NULL REFERENCES recipe_lists(id),
+            name        TEXT    NOT NULL,
+            checked     INTEGER NOT NULL DEFAULT 0,
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (list_id, name)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_recipe_list_items_list "
+        "ON recipe_list_items (list_id)"
+    )
+
+
+def _add_category_to_recipe_list_items(conn):
+    """Add category column to recipe_list_items for grouped grocery display.
+    Values match pantryCategories.ts: produce, protein, carb, fat, hydration, other.
+    Idempotent — safe to run on every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(recipe_list_items)").fetchall()]
+    if "category" not in cols:
+        conn.execute(
+            "ALTER TABLE recipe_list_items ADD COLUMN category TEXT NOT NULL DEFAULT 'other'"
+        )
+
+
+def _add_ingredient_type_to_recipe_list_items(conn):
+    """Add ingredient_type column to recipe_list_items.
+    Values: 'main' (needs shopping) or 'staple' (pantry item, pre-checked).
+    Idempotent — safe to run on every startup."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(recipe_list_items)").fetchall()]
+    if "ingredient_type" not in cols:
+        conn.execute(
+            "ALTER TABLE recipe_list_items ADD COLUMN ingredient_type TEXT NOT NULL DEFAULT 'main'"
+        )
+
+
+def _create_recipe_list_item_sources(conn):
+    """Track which recipes contributed each grocery list ingredient.
+    Enables source display in UI and correct removal behavior when
+    a recipe is deselected. Idempotent — safe to run on every startup."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS recipe_list_item_sources (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            list_item_id INTEGER NOT NULL REFERENCES recipe_list_items(id) ON DELETE CASCADE,
+            recipe_id    TEXT    NOT NULL,
+            recipe_name  TEXT    NOT NULL,
+            created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (list_item_id, recipe_id)
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_recipe_list_item_sources_item
+            ON recipe_list_item_sources (list_item_id)
+    """)
+
+
 def _create_feature_requests(conn):
     # "What's Coming" → Suggest a Feature submissions. Each row also triggers a
     # best-effort email to the team (see api/routes/feedback.py). reason is
@@ -521,6 +655,22 @@ def _create_feature_requests(conn):
             suggestion   TEXT NOT NULL,
             reason       TEXT,
             submitted_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+
+def _create_instacart_handoff_feedback(conn):
+    # Instacart grocery-handoff MVP feedback (Return & Feedback step). High-volume,
+    # no email — same shape as coach_feedback. comment is unused by the MVP UI (no
+    # free-text field) but kept nullable so adding one later is a pure frontend change.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS instacart_handoff_feedback (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id      INTEGER,
+            outcome         TEXT NOT NULL,
+            would_use_again TEXT NOT NULL,
+            comment         TEXT,
+            created_at      TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
@@ -741,6 +891,198 @@ def _drop_fueliq_lessons_drop_week(conn):
     cols = [r[1] for r in conn.execute("PRAGMA table_info(fueliq_lessons)").fetchall()]
     if "drop_week" in cols:
         conn.execute("ALTER TABLE fueliq_lessons DROP COLUMN drop_week")
+
+
+def _fix_recipe_selections_unique_constraint():
+    """
+    Replace UNIQUE (athlete_id, selection_date, fueling_window_key) with
+    UNIQUE (athlete_id, week_start, fueling_window_key, recipe_id) so parents
+    can select multiple recipes per fueling window per week — only the exact
+    same recipe in the same window is blocked as a duplicate.
+
+    Runs on a dedicated connection after the batch has committed. Idempotent:
+    returns immediately once the new constraint exists.
+    """
+    conn = get_conn()
+    try:
+        if not conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='recipe_selections'"
+        ).fetchone():
+            return
+
+        for idx in conn.execute("PRAGMA index_list(recipe_selections)").fetchall():
+            cols = [r[2] for r in conn.execute(f"PRAGMA index_info('{idx[1]}')").fetchall()]
+            if set(cols) == {"athlete_id", "week_start", "fueling_window_key", "recipe_id"}:
+                return  # Already correct — nothing to do
+
+        conn.isolation_level = None
+        try:
+            conn.execute("PRAGMA foreign_keys=OFF")
+            conn.execute("BEGIN")
+            conn.execute("""
+                CREATE TABLE recipe_selections_new (
+                    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    athlete_id          INTEGER NOT NULL REFERENCES athletes(id),
+                    week_start          TEXT    NOT NULL,
+                    selection_date      TEXT    NOT NULL,
+                    fueling_window_key  TEXT    NOT NULL,
+                    recipe_id           TEXT    NOT NULL,
+                    servings            INTEGER NOT NULL DEFAULT 1,
+                    created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+                    updated_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+                    UNIQUE (athlete_id, week_start, fueling_window_key, recipe_id)
+                )
+            """)
+            conn.execute("""
+                INSERT OR IGNORE INTO recipe_selections_new
+                SELECT * FROM recipe_selections
+            """)
+            conn.execute("DROP TABLE recipe_selections")
+            conn.execute("ALTER TABLE recipe_selections_new RENAME TO recipe_selections")
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_recipe_selections_athlete_week
+                ON recipe_selections (athlete_id, week_start)
+            """)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+        finally:
+            conn.execute("PRAGMA foreign_keys=ON")
+            conn.isolation_level = ""
+    finally:
+        conn.close()
+
+
+def _create_teamcoach_tables(conn):
+    # coaches — auth_provider_id is NULL for MVP password auth; reserved for future SSO.
+    # password_hash/salt carry MVP credentials.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS coaches (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            name             TEXT    NOT NULL,
+            email            TEXT    UNIQUE NOT NULL,
+            auth_provider_id TEXT    NULL,
+            password_hash    TEXT    NULL,
+            salt             TEXT    NULL,
+            created_at       TEXT    DEFAULT (datetime('now'))
+        )
+    """)
+    # club_id is unused in MVP but kept in schema for future Athletic Director rollup.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS teams (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            name          TEXT    NOT NULL,
+            season        TEXT    NOT NULL,
+            club_id       INTEGER NULL,
+            threshold_pct INTEGER NOT NULL DEFAULT 80,
+            created_at    TEXT    DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS coach_team_access (
+            coach_id INTEGER NOT NULL REFERENCES coaches(id),
+            team_id  INTEGER NOT NULL REFERENCES teams(id),
+            PRIMARY KEY (coach_id, team_id)
+        )
+    """)
+    # parent_consent_flag stays in schema even though ENFORCE_CONSENT=False in MVP
+    # (decision #1) — preserves path to enforcement later without a migration.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS roster_membership (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id          INTEGER NOT NULL REFERENCES athletes(id),
+            team_id             INTEGER NOT NULL REFERENCES teams(id),
+            parent_consent_flag INTEGER NOT NULL DEFAULT 0,
+            joined_at           TEXT    DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, team_id)
+        )
+    """)
+    # window_slot values: everyday | fuel_before | top_up | during | recharge | rebuild
+    # Column is named 'date' per spec (not log_date).
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fueling_window_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            athlete_id  INTEGER NOT NULL REFERENCES athletes(id),
+            date        TEXT    NOT NULL,
+            window_slot TEXT    NOT NULL,
+            applicable  INTEGER NOT NULL DEFAULT 1,
+            completed   INTEGER NOT NULL DEFAULT 0,
+            logged_at   TEXT    DEFAULT (datetime('now')),
+            UNIQUE (athlete_id, date, window_slot)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS team_engagement_snapshot (
+            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_id                 INTEGER NOT NULL REFERENCES teams(id),
+            week_start              TEXT    NOT NULL,
+            threshold_pct           INTEGER NOT NULL DEFAULT 80,
+            players_above_threshold INTEGER NOT NULL DEFAULT 0,
+            roster_count            INTEGER NOT NULL DEFAULT 0,
+            generated_at            TEXT    DEFAULT (datetime('now')),
+            UNIQUE (team_id, week_start)
+        )
+    """)
+def _fix_recipe_selections_unique_constraint():
+    """
+    Replace UNIQUE (athlete_id, selection_date, fueling_window_key) with
+    UNIQUE (athlete_id, week_start, fueling_window_key, recipe_id) so parents
+    can select multiple recipes per fueling window per week — only the exact
+    same recipe in the same window is blocked as a duplicate.
+
+    Runs on a dedicated connection after the batch has committed. Idempotent:
+    returns immediately once the new constraint exists.
+    """
+    conn = get_conn()
+    try:
+        if not conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='recipe_selections'"
+        ).fetchone():
+            return
+
+        for idx in conn.execute("PRAGMA index_list(recipe_selections)").fetchall():
+            cols = [r[2] for r in conn.execute(f"PRAGMA index_info('{idx[1]}')").fetchall()]
+            if set(cols) == {"athlete_id", "week_start", "fueling_window_key", "recipe_id"}:
+                return  # Already correct — nothing to do
+
+        conn.isolation_level = None
+        try:
+            conn.execute("PRAGMA foreign_keys=OFF")
+            conn.execute("BEGIN")
+            conn.execute("""
+                CREATE TABLE recipe_selections_new (
+                    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    athlete_id          INTEGER NOT NULL REFERENCES athletes(id),
+                    week_start          TEXT    NOT NULL,
+                    selection_date      TEXT    NOT NULL,
+                    fueling_window_key  TEXT    NOT NULL,
+                    recipe_id           TEXT    NOT NULL,
+                    servings            INTEGER NOT NULL DEFAULT 1,
+                    created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+                    updated_at          TEXT    NOT NULL DEFAULT (datetime('now')),
+                    UNIQUE (athlete_id, week_start, fueling_window_key, recipe_id)
+                )
+            """)
+            conn.execute("""
+                INSERT OR IGNORE INTO recipe_selections_new
+                SELECT * FROM recipe_selections
+            """)
+            conn.execute("DROP TABLE recipe_selections")
+            conn.execute("ALTER TABLE recipe_selections_new RENAME TO recipe_selections")
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_recipe_selections_athlete_week
+                ON recipe_selections (athlete_id, week_start)
+            """)
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+        finally:
+            conn.execute("PRAGMA foreign_keys=ON")
+            conn.isolation_level = ""
+    finally:
+        conn.close()
 
 
 def _migrate_athlete_logins_unique():

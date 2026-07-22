@@ -133,7 +133,8 @@ def test_rest_day_sodium_is_none():
 
 def test_event_day_has_all_five_metrics():
     t = fg.compute_event_day_targets(_athlete(), [_event("game")], "in_season", MILD)
-    assert set(t.keys()) == set(NUTRIENTS)
+    # electrolytes_needed is an engine-internal boolean; _build_fuel_targets_block pops it.
+    assert set(NUTRIENTS).issubset(t.keys())
     assert t["sodium_mg"] is not None and t["sodium_mg"] > 0
 
 
@@ -296,9 +297,12 @@ def test_target_source_event_day_for_each_event_type(live_v2, flag_on, etype):
 
 def test_fuel_targets_shape_when_flag_on(live_v2, flag_on):
     ft_block = _view(_athlete(), [(TODAY, "game", "medium", "10:00", 1.5)])["fuel_targets"]
-    assert set(ft_block.keys()) == {"target_source", "daily", "confirmed_totals", "windows", "daily_met"}
+    assert set(ft_block.keys()) == {
+        "target_source", "daily", "confirmed_totals", "windows", "daily_met", "electrolyte"
+    }
     assert set(ft_block["daily"].keys()) == set(NUTRIENTS)
     assert isinstance(ft_block["daily_met"], bool)
+    assert isinstance(ft_block["electrolyte"]["needed"], bool)
     for w in ft_block["windows"]:
         assert set(w.keys()) == {"slot_name", "category_key", "contribution", "confirmed"}
         assert w["category_key"] in ("carb", "recovery", "balanced")  # never hydrate
@@ -511,9 +515,10 @@ def _tmpl(rows):
              "open_dt": None, "close_dt": None} for w in rows]
 
 
-def test_event_day_split_excludes_everyday_and_reaches_100():
-    """Event day: everyday_* dropped from the split; the confirmable event windows
-    carry the full daily target (~100%) and daily_met fires on full confirmation."""
+def test_event_day_split_includes_everyday_and_reaches_100():
+    """Event day: everyday_* windows ARE in the split (Purvi July 2026 — each has its
+    own ratio). All creditable windows together carry ~100% and daily_met requires ALL
+    confirmed, including everyday."""
     a = _athlete()
     tappable = [
         _win("everyday_breakfast", "balanced"),
@@ -525,8 +530,8 @@ def test_event_day_split_excludes_everyday_and_reaches_100():
     block = _build_fuel_targets_block(a, events, list(tappable), tappable, _tmpl(tappable), set())
 
     slots = {w["slot_name"] for w in block["windows"]}
-    assert slots == {"pre_event_meal", "fuel_after_primary"}, slots
-    assert not any(s.startswith("everyday_") for s in slots)
+    assert "everyday_breakfast" in slots and "everyday_lunch" in slots
+    assert "pre_event_meal" in slots and "fuel_after_primary" in slots
 
     daily = block["daily"]
     for n in NUTRIENTS:
@@ -535,11 +540,18 @@ def test_event_day_split_excludes_everyday_and_reaches_100():
         s = sum(w["contribution"][n] for w in block["windows"] if w["contribution"][n] is not None)
         assert 98.0 <= s / daily[n] * 100 <= 102.0, (n, s, daily[n])
 
+    # daily_met requires ALL windows (including everyday) confirmed
     confirmed = _build_fuel_targets_block(
         a, events, list(tappable), tappable, _tmpl(tappable),
-        {"pre_event_meal", "fuel_after_primary"},
+        {"pre_event_meal", "fuel_after_primary"},  # only fuel windows → not met yet
     )
-    assert confirmed["daily_met"] is True
+    assert confirmed["daily_met"] is False
+
+    all_confirmed = _build_fuel_targets_block(
+        a, events, list(tappable), tappable, _tmpl(tappable),
+        {"pre_event_meal", "fuel_after_primary", "everyday_breakfast", "everyday_lunch"},
+    )
+    assert all_confirmed["daily_met"] is True
 
 
 def test_rest_day_split_retains_everyday():

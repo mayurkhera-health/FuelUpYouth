@@ -1,7 +1,7 @@
 import re
 from datetime import datetime as _dt
 from pydantic import BaseModel, field_validator
-from typing import Optional, List
+from typing import Literal, Optional, List
 
 from api.services.activity_type_resolver import VALID_ACTIVITY_TYPES
 
@@ -38,10 +38,31 @@ class ParentResponse(BaseModel):
     id: int
     full_name: str
     email: str
+    phone: Optional[str] = None
     consent_timestamp: str
     consent_confirmed: bool
     schedule_reminder_dismissed: bool = False
     created_at: str
+
+
+class ParentProfileUpdate(BaseModel):
+    full_name: str
+    phone: Optional[str] = None
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, v):
+        return _validate_phone(v)
+
+
+def _validate_phone(v: Optional[str]) -> Optional[str]:
+    """Accept any formatting; require exactly 10 US digits when non-empty."""
+    if v is None or v == "":
+        return None
+    digits = re.sub(r"\D", "", v)
+    if len(digits) != 10:
+        raise ValueError("phone must contain exactly 10 digits (US number)")
+    return v
 
 
 class AthleteCreate(BaseModel):
@@ -63,6 +84,12 @@ class AthleteCreate(BaseModel):
     date_of_birth: Optional[str] = None  # ISO YYYY-MM-DD; used by calc_age() for precision targets
     lifestyle_activity: str = "light"    # sedentary / light / moderate — drives lifestyle PAL in calc_tdee
     diet_pref: str = "omnivore"          # omnivore / vegetarian / vegan — drives DIET_PROT_MULT
+    phone: Optional[str] = None          # US contact number; optional; validated to 10 digits
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, v):
+        return _validate_phone(v)
 
 
 class OnboardingAthlete(BaseModel):
@@ -83,6 +110,12 @@ class OnboardingAthlete(BaseModel):
     date_of_birth: Optional[str] = None
     lifestyle_activity: Optional[str] = None
     diet_pref: Optional[str] = None
+    phone: Optional[str] = None
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, v):
+        return _validate_phone(v)
 
 
 class OnboardingComplete(BaseModel):
@@ -105,11 +138,12 @@ class AthleteResponse(BaseModel):
     allergies: Optional[str]
     dietary_restrictions: Optional[str]
     supplement_use: Optional[str]
-    season_phase: Optional[str] = None  # in_season / off_season / postseason (Fuel Gauge)
-    food_preferences: Optional[str] = None  # onboarding wizard: free-text likes/dislikes/textures
+    season_phase: Optional[str] = None
+    food_preferences: Optional[str] = None
     date_of_birth: Optional[str] = None
-    lifestyle_activity: str = "light"       # sedentary / light / moderate
-    diet_pref: str = "omnivore"             # omnivore / vegetarian / vegan
+    phone: Optional[str] = None
+    lifestyle_activity: str = "light"
+    diet_pref: str = "omnivore"
     schedule_reminder_dismissed: bool = False
     created_at: str
 
@@ -139,6 +173,7 @@ class EventCreate(BaseModel):
     intensity: Optional[str] = None  # low / medium / high; derived if omitted
     activity_type: Optional[str] = None  # 7 engine keys; None = untagged (2h default applies)
     uid: Optional[str] = None  # source ICS VEVENT UID; enables import dedup. None for manual events.
+    source: Literal["manual"] = "manual"  # public POST only creates manual events; synced sources write directly to DB
 
     @field_validator("start_time", mode="before")
     @classmethod
@@ -192,6 +227,7 @@ class EventResponse(BaseModel):
     intensity: Optional[str] = None
     activity_type: Optional[str] = None
     uid: Optional[str] = None
+    source: Optional[str] = None
     created_at: str
 
 

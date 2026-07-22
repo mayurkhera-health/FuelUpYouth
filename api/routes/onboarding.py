@@ -40,12 +40,12 @@ def complete_onboarding(data: OnboardingComplete, background_tasks: BackgroundTa
             """INSERT INTO athletes
                (parent_id, first_name, age, gender, weight_lbs, height_ft, height_in,
                 position, competition_level, sweat_profile, allergies, dietary_restrictions, supplement_use,
-                season_phase, food_preferences, date_of_birth, lifestyle_activity, diet_pref)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                season_phase, food_preferences, date_of_birth, lifestyle_activity, diet_pref, phone)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (parent_id, a.first_name, a.age, a.gender, a.weight_lbs, a.height_ft, a.height_in,
              a.position, a.competition_level, a.sweat_profile, a.allergies, a.dietary_restrictions,
              a.supplement_use, normalize_season_phase(a.season_phase), a.food_preferences,
-             a.date_of_birth, a.lifestyle_activity or "light", a.diet_pref or "omnivore"),
+             a.date_of_birth, a.lifestyle_activity or "light", a.diet_pref or "omnivore", a.phone),
         )
         athlete_row = conn.execute("SELECT * FROM athletes WHERE rowid = last_insert_rowid()").fetchone()
         conn.commit()

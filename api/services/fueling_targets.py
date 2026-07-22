@@ -210,28 +210,29 @@ def is_creditable_category(category_key: Optional[str]) -> bool:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# Phase 5 — Purvi's signed-off PER-SLOT macro seed ratios. Fractions of the
-# DAILY target; split_targets_across_windows normalizes them across whatever
-# windows are present (so the day still reconciles to ~100%). Only carbs_g and
-# protein_g are slot-seeded — fluids_ml/sodium_mg/calcium_mg keep the category
-# CONTRIBUTION_WEIGHTS distribution, so HYDRATION is never driven by these.
-#   • "everyday" is the COMBINED total for all everyday windows; the split
-#     divides it across the everyday windows actually present (not 7% each).
-#   • tournament/merge windows (between_games/refuel_ready) are OUT OF SCOPE —
-#     they have no entry here and keep the category_key distribution.
-# proper_breakfast_after / quick_morning_snack values are midpoints of Purvi's
-# stated ranges (25-30% and 5-10% CHO / 0-2% protein).
+# Per-slot macro seed ratios — Purvi's signed-off prescription (July 2026).
+# Each value is the fraction of the DAILY target credited to that window.
+# The same fraction applies to both carbs_g and protein_g.
+# Sum = 1.000 exactly; enforced by the assertion below.
+#
+# Slots NOT listed here (fuel_before, proper_breakfast_after,
+# quick_morning_snack, between_games_*, everyday_meal) fall through to the
+# CONTRIBUTION_WEIGHTS category-key distribution in fuel_gauge._seed_ratio.
 # ──────────────────────────────────────────────────────────────────────────
-SLOT_MACRO_RATIOS: dict[str, dict[str, float]] = {
-    #  slot:                     carbs_g  protein_g
-    "fuel_before":             {"carbs_g": 0.35,  "protein_g": 0.20},
-    "top_up":                  {"carbs_g": 0.10,  "protein_g": 0.10},
-    "recharge":                {"carbs_g": 0.20,  "protein_g": 0.25},
-    "rebuild":                 {"carbs_g": 0.25,  "protein_g": 0.30},
-    "proper_breakfast_after":  {"carbs_g": 0.275, "protein_g": 0.275},
-    "quick_morning_snack":     {"carbs_g": 0.075, "protein_g": 0.01},
-    "everyday":                {"carbs_g": 0.07,  "protein_g": 0.10},   # TOTAL, split across present everyday windows
+SLOT_MACRO_RATIOS: dict[str, float] = {
+    "everyday_breakfast": 0.20,   # on waking
+    "everyday_snack":     0.08,   # afternoon snack
+    "everyday_lunch":     0.25,   # midday
+    "top_up":             0.12,   # 1-3h before training
+    "recharge":           0.05,   # 0-30 min after training
+    "rebuild":            0.08,   # 1-2h after training
+    "everyday_dinner":    0.22,   # evening
 }
+
+_SLOT_RATIO_SUM = sum(SLOT_MACRO_RATIOS.values())
+assert abs(_SLOT_RATIO_SUM - 1.0) <= 0.001, (
+    f"SLOT_MACRO_RATIOS sum {_SLOT_RATIO_SUM:.4f} ≠ 1.000 — fix fueling_targets.py"
+)
 
 # Nutrients driven by the per-slot ratios above. Everything else stays on the
 # category_key CONTRIBUTION_WEIGHTS path (hydration unchanged).

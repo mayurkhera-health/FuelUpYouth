@@ -32,6 +32,8 @@ async def lifespan(app: FastAPI):
         from api.services.ics_sync import build_calendar_sync_job, configure_calendar_sync_startup
         from api.services.health_service import instrument_job, run_health_tick, run_health_daily
         from api.services.fueliq_daily_challenge_service import run_daily_challenge_push
+        from api.services.grocery_reset_service import run_grocery_reset_tick
+        from api.services.grocery_reminder_service import run_grocery_reminder_tick
         # Wrap the two existing jobs so they record scheduler heartbeats — no change
         # to the jobs' own logic; the wrapper only stamps last_run/last_success.
         _scheduler.add_job(instrument_job("notifications", run_notification_tick), "interval", minutes=15,
@@ -39,6 +41,10 @@ async def lifespan(app: FastAPI):
         _scheduler.add_job(instrument_job("fueliq_notifications", run_fueliq_notification_tick),
                            "interval", minutes=15,
                            id="fueliq_notifications", replace_existing=True)
+        _scheduler.add_job(run_grocery_reset_tick, "interval", minutes=15,
+                           id="grocery_reset", replace_existing=True)
+        _scheduler.add_job(run_grocery_reminder_tick, "interval", minutes=15,
+                           id="grocery_reminder", replace_existing=True)
         # calendar_sync is registered via build_calendar_sync_job() (instrument + skip-
         # if-running lock); configure_calendar_sync_startup() then handles Option B
         # (catch-up if stale/initial, re-anchor next run if fresh) — see ics_sync.py.
@@ -57,11 +63,18 @@ async def lifespan(app: FastAPI):
         _scheduler.add_job(instrument_job("daily_challenge_push", run_daily_challenge_push),
                            "cron", hour=17, timezone="America/Los_Angeles",
                            id="daily_challenge_push", replace_existing=True)
+        from api.services.snapshot_job import generate_all_snapshots
+        _scheduler.add_job(
+            generate_all_snapshots, "cron", hour=23,
+            timezone="America/Los_Angeles",
+            id="teamcoach_snapshot", replace_existing=True,
+        )
         if not _scheduler.running:
             _scheduler.start()
         configure_calendar_sync_startup(_scheduler)
         logger.info("Schedulers started (notifications 15-min, fueliq_notifications 15-min, "
-                    "calendar sync 6-hr, health 15-min + daily, daily challenge push 5pm PT).")
+                    "calendar sync 6-hr, health 15-min + daily, daily challenge push 5pm PT, "
+                    "grocery reset 15-min, grocery reminder 15-min, teamcoach snapshot 11pm PT).")
     except Exception:
         logger.exception("Scheduler failed to start")
 
@@ -71,7 +84,7 @@ async def lifespan(app: FastAPI):
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics, admin_health, admin_overview, admin_action_hub, plate, fueliq, fueliq_daily_challenge
+from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics, admin_health, admin_overview, admin_action_hub, plate, fueliq, fueliq_daily_challenge, instacart_feedback, instacart, teamcoach_auth, teamcoach_admin, teamcoach_dashboard
 from api.services import db_migrations
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -116,6 +129,8 @@ app.include_router(shopping.router,      prefix="/api/shopping",      tags=["21.
 app.include_router(support.router,       prefix="/api/support",       tags=["22. Support"])
 app.include_router(pantry.router,        prefix="/api/pantry",        tags=["23. Pantry Planner"])
 app.include_router(feedback.router,      prefix="/api/feedback",      tags=["24. Feature Requests"])
+app.include_router(instacart_feedback.router, prefix="/api/instacart", tags=["28. Instacart Handoff"])
+app.include_router(instacart.router,          prefix="/api/instacart", tags=["28. Instacart Handoff"])
 app.include_router(calendar.router,      prefix="/api/athletes",      tags=["25. Calendar Sync"])
 app.include_router(admin.router,           prefix="/api/admin",           tags=["26. Admin"])
 app.include_router(admin_analytics.router, prefix="/api/admin",           tags=["27. Admin Analytics"])
@@ -124,6 +139,9 @@ app.include_router(admin_overview.router,  prefix="/api/admin",           tags=[
 app.include_router(admin_action_hub.router, prefix="/api/admin",          tags=["30. Admin Action Hub"])
 app.include_router(fueliq.router,        prefix="/api/athletes",      tags=["31. Fuel IQ"])
 app.include_router(fueliq_daily_challenge.router, prefix="/api/athletes", tags=["32. Fuel IQ Daily Challenge"])
+app.include_router(teamcoach_auth.router, prefix="/api/team-coach/auth", tags=["33. TeamCoach Auth"])
+app.include_router(teamcoach_admin.router, prefix="/api/admin/team-coach", tags=["34. TeamCoach Admin"])
+app.include_router(teamcoach_dashboard.router, prefix="/api/team-coach/teams", tags=["35. TeamCoach Dashboard"])
 
 
 _scheduler = BackgroundScheduler()
@@ -172,6 +190,11 @@ class SPAStaticFiles(StaticFiles):
             response.headers["Cache-Control"] = "no-cache"
         return response
 
+
+# Serve TeamCoach React app at /coach/ — must be before the catch-all / mount
+_coach_static_dir = Path(__file__).parent.parent / "frontend-coach" / "dist"
+if _coach_static_dir.exists():
+    app.mount("/coach", StaticFiles(directory=str(_coach_static_dir), html=True), name="teamcoach-static")
 
 # Serve React frontend — must be last so API routes take precedence
 _static_dir = Path(__file__).parent.parent / "frontend" / "dist"
