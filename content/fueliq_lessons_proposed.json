@@ -1,0 +1,482 @@
+[
+  {
+    "level": 1,
+    "order_in_level": 3,
+    "is_myth": 0,
+    "title": "Hydration",
+    "hook": "Your practice is in 4 hours. Your hydration should already be starting.",
+    "fact_body": "Champions don't hydrate at warm-up \u2014 they show up already topped off. Sip water in the hours before training, then again every 15-20 minutes once you start. Sessions past an hour need more than water: add a sports beverage to replace what you're sweating out. After training, weigh in before and after \u2014 for every pound lost, drink a big glass or two within a couple hours. Can't weigh in? Check your urine color: light means you're on track.",
+    "takeaway": "Start hydrated, sip every 15-20 minutes, and rehydrate by the pound after training.",
+    "category": "hydration",
+    "source_citation": "Hydrate Early and Often (CPSDA / National Dairy Council)",
+    "points": 10,
+    "review_status": "draft",
+    "questions": [
+      {
+        "question_text": "You've got practice in 4 hours. When does hydration start?",
+        "option_a": "Right now \u2014 start sipping early",
+        "option_b": "Chugging water at warm-up",
+        "option_c": "Whenever you feel thirsty",
+        "correct_option": "a",
+        "explanation": "Champions show up already hydrated. Drink a couple of big glasses of water in the hours before training, then a glass right before you start. Start ahead, stay ahead.",
+        "misconception_tag": null,
+        "order_in_lesson": 1
+      },
+      {
+        "question_text": "How often should you drink during exercise?",
+        "option_a": "Every 15-20 minutes",
+        "option_b": "Only at halftime",
+        "option_c": "Only when practice ends",
+        "correct_option": "a",
+        "explanation": "Keep the fluids flowing \u2014 a few big gulps every 15-20 minutes keeps your engine cool and your performance strong.",
+        "misconception_tag": null,
+        "order_in_lesson": 2
+      },
+      {
+        "question_text": "Your session is going longer than an hour. What's the smart fluid choice?",
+        "option_a": "Add a sports beverage",
+        "option_b": "Stick to nothing",
+        "option_c": "Switch to soda",
+        "correct_option": "a",
+        "explanation": "Water wins for shorter sessions. Past the one-hour mark, a sports beverage helps replace what you're sweating out and keeps your energy up.",
+        "misconception_tag": null,
+        "order_in_lesson": 3
+      },
+      {
+        "question_text": "How do you know how much fluid to replace after training?",
+        "option_a": "Weigh yourself before and after",
+        "option_b": "Guess based on how you feel",
+        "option_c": "There's no way to know",
+        "correct_option": "a",
+        "explanation": "Smart athletes track their sweat loss. Weigh in before and after \u2014 for every pound lost, drink a big glass or two of fluid within a couple hours. Simple, measurable, powerful.",
+        "misconception_tag": null,
+        "order_in_lesson": 4
+      },
+      {
+        "question_text": "What's a proven recovery drink after a hard workout?",
+        "option_a": "Chocolate milk",
+        "option_b": "Energy drinks",
+        "option_c": "Espresso",
+        "correct_option": "a",
+        "explanation": "Chocolate milk is a recovery powerhouse \u2014 fluid to rehydrate plus carbs and protein to refuel. Tasty AND effective.",
+        "misconception_tag": null,
+        "order_in_lesson": 5
+      },
+      {
+        "question_text": "What's the easiest way to check your hydration status?",
+        "option_a": "Urine color \u2014 lighter means better hydrated",
+        "option_b": "Counting your steps",
+        "option_c": "Checking your pulse",
+        "correct_option": "a",
+        "explanation": "Your body gives you a built-in hydration report. Light-colored urine means you're on track. Dark means drink up!",
+        "misconception_tag": null,
+        "order_in_lesson": 6
+      }
+    ]
+  },
+  {
+    "level": 1,
+    "order_in_level": 4,
+    "is_myth": 0,
+    "title": "Sweat & Electrolytes",
+    "hook": "That salty crust on your skin after a hard practice? That's real electrolyte loss.",
+    "fact_body": "Sweat isn't just water \u2014 it carries sodium, chloride, and potassium (the trio that controls your fluid balance), plus smaller amounts of magnesium and calcium for muscle function and energy. For sessions under an hour, food and water cover you. Past an hour of high-intensity work, replace what you lose: salted nuts, pretzels, and crackers bring back sodium; bananas, potatoes, and leafy greens bring potassium; pumpkin seeds, almonds, and spinach bring magnesium.",
+    "takeaway": "Long, hard, sweaty sessions are when electrolytes matter most \u2014 food covers the rest.",
+    "category": "sweat_electrolytes",
+    "source_citation": "What's In Your Sweat? (SportsRD.org)",
+    "points": 10,
+    "review_status": "draft",
+    "questions": [
+      {
+        "question_text": "What's sweat mostly made of?",
+        "option_a": "Water plus electrolytes",
+        "option_b": "Pure salt",
+        "option_c": "Lactic acid",
+        "correct_option": "a",
+        "explanation": "Sweat is mostly water carrying electrolytes \u2014 sodium and chloride lead the way, with potassium, magnesium, and calcium in smaller amounts. Every one has a job.",
+        "misconception_tag": null,
+        "order_in_lesson": 1
+      },
+      {
+        "question_text": "Which electrolytes team up to control your fluid balance?",
+        "option_a": "Sodium, chloride, and potassium",
+        "option_b": "Iron, zinc, and copper",
+        "option_c": "Caffeine and sugar",
+        "correct_option": "a",
+        "explanation": "Sodium, chloride, and potassium work together to regulate and maintain fluid balance \u2014 the foundation of hydration.",
+        "misconception_tag": null,
+        "order_in_lesson": 2
+      },
+      {
+        "question_text": "When does electrolyte replacement matter MOST?",
+        "option_a": "High-intensity training longer than an hour",
+        "option_b": "A casual walk",
+        "option_c": "Watching film with the team",
+        "correct_option": "a",
+        "explanation": "Long, intense, sweaty sessions are when electrolytes really count. Shorter workouts? Water and your regular meals have you covered.",
+        "misconception_tag": null,
+        "order_in_lesson": 3
+      },
+      {
+        "question_text": "Which foods help replace the sodium you sweat out?",
+        "option_a": "Salted nuts, pretzels, and crackers",
+        "option_b": "Plain rice cakes",
+        "option_c": "Ice water",
+        "correct_option": "a",
+        "explanation": "Real food is a legit electrolyte source. Salted trail mix, pretzels, and crackers put sodium back where it belongs.",
+        "misconception_tag": null,
+        "order_in_lesson": 4
+      },
+      {
+        "question_text": "You want potassium from food. What's on your plate?",
+        "option_a": "Bananas, potatoes, and leafy greens",
+        "option_b": "White bread and butter",
+        "option_c": "Candy and soda",
+        "correct_option": "a",
+        "explanation": "Bananas, potatoes, dark leafy greens, and citrus fruits are potassium powerhouses that support fluid balance and muscle performance.",
+        "misconception_tag": null,
+        "order_in_lesson": 5
+      },
+      {
+        "question_text": "Which combo delivers magnesium for your muscles?",
+        "option_a": "Pumpkin seeds, almonds, peanut butter, spinach, and beans",
+        "option_b": "Gummy candy",
+        "option_c": "Plain crackers",
+        "correct_option": "a",
+        "explanation": "Magnesium keeps your muscles firing and your energy metabolism strong \u2014 and it's hiding in seeds, nuts, nut butters, spinach, and beans.",
+        "misconception_tag": null,
+        "order_in_lesson": 6
+      }
+    ]
+  },
+  {
+    "level": 2,
+    "order_in_level": 1,
+    "is_myth": 0,
+    "title": "Performance Plate",
+    "hook": "Every meal is part of training \u2014 even the ones that aren't on the field.",
+    "fact_body": "A performance plate has 5 parts: whole grains for energy, lean protein for muscle, fruits and veggies for protection, healthy fats for immunity and flavor, and fluids to stay hydrated. Match it to your day \u2014 half grains on hard training days, half fruits and veggies on light days \u2014 and you're fueling like a pro, not guessing.",
+    "takeaway": "Five components, every meal \u2014 adjust the ratio to match how hard you're training.",
+    "category": "performance_plate",
+    "source_citation": "Building a Performance Plate (NCAA / SCAN / CPSDA)",
+    "points": 10,
+    "review_status": "draft",
+    "questions": [
+      {
+        "question_text": "How many components build a complete performance plate?",
+        "option_a": "5 \u2014 grains, lean protein, fruits/veggies, healthy fats, and fluids",
+        "option_b": "2 \u2014 protein and more protein",
+        "option_c": "1 \u2014 whatever's fastest",
+        "correct_option": "a",
+        "explanation": "Five components, every meal: whole grains for energy, lean protein for muscle, fruits and veggies for protection, healthy fats for immunity and flavor, and fluids to stay hydrated. Build it and own it.",
+        "misconception_tag": null,
+        "order_in_lesson": 1
+      },
+      {
+        "question_text": "Hard training day. How much of your plate should be energy foods like whole grains?",
+        "option_a": "About half the plate",
+        "option_b": "A tiny corner",
+        "option_c": "Skip the grains entirely",
+        "correct_option": "a",
+        "explanation": "Big work needs big fuel. On hard days: half your plate whole grains, a quarter lean protein, a quarter fruits and veggies \u2014 plus healthy fats and plenty of fluids.",
+        "misconception_tag": null,
+        "order_in_lesson": 2
+      },
+      {
+        "question_text": "Light training day. How does your plate change?",
+        "option_a": "Half the plate becomes fruits and veggies",
+        "option_b": "Nothing changes, ever",
+        "option_c": "Replace everything with dessert",
+        "correct_option": "a",
+        "explanation": "Lighter day, lighter fuel: half your plate fruits and veggies, a quarter grains, a quarter lean protein. Matching your plate to your day is next-level fueling.",
+        "misconception_tag": null,
+        "order_in_lesson": 3
+      },
+      {
+        "question_text": "Which of these counts as a lean, muscle-building protein?",
+        "option_a": "Grilled chicken, fish, eggs, or tofu",
+        "option_b": "Bacon double cheeseburger",
+        "option_c": "Fries",
+        "correct_option": "a",
+        "explanation": "Grilled, baked, or roasted chicken, fish, turkey, lean beef, eggs, low-fat cheese, and tofu are your recovery and muscle-building squad.",
+        "misconception_tag": null,
+        "order_in_lesson": 4
+      },
+      {
+        "question_text": "What do healthy fats like avocado, nuts, and olive oil do for you?",
+        "option_a": "Boost immunity and flavor",
+        "option_b": "Nothing useful",
+        "option_c": "Only add calories",
+        "correct_option": "a",
+        "explanation": "Healthy fats are your immunity and flavor boosters. Salmon, nuts, seeds, olive oil, avocado, and nut butters keep you healthy and make food taste great.",
+        "misconception_tag": null,
+        "order_in_lesson": 5
+      },
+      {
+        "question_text": "Which drinks make the performance plate's hydration list?",
+        "option_a": "Water, low-fat milk, and 100% fruit juice",
+        "option_b": "Energy drinks only",
+        "option_c": "Nothing \u2014 plates don't need drinks",
+        "correct_option": "a",
+        "explanation": "Every performance plate includes fluids: water, low-fat milk (dairy or soy), or 100% fruit juice. Hydration is a component, not an afterthought.",
+        "misconception_tag": null,
+        "order_in_lesson": 6
+      },
+      {
+        "question_text": "What's a hard-training-day dinner that hits all 5 components?",
+        "option_a": "Whole-grain pasta with lean meatballs, broccoli, salad with oil dressing, and milk",
+        "option_b": "Just a protein bar",
+        "option_c": "Cereal with candy",
+        "correct_option": "a",
+        "explanation": "That plate has it all: grains for energy, lean protein for muscle, veggies for antioxidants, oil-based dressing for healthy fat, and milk to hydrate. Championship dinner.",
+        "misconception_tag": null,
+        "order_in_lesson": 7
+      }
+    ]
+  },
+  {
+    "level": 2,
+    "order_in_level": 2,
+    "is_myth": 0,
+    "title": "Eating Frequency",
+    "hook": "Feeling wiped out by 3rd period? You're probably not eating often enough.",
+    "fact_body": "Consistent fuel means consistent energy \u2014 eat every 2-3 hours with meals and smart snacks (carbs + protein together: Greek yogurt + fruit, jerky + pretzels). Quick carbs before early training, a real meal within an hour after \u2014 and save new foods for regular days, never before competition.",
+    "takeaway": "Eat every 2-3 hours, pair carbs with protein, and refuel within an hour post-training.",
+    "category": "eating_frequency",
+    "source_citation": "Eating Frequency for the Student-Athlete (NCAA / ASPDA)",
+    "points": 10,
+    "review_status": "draft",
+    "questions": [
+      {
+        "question_text": "How often should an athlete eat to keep energy steady?",
+        "option_a": "Every 2-3 hours between meals",
+        "option_b": "Once a day, huge portions",
+        "option_c": "Random \u2014 whenever you remember",
+        "correct_option": "a",
+        "explanation": "Consistent fuel = consistent energy. Eat every 2-3 hours with meals and smart snacks, and you'll feel the difference in class AND at practice.",
+        "misconception_tag": null,
+        "order_in_lesson": 1
+      },
+      {
+        "question_text": "What makes a snack a SMART snack?",
+        "option_a": "Carbs + protein together",
+        "option_b": "Maximum sugar",
+        "option_c": "Whatever's in the vending machine",
+        "correct_option": "a",
+        "explanation": "Pair them up and win: Greek yogurt + fruit, jerky + pretzels, hummus + crackers, milk + cereal. Carbs restore energy, protein rebuilds muscle.",
+        "misconception_tag": null,
+        "order_in_lesson": 2
+      },
+      {
+        "question_text": "You have early morning training. What's the pre-session move?",
+        "option_a": "A quick, easily digestible carb source",
+        "option_b": "A huge greasy breakfast",
+        "option_c": "Nothing \u2014 sleep is fuel",
+        "correct_option": "a",
+        "explanation": "Quick carbs before early training \u2014 toast, a banana, cereal \u2014 support your energy and performance without weighing you down.",
+        "misconception_tag": null,
+        "order_in_lesson": 3
+      },
+      {
+        "question_text": "How soon after training should you eat a real meal?",
+        "option_a": "Within about an hour",
+        "option_b": "Whenever you get around to it",
+        "option_c": "Skip it to stay light",
+        "correct_option": "a",
+        "explanation": "Aim for a meal within an hour after training: carb-rich foods, high-quality protein, and plenty of fluids. Can't get a meal? A recovery snack starts the process.",
+        "misconception_tag": null,
+        "order_in_lesson": 4
+      },
+      {
+        "question_text": "When should you NOT experiment with new foods?",
+        "option_a": "Before big training sessions or competition",
+        "option_b": "On a rest day at home",
+        "option_c": "Never \u2014 always experiment",
+        "correct_option": "a",
+        "explanation": "Game day is not taste-test day. Know what sits well with your body, and save new foods for regular days. Compete on proven fuel.",
+        "misconception_tag": null,
+        "order_in_lesson": 5
+      },
+      {
+        "question_text": "What's the smart way to stay fueled on a packed school day?",
+        "option_a": "Pack portable performance foods in your backpack",
+        "option_b": "Skip meals and power through",
+        "option_c": "One giant meal at midnight",
+        "correct_option": "a",
+        "explanation": "Plan ahead like a pro. Portable snacks in your bag mean you can refuel every 2-3 hours between class, practice, and everything else.",
+        "misconception_tag": null,
+        "order_in_lesson": 6
+      }
+    ]
+  },
+  {
+    "level": 3,
+    "order_in_level": 1,
+    "is_myth": 0,
+    "title": "Smart Shopping & Prep",
+    "hook": "One hour of shopping and prep can upgrade your entire week of fueling.",
+    "fact_body": "Shop the perimeter first \u2014 that's where fresh produce, meats, and dairy live. Use the Rule of 3s on labels (3g fiber, 3g protein), grab Greek yogurt over regular (3x the protein), and stock frozen produce \u2014 it's just as nutrient-packed and never spoils. Never shop hungry, and skip the sale if it's not already on your list.",
+    "takeaway": "Shop the perimeter, read labels, and prep ahead \u2014 it pays off in every meal all week.",
+    "category": "smart_shopping_prep",
+    "source_citation": "Fueling To Win: Smart Shopping Strategies (SportsRD.org)",
+    "points": 10,
+    "review_status": "draft",
+    "questions": [
+      {
+        "question_text": "Where do the freshest, least-processed foods live in the grocery store?",
+        "option_a": "The perimeter \u2014 the outside edges",
+        "option_b": "The candy aisle",
+        "option_c": "The checkout racks",
+        "correct_option": "a",
+        "explanation": "Shop the perimeter first: fresh produce, meats, and dairy. The center aisles have their wins too, but the edges are where fresh lives.",
+        "misconception_tag": null,
+        "order_in_lesson": 1
+      },
+      {
+        "question_text": "What's the Rule of 3s for choosing cereal?",
+        "option_a": "At least 3g fiber AND 3g protein",
+        "option_b": "3 flavors in one box",
+        "option_c": "Under 3 dollars",
+        "correct_option": "a",
+        "explanation": "Read the label like a pro: a performance cereal brings at least 3 grams of fiber and 3 grams of protein per serving.",
+        "misconception_tag": null,
+        "order_in_lesson": 2
+      },
+      {
+        "question_text": "Which yogurt should a performance-minded athlete grab?",
+        "option_a": "Greek yogurt \u2014 about 3x the protein",
+        "option_b": "Any dessert yogurt",
+        "option_c": "Yogurt-covered raisins",
+        "correct_option": "a",
+        "explanation": "Greek yogurt delivers roughly three times more protein than regular yogurt. Same aisle, triple the muscle support.",
+        "misconception_tag": null,
+        "order_in_lesson": 3
+      },
+      {
+        "question_text": "What should you look for when buying lean meat?",
+        "option_a": "Words like 'round' or 'loin' and 90%+ lean",
+        "option_b": "Maximum marbling",
+        "option_c": "The biggest package",
+        "correct_option": "a",
+        "explanation": "Cuts named 'round' or 'loin,' less marbling, and 90% lean or higher \u2014 that's how you shop for muscle fuel.",
+        "misconception_tag": null,
+        "order_in_lesson": 4
+      },
+      {
+        "question_text": "Which milk swap actually matches cow's milk for protein?",
+        "option_a": "Soy milk",
+        "option_b": "Almond milk",
+        "option_c": "Rice milk",
+        "correct_option": "a",
+        "explanation": "If you're skipping dairy, soy milk holds its own on protein. Almond milk brings only about 1 gram per cup \u2014 not enough to fuel recovery.",
+        "misconception_tag": null,
+        "order_in_lesson": 5
+      },
+      {
+        "question_text": "What are the 3 F's of buying produce?",
+        "option_a": "Fresh & Frozen First",
+        "option_b": "Fried Foods Forever",
+        "option_c": "Fancy, Foreign, and Free",
+        "correct_option": "a",
+        "explanation": "Fresh and Frozen First! Frozen produce is just as nutrient-packed as fresh and won't spoil \u2014 stock that freezer with confidence.",
+        "misconception_tag": null,
+        "order_in_lesson": 6
+      },
+      {
+        "question_text": "What's a 60-second recovery meal you can make with a microwave?",
+        "option_a": "Egg and cheese sandwich in a mug",
+        "option_b": "A 3-hour roast",
+        "option_c": "Nothing \u2014 microwaves can't cook",
+        "correct_option": "a",
+        "explanation": "Whisk an egg in a mug, microwave 60 seconds, slide it onto a whole wheat English muffin with cheese. Real fuel, faster than a drive-thru.",
+        "misconception_tag": null,
+        "order_in_lesson": 7
+      }
+    ]
+  },
+  {
+    "level": 4,
+    "order_in_level": 1,
+    "is_myth": 0,
+    "title": "Nutrient Timing",
+    "hook": "WHEN you eat matters as much as WHAT you eat.",
+    "fact_body": "Fuel for the work you expect to do: a full meal 3-4 hours before training, a carb snack 30-60 minutes out. After training, carbs + protein within 30 minutes kicks off recovery. Use the Talk Test to gauge intensity on the fly, and in the days before a big competition, shift to a higher-carb plate to load your muscles with stored energy.",
+    "takeaway": "Pre-fuel for the work ahead, refuel within 30 minutes after, and load up before competition.",
+    "category": "nutrient_timing",
+    "source_citation": "Macronutrient Timing & Periodization (ASPDA)",
+    "points": 10,
+    "review_status": "draft",
+    "questions": [
+      {
+        "question_text": "When should you eat your full pre-training meal?",
+        "option_a": "About 3-4 hours before",
+        "option_b": "Five minutes before warm-up",
+        "option_c": "Timing doesn't matter",
+        "correct_option": "a",
+        "explanation": "Give your body time to turn food into fuel \u2014 a full meal 3-4 hours out. Fuel for the work you EXPECT to do: bigger session, bigger fuel.",
+        "misconception_tag": null,
+        "order_in_lesson": 1
+      },
+      {
+        "question_text": "What's the move 30-60 minutes before training?",
+        "option_a": "A carb snack to top off your energy stores",
+        "option_b": "A full three-course dinner",
+        "option_c": "Nothing, ever",
+        "correct_option": "a",
+        "explanation": "Top off the tank! A carb-focused snack \u2014 banana, pretzels, granola bar \u2014 30-60 minutes out primes your muscles with ready-to-use energy.",
+        "misconception_tag": null,
+        "order_in_lesson": 2
+      },
+      {
+        "question_text": "Practice just ended. What's your recovery window move?",
+        "option_a": "Carbs + protein within about 30 minutes",
+        "option_b": "Wait until dinner",
+        "option_c": "Protein only, skip the carbs",
+        "correct_option": "a",
+        "explanation": "The first 30 minutes kick off recovery. Carbs refill your energy tank, protein rebuilds muscle. Chocolate milk, yogurt with granola, or a turkey wrap \u2014 then a full meal within a few hours.",
+        "misconception_tag": null,
+        "order_in_lesson": 3
+      },
+      {
+        "question_text": "How can you judge your training intensity without any equipment?",
+        "option_a": "The Talk Test",
+        "option_b": "Guessing",
+        "option_c": "Asking a teammate",
+        "correct_option": "a",
+        "explanation": "Easy: you can talk AND sing. Medium: you can talk but not sing. High: only a few words at a time. Match your fuel to your intensity like a pro.",
+        "misconception_tag": null,
+        "order_in_lesson": 4
+      },
+      {
+        "question_text": "Your workout is under 45 minutes. Do you need carbs DURING it?",
+        "option_a": "No \u2014 you're already fueled",
+        "option_b": "Yes, constantly",
+        "option_c": "Only candy works",
+        "correct_option": "a",
+        "explanation": "Short sessions run on the fuel you already have. Save the mid-workout carbs and sports drinks for longer sessions \u2014 that's when they pay off.",
+        "misconception_tag": null,
+        "order_in_lesson": 5
+      },
+      {
+        "question_text": "What happens 3 days before a big competition?",
+        "option_a": "Carbs go UP to load your muscles with energy",
+        "option_b": "Stop eating to feel light",
+        "option_c": "Nothing changes",
+        "correct_option": "a",
+        "explanation": "Championship move: about three days out, shift to a high-carb performance plate. Your muscles stock up on stored energy so you hit peak power on game day.",
+        "misconception_tag": null,
+        "order_in_lesson": 6
+      },
+      {
+        "question_text": "What does 'periodization' mean in fueling?",
+        "option_a": "Adjusting your fuel to match your training \u2014 by day, week, and season",
+        "option_b": "Eating the same thing forever",
+        "option_c": "Only eating during your sport's season",
+        "correct_option": "a",
+        "explanation": "Fuel for the work required. Your nutrition shifts with your training day, your training week, and your season \u2014 pre-season, in-season, championship taper, and offseason each get their own game plan.",
+        "misconception_tag": null,
+        "order_in_lesson": 7
+      }
+    ]
+  }
+]

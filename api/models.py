@@ -320,6 +320,18 @@ class MealPlanGenerateRequest(BaseModel):
     overwrite_existing: bool = False
 
 
+class FuelIQQuizAnswer(BaseModel):
+    selected_option: str
+
+
+class FuelIQLessonComplete(BaseModel):
+    perfect_quiz: bool = False
+
+
+class FuelIQDailyChallengeVerdict(BaseModel):
+    guess: str
+
+
 class OTPRequest(BaseModel):
     email: str
 

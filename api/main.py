@@ -28,14 +28,19 @@ async def lifespan(app: FastAPI):
     # ignored by Starlette when a lifespan handler is set.
     try:
         from api.services.notification_service import run_notification_tick
+        from api.services.fueliq_notification_service import run_fueliq_notification_tick
         from api.services.ics_sync import build_calendar_sync_job, configure_calendar_sync_startup
         from api.services.health_service import instrument_job, run_health_tick, run_health_daily
+        from api.services.fueliq_daily_challenge_service import run_daily_challenge_push
         from api.services.grocery_reset_service import run_grocery_reset_tick
         from api.services.grocery_reminder_service import run_grocery_reminder_tick
         # Wrap the two existing jobs so they record scheduler heartbeats — no change
         # to the jobs' own logic; the wrapper only stamps last_run/last_success.
         _scheduler.add_job(instrument_job("notifications", run_notification_tick), "interval", minutes=15,
                            id="notifications", replace_existing=True)
+        _scheduler.add_job(instrument_job("fueliq_notifications", run_fueliq_notification_tick),
+                           "interval", minutes=15,
+                           id="fueliq_notifications", replace_existing=True)
         _scheduler.add_job(run_grocery_reset_tick, "interval", minutes=15,
                            id="grocery_reset", replace_existing=True)
         _scheduler.add_job(run_grocery_reminder_tick, "interval", minutes=15,
@@ -50,6 +55,14 @@ async def lifespan(app: FastAPI):
                            id="health", replace_existing=True)
         _scheduler.add_job(run_health_daily, "cron", hour=9,
                            id="health_daily", replace_existing=True)
+        # Fuel IQ Daily Challenge: announce the day's challenge once, at a fixed
+        # 5pm Pacific — explicit IANA timezone (not server-local) so it stays
+        # correct across the PST/PDT transition. instrument_job() gives it the
+        # same System Health heartbeat as the other daily jobs; the job itself
+        # is separately guarded against double-send via push_sent_at.
+        _scheduler.add_job(instrument_job("daily_challenge_push", run_daily_challenge_push),
+                           "cron", hour=17, timezone="America/Los_Angeles",
+                           id="daily_challenge_push", replace_existing=True)
         from api.services.snapshot_job import generate_all_snapshots
         _scheduler.add_job(
             generate_all_snapshots, "cron", hour=23,
@@ -59,7 +72,8 @@ async def lifespan(app: FastAPI):
         if not _scheduler.running:
             _scheduler.start()
         configure_calendar_sync_startup(_scheduler)
-        logger.info("Schedulers started (notifications 15-min, calendar sync 6-hr, health 15-min + daily, "
+        logger.info("Schedulers started (notifications 15-min, fueliq_notifications 15-min, "
+                    "calendar sync 6-hr, health 15-min + daily, daily challenge push 5pm PT, "
                     "grocery reset 15-min, grocery reminder 15-min, teamcoach snapshot 11pm PT).")
     except Exception:
         logger.exception("Scheduler failed to start")
@@ -70,7 +84,7 @@ async def lifespan(app: FastAPI):
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics, admin_health, admin_overview, admin_action_hub, plate, instacart_feedback, instacart, teamcoach_auth, teamcoach_admin, teamcoach_dashboard
+from api.routes import parents, athletes, events, nutrition, meals, recipes, analysis, reports, notifications, meal_plans, meal_plan_selections, today, water, knowledge, legal, library, auth, fuel_report, report_config, coach, shopping, support, onboarding, pantry, feedback, calendar, admin, admin_analytics, admin_health, admin_overview, admin_action_hub, plate, fueliq, fueliq_daily_challenge, instacart_feedback, instacart, teamcoach_auth, teamcoach_admin, teamcoach_dashboard
 from api.services import db_migrations
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -123,6 +137,8 @@ app.include_router(admin_analytics.router, prefix="/api/admin",           tags=[
 app.include_router(admin_health.router,    prefix="/api/admin",           tags=["28. Admin Health"])
 app.include_router(admin_overview.router,  prefix="/api/admin",           tags=["29. Admin Overview"])
 app.include_router(admin_action_hub.router, prefix="/api/admin",          tags=["30. Admin Action Hub"])
+app.include_router(fueliq.router,        prefix="/api/athletes",      tags=["31. Fuel IQ"])
+app.include_router(fueliq_daily_challenge.router, prefix="/api/athletes", tags=["32. Fuel IQ Daily Challenge"])
 app.include_router(teamcoach_auth.router, prefix="/api/team-coach/auth", tags=["33. TeamCoach Auth"])
 app.include_router(teamcoach_admin.router, prefix="/api/admin/team-coach", tags=["34. TeamCoach Admin"])
 app.include_router(teamcoach_dashboard.router, prefix="/api/team-coach/teams", tags=["35. TeamCoach Dashboard"])

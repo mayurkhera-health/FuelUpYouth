@@ -106,14 +106,23 @@ def already_logged(athlete_id: int, window_key: str, date_str: str, conn) -> boo
 
 # ── Expo push ──────────────────────────────────────────────────────────────────
 
-def send_expo_push(tokens: list[str], title: str, body: str, record: bool = True) -> bool:
+def send_expo_push(
+    tokens: list[str], title: str, body: str, record: bool = True, data: dict | None = None
+) -> bool:
     """Send one Expo push batch. Returns True on a successful POST. `record`
     (default True) logs the outcome for the System Health passive expo_push check;
-    alert sends pass record=False so they don't pollute that signal. Never raises."""
+    alert sends pass record=False so they don't pollute that signal. `data`
+    (optional) is Expo's tap-payload — read by the mobile app's
+    useNotificationHandler to route a tap to the right screen; omitted
+    entirely (not sent as `data: null`) when not provided, so existing
+    callers are unaffected. Never raises."""
     if DRY_RUN:
-        log.info("[DRY RUN] push → %s | %r | %r", tokens, title, body)
+        log.info("[DRY RUN] push → %s | %r | %r | data=%r", tokens, title, body, data)
         return True
-    messages = [{"to": t, "title": title, "body": body, "sound": "default"} for t in tokens]
+    messages = [
+        {"to": t, "title": title, "body": body, "sound": "default", **({"data": data} if data else {})}
+        for t in tokens
+    ]
     ok = False
     detail = ""
     try:

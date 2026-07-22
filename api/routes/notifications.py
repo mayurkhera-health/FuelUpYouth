@@ -73,6 +73,33 @@ class NotificationPrefs(BaseModel):
     remind_hydration:     Optional[bool] = True
 
 
+class FuelIQNotifPrefs(BaseModel):
+    athlete_id:       int
+    morning_enabled:  bool = True
+    pregame_enabled:  bool = True
+
+
+@router.patch("/fueliq-prefs")
+def update_fueliq_notif_prefs(data: FuelIQNotifPrefs):
+    """Upsert per-athlete Fuel IQ notification prefs. Called by the mobile
+    settings screen whenever either toggle changes."""
+    conn = get_conn()
+    try:
+        conn.execute(
+            """INSERT INTO fueliq_notification_prefs (athlete_id, morning_enabled, pregame_enabled)
+               VALUES (?, ?, ?)
+               ON CONFLICT(athlete_id) DO UPDATE SET
+               morning_enabled = excluded.morning_enabled,
+               pregame_enabled = excluded.pregame_enabled,
+               updated_at      = datetime('now')""",
+            (data.athlete_id, int(data.morning_enabled), int(data.pregame_enabled)),
+        )
+        conn.commit()
+        return {"ok": True}
+    finally:
+        conn.close()
+
+
 @router.get("/vapid-public-key")
 def get_vapid_public_key():
     return {"publicKey": VAPID_PUBLIC_KEY}

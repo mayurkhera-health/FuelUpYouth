@@ -18,6 +18,7 @@ from api.services.notification_service import (
     select_notification_windows,
     already_logged,
     send_notification_guarded,
+    send_expo_push,
 )
 
 
@@ -317,6 +318,46 @@ class TestSendNotificationGuarded:
         )
         assert result is True
         assert len(sent) == 1, "real send after dry-run should not be suppressed"
+
+
+class TestSendExpoPush:
+    def test_data_payload_is_included_when_provided(self, monkeypatch):
+        import api.services.notification_service as svc
+        monkeypatch.setattr(svc, "DRY_RUN", False)
+
+        captured = {}
+
+        class FakeResponse:
+            status_code = 200
+
+        def fake_post(url, json, timeout):
+            captured["messages"] = json
+            return FakeResponse()
+
+        monkeypatch.setattr(svc.requests, "post", fake_post)
+        ok = send_expo_push(
+            ["ExponentPushToken[abc]"], "Title", "Body",
+            record=False, data={"type": "daily_challenge"},
+        )
+        assert ok is True
+        assert captured["messages"][0]["data"] == {"type": "daily_challenge"}
+
+    def test_no_data_key_when_not_provided_backward_compatible(self, monkeypatch):
+        import api.services.notification_service as svc
+        monkeypatch.setattr(svc, "DRY_RUN", False)
+
+        captured = {}
+
+        class FakeResponse:
+            status_code = 200
+
+        def fake_post(url, json, timeout):
+            captured["messages"] = json
+            return FakeResponse()
+
+        monkeypatch.setattr(svc.requests, "post", fake_post)
+        send_expo_push(["ExponentPushToken[abc]"], "Title", "Body", record=False)
+        assert "data" not in captured["messages"][0]
 
     def test_different_recipient_is_independent(self, notif_conn, monkeypatch):
         sent = []

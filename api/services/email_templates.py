@@ -257,7 +257,6 @@ def feature_idea_email(parent_name: str, feature_idea_summary: str, idea_id, sub
     )
 
 
-
 # ---------------------------------------------------------------------------
 # Template 4: Calendar first-sync confirmation
 # Sent once per platform when a parent connects BYGA or PlayMetrics for the

@@ -1,0 +1,62 @@
+[
+  {
+    "title": "Eat Less on Rest Days",
+    "hook": "You need to eat less on rest days",
+    "verdict": "myth",
+    "science_text": "Rest days are when your body repairs. Dropping food significantly slows recovery."
+  },
+  {
+    "title": "Sports Drinks Beat Water in Practice",
+    "hook": "Sports drinks are better than water during practice",
+    "verdict": "myth",
+    "science_text": "For sessions under 60-75 minutes, water is enough. Sports drinks matter for long matches and tournaments, not every training session."
+  },
+  {
+    "title": "Eating Fat Makes You Fat",
+    "hook": "Eating fat makes you fat",
+    "verdict": "myth",
+    "science_text": "Healthy fats (eggs, nuts, avocado) support joint health and hormone development — critical for 12-18 year olds still growing."
+  },
+  {
+    "title": "Skip Breakfast to Save Calories",
+    "hook": "Skipping breakfast saves calories",
+    "verdict": "myth",
+    "science_text": "A player who skips breakfast trains on empty. Muscle gets broken down for fuel instead."
+  },
+  {
+    "title": "Red Meat Is Bad for Athletes",
+    "hook": "Red meat is bad for athletes",
+    "verdict": "myth",
+    "science_text": "Lean red meat is one of the best sources of iron and zinc — both directly tied to energy and immune function."
+  },
+  {
+    "title": "Hydrate Only on Match Day",
+    "hook": "You only need to hydrate on match day",
+    "verdict": "myth",
+    "science_text": "Hydration is cumulative. Showing up dehydrated to a match because you didn't drink enough the day before is very common in youth players."
+  },
+  {
+    "title": "More Protein Always Means More Muscle",
+    "hook": "More protein always means more muscle",
+    "verdict": "myth",
+    "science_text": "Excess protein beyond what the body can use gets stored as fat or excreted. Total calories and training load determine muscle gain."
+  },
+  {
+    "title": "Fruit Has Too Much Sugar",
+    "hook": "Fruit has too much sugar",
+    "verdict": "myth",
+    "science_text": "The sugar in whole fruit comes with fiber, water, and micronutrients. It behaves completely differently in the body than added sugar."
+  },
+  {
+    "title": "Skip Eating After a Late-Night Game",
+    "hook": "You don't need to eat after a late-night game",
+    "verdict": "myth",
+    "science_text": "The recovery window after a match is when muscles reload glycogen. Skipping it means arriving to the next session already behind."
+  },
+  {
+    "title": "Tired Means More Sleep, Not More Food",
+    "hook": "Feeling tired means you need more sleep, not food",
+    "verdict": "myth",
+    "science_text": "Fatigue in youth athletes is often under-fueling. Low energy intake is one of the most under-diagnosed issues in the 12-18 age group."
+  }
+]
