@@ -30,6 +30,12 @@ export async function fetchTeams() {
   return res.json()
 }
 
+export async function fetchMe() {
+  const res = await apiFetch('/api/team-coach/auth/me')
+  if (!res.ok) return null
+  return res.json()
+}
+
 export async function fetchRoster(teamId) {
   const res = await apiFetch(`/api/team-coach/teams/${teamId}/roster`)
   if (!res.ok) throw new Error('Failed to load roster')

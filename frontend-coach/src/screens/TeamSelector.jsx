@@ -53,8 +53,11 @@ function trendGlyph(cur, prior) {
 
 function fmtDate(d) {
   if (!d) return null
-  return new Date(d + (d.includes('T') ? '' : 'T00:00:00Z'))
-    .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  // SQLite returns "2026-07-22 01:31:26" — replace space so Date can parse it
+  const iso = d.includes('T') ? d : d.replace(' ', 'T')
+  const dt = new Date(iso)
+  if (isNaN(dt)) return null
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export default function TeamSelector({ teamsData, onSelect }) {
@@ -72,7 +75,7 @@ export default function TeamSelector({ teamsData, onSelect }) {
 
       {teams.map((t, i) => {
         const glyph = trendGlyph(t.current_week, t.prior_week)
-        const above = t.current_week?.players_above_threshold ?? '—'
+        const above = t.current_week ? t.current_week.players_above_threshold : 0
         const total = t.roster_count ?? t.joined_count ?? '—'
 
         return (

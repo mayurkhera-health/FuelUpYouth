@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { setToken, clearToken, fetchTeams, getCoachName, setCoachName } from './api.js'
+import { setToken, clearToken, fetchTeams, fetchMe, getCoachName, setCoachName } from './api.js'
 import AppShell from './AppShell.jsx'
 import Login from './screens/Login.jsx'
 import TeamSelector from './screens/TeamSelector.jsx'
@@ -18,8 +18,12 @@ export default function App() {
 
   async function loadTeams() {
     try {
-      const data = await fetchTeams()
+      const [data, me] = await Promise.all([
+        fetchTeams(),
+        getCoachName() ? Promise.resolve(null) : fetchMe(),
+      ])
       setTeamsData(data)
+      if (me?.name) { setCoachName(me.name); setCoachNameState(me.name) }
       setView('dashboard')
     } catch {
       clearToken(); setView('login')
