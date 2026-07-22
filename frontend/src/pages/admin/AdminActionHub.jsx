@@ -53,7 +53,7 @@ export default function AdminActionHub({ onLoggedOut, onNavigate }) {
             <h2 style={{ font: `800 18px ${FONT_DISPLAY}`, color: C.text1, margin: 0 }}>Attention required</h2>
             <span style={{
               font: `800 12px ${FONT_DISPLAY}`,
-              color: data.urgent_count > 0 ? "#991b1b" : "#065f46",
+              color: data.urgent_count > 0 ? "#991b1b" : "#1E5A45",
               background: data.urgent_count > 0 ? "#fee2e2" : C.brandPale,
               borderRadius: 999, padding: "2px 10px",
             }}>
