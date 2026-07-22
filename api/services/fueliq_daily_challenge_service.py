@@ -25,7 +25,7 @@ from api.services import fueliq_service as fq
 from api.services import notification_service
 
 _PUSH_TITLE = "⚡ Daily Challenge"
-_PUSH_BODY = "Real or myth? Answer now — keep your streak going."
+_PUSH_BODY = "Your daily Fuel IQ challenge is ready."
 
 _PST = ZoneInfo("America/Los_Angeles")
 _VALID_VERDICTS = {"real", "myth"}

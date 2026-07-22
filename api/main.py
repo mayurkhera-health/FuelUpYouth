@@ -28,6 +28,7 @@ async def lifespan(app: FastAPI):
     # ignored by Starlette when a lifespan handler is set.
     try:
         from api.services.notification_service import run_notification_tick
+        from api.services.fueliq_notification_service import run_fueliq_notification_tick
         from api.services.ics_sync import build_calendar_sync_job, configure_calendar_sync_startup
         from api.services.health_service import instrument_job, run_health_tick, run_health_daily
         from api.services.fueliq_daily_challenge_service import run_daily_challenge_push
@@ -35,6 +36,9 @@ async def lifespan(app: FastAPI):
         # to the jobs' own logic; the wrapper only stamps last_run/last_success.
         _scheduler.add_job(instrument_job("notifications", run_notification_tick), "interval", minutes=15,
                            id="notifications", replace_existing=True)
+        _scheduler.add_job(instrument_job("fueliq_notifications", run_fueliq_notification_tick),
+                           "interval", minutes=15,
+                           id="fueliq_notifications", replace_existing=True)
         # calendar_sync is registered via build_calendar_sync_job() (instrument + skip-
         # if-running lock); configure_calendar_sync_startup() then handles Option B
         # (catch-up if stale/initial, re-anchor next run if fresh) — see ics_sync.py.
@@ -56,8 +60,8 @@ async def lifespan(app: FastAPI):
         if not _scheduler.running:
             _scheduler.start()
         configure_calendar_sync_startup(_scheduler)
-        logger.info("Schedulers started (notifications 15-min, calendar sync 6-hr, health 15-min + daily, "
-                    "daily challenge push 5pm PT).")
+        logger.info("Schedulers started (notifications 15-min, fueliq_notifications 15-min, "
+                    "calendar sync 6-hr, health 15-min + daily, daily challenge push 5pm PT).")
     except Exception:
         logger.exception("Scheduler failed to start")
 
