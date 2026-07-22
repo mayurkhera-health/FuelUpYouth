@@ -98,6 +98,14 @@ function ShimmerCard() {
 // ── main component ────────────────────────────────────────────────────────────
 
 const s = {
+  page: {
+    minHeight: '100vh',
+    backgroundImage: [
+      'radial-gradient(ellipse 75% 50% at 78% -5%, rgba(61,252,61,0.09) 0%, transparent 55%)',
+      'radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px)',
+    ].join(', '),
+    backgroundSize: 'auto, 30px 30px',
+  },
   wrap:  { padding: '24px 20px', maxWidth: 680, margin: '0 auto' },
   header: { marginBottom: 24 },
   title:  { fontWeight: 800, fontSize: 26, color: '#fff', lineHeight: 1.1 },
@@ -162,7 +170,8 @@ export default function TeamSelector({ teamsData, onSelect, loading }) {
   const overallPct   = totalRoster > 0 ? (totalAbove / totalRoster) * 100 : 0
 
   return (
-    <div style={s.wrap}>
+    <div style={s.page}>
+      <div style={s.wrap}>
       <div style={s.header}>
         <div style={s.title}>My Teams</div>
         <div style={s.subtitle}>
@@ -252,6 +261,7 @@ export default function TeamSelector({ teamsData, onSelect, loading }) {
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }
