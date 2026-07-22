@@ -48,7 +48,8 @@ def get_roster(team_id: int) -> list[dict]:
     conn = get_read_conn()
     try:
         rows = conn.execute(
-            """SELECT a.id AS athlete_id, a.first_name,
+            """SELECT a.id AS athlete_id, a.first_name, a.age, a.gender,
+                      a.position, a.competition_level,
                       rm.parent_consent_flag, rm.joined_at
                FROM roster_membership rm
                JOIN athletes a ON a.id = rm.athlete_id
@@ -61,14 +62,28 @@ def get_roster(team_id: int) -> list[dict]:
             result.append({
                 "athlete_id": r["athlete_id"],
                 "first_name": r["first_name"],
+                "age": r["age"],
+                "gender": r["gender"],
+                "position": r["position"],
+                "competition_level": r["competition_level"],
                 "join_status": "joined",
                 "logging_status": _logging_status(conn, r["athlete_id"]),
+                "last_logged_at": _last_logged(conn, r["athlete_id"]),
                 "parent_consent_flag": bool(r["parent_consent_flag"]),
                 "joined_at": r["joined_at"],
             })
         return result
     finally:
         conn.close()
+
+
+def _last_logged(conn, athlete_id: int) -> str | None:
+    row = conn.execute(
+        """SELECT MAX(date) AS last_date FROM fueling_window_log
+           WHERE athlete_id = ? AND completed = 1""",
+        (athlete_id,),
+    ).fetchone()
+    return row["last_date"] if row and row["last_date"] else None
 
 
 def _logging_status(conn, athlete_id: int) -> str:
