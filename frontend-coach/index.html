@@ -136,6 +136,20 @@
         border-radius: 6px;
       }
 
+      /* ── Roster wrap ────────────────────────────────────────────────────── */
+      .roster-wrap {
+        padding: 32px 40px;
+        max-width: 1040px;
+        margin: 0 auto;
+      }
+      @media (max-width: 1023px) {
+        .roster-wrap { padding: 24px 24px; }
+      }
+      @media (max-width: 639px) {
+        .roster-wrap { padding: 18px 16px; }
+        .roster-wrap h1 { font-size: 26px !important; }
+      }
+
       /* ── Reduced motion ──────────────────────────────────────────────────── */
       @media (prefers-reduced-motion: reduce) {
         .nav-drawer, .team-card, * {
