@@ -138,8 +138,7 @@ function MetricGrid({ teams }) {
   const joinedPct   = totalRoster > 0 ? Math.round((totalJoined / totalRoster) * 100) : 0
 
   return (
-    <div style={{
-      display: 'flex',
+    <div className="stats-strip" style={{
       background: T.surface,
       border: `1px solid ${T.border}`,
       borderRadius: 16,
@@ -179,8 +178,7 @@ function MetricGrid({ teams }) {
 
 function LoadingMetricGrid() {
   return (
-    <div style={{
-      display: 'flex',
+    <div className="stats-strip" style={{
       background: T.surface,
       border: `1px solid ${T.border}`,
       borderRadius: 16,

@@ -150,6 +150,24 @@
         .roster-wrap h1 { font-size: 26px !important; }
       }
 
+      /* ── Stats strip ────────────────────────────────────────────────────── */
+      .stats-strip {
+        display: flex;
+        flex-direction: row;
+      }
+      @media (max-width: 639px) {
+        .stats-strip {
+          flex-direction: column;
+        }
+        .stats-strip > * {
+          border-right: none !important;
+          border-bottom: 1px solid #DDE5E0;
+        }
+        .stats-strip > *:last-child {
+          border-bottom: none !important;
+        }
+      }
+
       /* ── Reduced motion ──────────────────────────────────────────────────── */
       @media (prefers-reduced-motion: reduce) {
         .nav-drawer, .team-card, * {
