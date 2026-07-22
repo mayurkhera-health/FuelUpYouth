@@ -9,6 +9,7 @@ const T = {
   border:    '#DDE5E0',
   attention: '#F59E0B',
   attnBg:    '#FFF7E6',
+  attn:      '#B86600',
   success:   '#1E9E57',
   successBg: '#EAF7EF',
 }
@@ -211,13 +212,24 @@ function LoadingMetricGrid() {
 
 // ── TeamSummaryCard ───────────────────────────────────────────────────────────
 
+function cardInsight(above, total, fillPct, threshold, good) {
+  if (total === 0) return 'No athletes on roster yet.'
+  if (above === 0) return 'No athletes logged activity this week — consider following up.'
+  if (above === total) return `All ${total} athletes logged this week. Great engagement.`
+  if (good) return `${above} of ${total} athletes logged — team is on track for the ${threshold}% target.`
+  const missing = total - above
+  return `${missing} athlete${missing !== 1 ? 's' : ''} haven't logged yet — below the ${threshold}% target.`
+}
+
 function TeamSummaryCard({ team: t, onSelect }) {
-  const above   = t.current_week?.players_above_threshold ?? 0
-  const total   = t.roster_count ?? t.joined_count ?? 0
-  const fillPct = total > 0 ? Math.round((above / total) * 100) : 0
-  const good    = fillPct >= (t.threshold_pct ?? 70)
-  const trend   = trendGlyph(t.current_week, t.prior_week)
-  const hasData = total > 0
+  const above     = t.current_week?.players_above_threshold ?? 0
+  const total     = t.roster_count ?? t.joined_count ?? 0
+  const fillPct   = total > 0 ? Math.round((above / total) * 100) : 0
+  const threshold = t.threshold_pct ?? 70
+  const good      = fillPct >= threshold
+  const trend     = trendGlyph(t.current_week, t.prior_week)
+  const hasData   = total > 0
+  const insight   = cardInsight(above, total, fillPct, threshold, good)
 
   return (
     <div
@@ -275,7 +287,15 @@ function TeamSummaryCard({ team: t, onSelect }) {
           {' '}participation
         </span>
       </div>
-      <ProgressBar value={above} max={total} threshold={t.threshold_pct ?? 70} />
+      <ProgressBar value={above} max={total} threshold={threshold} />
+
+      {/* Insight line */}
+      <div style={{
+        marginTop: 9, fontSize: 12, color: good ? T.success : T.attn,
+        fontWeight: 500, fontStyle: 'italic',
+      }}>
+        {insight}
+      </div>
     </div>
   )
 }
