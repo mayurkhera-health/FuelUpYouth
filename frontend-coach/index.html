@@ -168,6 +168,13 @@
         }
       }
 
+      /* ── Login split layout ─────────────────────────────────────────────── */
+      /* Show illustration panel only on desktop */
+      .login-illo-panel { display: flex; }
+      @media (max-width: 767px) {
+        .login-illo-panel { display: none !important; }
+      }
+
       /* ── Reduced motion ──────────────────────────────────────────────────── */
       @media (prefers-reduced-motion: reduce) {
         .nav-drawer, .team-card, * {

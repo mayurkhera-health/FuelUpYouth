@@ -13,15 +13,48 @@ const T = {
 }
 
 const s = {
-  wrap: {
-    minHeight: '100vh', display: 'flex', alignItems: 'center',
-    justifyContent: 'center', background: T.pageBg, padding: '20px',
+  page: {
+    minHeight: '100vh',
+    display: 'flex',
+    background: T.pageBg,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  // Left illustration panel — hidden on mobile via CSS class
+  illoPanel: {
+    flex: '1 1 55%',
+    position: 'relative',
+    overflow: 'hidden',
+    // hidden below 768px via .login-illo-panel CSS class
+  },
+  illoImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    objectPosition: 'center center',
+    display: 'block',
+  },
+  // Right panel holding the card
+  rightPanel: {
+    flex: '0 0 auto',
+    width: '100%',
+    maxWidth: 480,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '40px 32px',
+    position: 'relative',
+    zIndex: 1,
+    boxSizing: 'border-box',
   },
   card: {
-    background: T.surface, borderRadius: 20, padding: '40px 36px',
-    width: '100%', maxWidth: 380,
+    background: T.surface,
+    borderRadius: 20,
+    padding: '40px 36px',
+    width: '100%',
+    maxWidth: 380,
     border: `1px solid ${T.border}`,
-    boxShadow: '0 4px 24px rgba(23, 35, 29, 0.08)',
+    boxShadow: '0 8px 32px rgba(23, 35, 29, 0.12)',
   },
   logoRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 },
   logoMark: {
@@ -73,25 +106,38 @@ export default function Login({ onLogin }) {
   }
 
   return (
-    <div style={s.wrap}>
-      <div style={s.card}>
-        <div style={s.logoRow}>
-          <div style={s.logoMark}>F</div>
-          <span style={s.brand}>FuelUp Coach</span>
+    <div style={s.page}>
+      {/* Illustration — hidden on mobile */}
+      <div className="login-illo-panel" style={s.illoPanel} aria-hidden="true">
+        <img
+          src="/login-illustration.png"
+          alt=""
+          style={s.illoImg}
+          draggable={false}
+        />
+      </div>
+
+      {/* Login card */}
+      <div style={s.rightPanel}>
+        <div style={s.card}>
+          <div style={s.logoRow}>
+            <div style={s.logoMark}>F</div>
+            <span style={s.brand}>FuelUp Coach</span>
+          </div>
+          <div style={s.sub}>Coach dashboard · Sign in to continue</div>
+          <form onSubmit={handleSubmit}>
+            <label style={s.label}>Email</label>
+            <input style={s.input} type="email" value={email}
+                   onChange={e => setEmail(e.target.value)} required autoFocus />
+            <label style={s.label}>Password</label>
+            <input style={s.input} type="password" value={password}
+                   onChange={e => setPassword(e.target.value)} required />
+            <button style={{ ...s.btn, opacity: loading ? 0.7 : 1 }} type="submit" disabled={loading}>
+              {loading ? 'Signing in…' : 'Sign In'}
+            </button>
+            {error && <div style={s.err}>{error}</div>}
+          </form>
         </div>
-        <div style={s.sub}>Coach dashboard · Sign in to continue</div>
-        <form onSubmit={handleSubmit}>
-          <label style={s.label}>Email</label>
-          <input style={s.input} type="email" value={email}
-                 onChange={e => setEmail(e.target.value)} required autoFocus />
-          <label style={s.label}>Password</label>
-          <input style={s.input} type="password" value={password}
-                 onChange={e => setPassword(e.target.value)} required />
-          <button style={{ ...s.btn, opacity: loading ? 0.7 : 1 }} type="submit" disabled={loading}>
-            {loading ? 'Signing in…' : 'Sign In'}
-          </button>
-          {error && <div style={s.err}>{error}</div>}
-        </form>
       </div>
     </div>
   )
