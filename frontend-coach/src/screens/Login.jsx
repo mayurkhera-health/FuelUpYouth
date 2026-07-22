@@ -22,21 +22,16 @@ const s = {
     position: 'relative',
   },
   // Left illustration panel — hidden on mobile via CSS class
+  // backgroundSize: '250% auto' scales the PNG so only its left ~40%
+  // (the coach+athletes illustration) fills the panel — the login card
+  // baked into the right side of the mockup PNG is clipped away.
   illoPanel: {
     flex: '0 0 52%',
     position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    background: T.pageBg,
-  },
-  illoImg: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'contain',
-    objectPosition: 'left center',
-    display: 'block',
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'left center',
+    backgroundSize: '250% auto',
+    backgroundColor: T.pageBg,
   },
   // Right panel — fills remaining space, card centered within it
   rightPanel: {
@@ -111,14 +106,11 @@ export default function Login({ onLogin }) {
   return (
     <div style={s.page}>
       {/* Illustration — hidden on mobile */}
-      <div className="login-illo-panel" style={s.illoPanel} aria-hidden="true">
-        <img
-          src={illoSrc}
-          alt=""
-          style={s.illoImg}
-          draggable={false}
-        />
-      </div>
+      <div
+        className="login-illo-panel"
+        style={{ ...s.illoPanel, backgroundImage: `url(${illoSrc})` }}
+        aria-hidden="true"
+      />
 
       {/* Login card */}
       <div style={s.rightPanel}>
