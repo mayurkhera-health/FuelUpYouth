@@ -235,13 +235,13 @@ function TeamSummaryCard({ team: t, onSelect }) {
       }} />
 
       {/* Header row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div style={{ minWidth: 0 }}>
           <h3 style={{ fontWeight: 700, fontSize: 20, color: T.primary, margin: 0, lineHeight: 1.25,
                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {t.name}
           </h3>
-          <div style={{ fontSize: 12, color: T.muted, marginTop: 3 }}>
+          <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>
             {total} athlete{total !== 1 ? 's' : ''}
           </div>
         </div>
@@ -252,12 +252,18 @@ function TeamSummaryCard({ team: t, onSelect }) {
             </span>
           )}
           <StatusPill good={good} attention={t.needs_attention} noData={!hasData} />
-          <span style={{ color: T.muted, fontSize: 22, lineHeight: 1, fontWeight: 400 }}>›</span>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            fontSize: 13, fontWeight: 700, color: T.primary,
+            background: T.neon, padding: '6px 13px', borderRadius: 8,
+          }}>
+            View team →
+          </span>
         </div>
       </div>
 
-      {/* Metrics row */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 20px', fontSize: 13, color: T.muted, marginTop: 10 }}>
+      {/* Metrics + progress */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 20px', fontSize: 13, color: T.muted, marginTop: 10 }}>
         <span>
           <strong style={{ color: T.primary, fontWeight: 700 }}>{above}</strong>
           {' '}of {total} logged
@@ -269,22 +275,7 @@ function TeamSummaryCard({ team: t, onSelect }) {
           {' '}participation
         </span>
       </div>
-
-      {/* Progress bar */}
       <ProgressBar value={above} max={total} threshold={t.threshold_pct ?? 70} />
-
-      {/* Action hint */}
-      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          fontSize: 13, fontWeight: 700, color: T.primary,
-          background: T.neon,
-          padding: '6px 14px', borderRadius: 8,
-          letterSpacing: '.01em',
-        }}>
-          View team <span style={{ fontSize: 15, lineHeight: 1 }}>→</span>
-        </span>
-      </div>
     </div>
   )
 }
