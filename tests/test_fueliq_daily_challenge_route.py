@@ -13,11 +13,22 @@ from api.database import get_conn
 from api.main import app
 
 
+def _wipe(conn):
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys=OFF")
+    for (name,) in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall():
+        conn.execute(f"DELETE FROM {name}")
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys=ON")
+
+
 @pytest.fixture
 def client():
     keepalive = get_conn()  # keep the shared in-memory DB alive across requests
     init_db()
     run_all()
+    _wipe(keepalive)  # shared in-memory DB persists across tests — start clean
     with TestClient(app) as c:
         yield c
     keepalive.close()
