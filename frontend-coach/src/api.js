@@ -1,8 +1,10 @@
 const BASE = import.meta.env.VITE_API_URL ?? ''
 
-export function getToken() { return localStorage.getItem('tc_token') }
-export function setToken(t) { localStorage.setItem('tc_token', t) }
-export function clearToken() { localStorage.removeItem('tc_token') }
+export function getToken()    { return localStorage.getItem('tc_token') }
+export function setToken(t)   { localStorage.setItem('tc_token', t) }
+export function clearToken()  { localStorage.removeItem('tc_token'); localStorage.removeItem('tc_name') }
+export function getCoachName(){ return localStorage.getItem('tc_name') ?? '' }
+export function setCoachName(n){ localStorage.setItem('tc_name', n) }
 
 async function apiFetch(path, opts = {}) {
   const token = getToken()

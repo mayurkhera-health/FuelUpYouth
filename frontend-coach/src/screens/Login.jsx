@@ -29,7 +29,7 @@ export default function Login({ onLogin }) {
     setLoading(true)
     try {
       const data = await login(email, password)
-      onLogin(data.token)
+      onLogin(data)
     } catch (err) {
       setError(err.message || 'Login failed')
     } finally {

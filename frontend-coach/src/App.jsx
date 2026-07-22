@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { setToken, clearToken, fetchTeams } from './api.js'
+import { setToken, clearToken, fetchTeams, getCoachName, setCoachName } from './api.js'
 import AppShell from './AppShell.jsx'
 import Login from './screens/Login.jsx'
 import TeamSelector from './screens/TeamSelector.jsx'
@@ -10,6 +10,7 @@ export default function App() {
   const [view, setView]               = useState('login')
   const [teamsData, setTeamsData]     = useState(null)   // {generated_at, season, teams:[]}
   const [selectedTeam, setSelectedTeam] = useState(null)
+  const [coachName, setCoachNameState]  = useState(getCoachName)
 
   useEffect(() => {
     if (localStorage.getItem('tc_token')) loadTeams()
@@ -25,9 +26,14 @@ export default function App() {
     }
   }
 
-  function onLogin(token)    { setToken(token); loadTeams() }
+  function onLogin({ token, coach_name }) {
+    setToken(token)
+    setCoachName(coach_name)
+    setCoachNameState(coach_name)
+    loadTeams()
+  }
   function onSelectTeam(t)   { setSelectedTeam(t); setView('overview') }
-  function onLogout()        { clearToken(); setTeamsData(null); setSelectedTeam(null); setView('login') }
+  function onLogout()        { clearToken(); setTeamsData(null); setSelectedTeam(null); setCoachNameState(''); setView('login') }
   function onDashboard()     { setView('dashboard') }
 
   if (view === 'login') return <Login onLogin={onLogin} />
@@ -41,6 +47,7 @@ export default function App() {
       onRoster={() => setView('roster')}
       onLogout={onLogout}
       hasTeam={!!selectedTeam}
+      coachName={coachName}
     >
       {view === 'dashboard' && (
         <TeamSelector teamsData={teamsData} onSelect={onSelectTeam} />

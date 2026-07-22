@@ -14,14 +14,17 @@ const s = {
     padding: '4px 10px',
     borderBottom: active ? '2px solid #4dbb7a' : '2px solid transparent',
   }),
+  welcome: {
+    marginLeft: 'auto', color: 'rgba(255,255,255,0.55)', fontSize: 13,
+  },
   logout: {
-    marginLeft: 'auto', color: 'rgba(255,255,255,0.5)', background: 'none',
+    marginLeft: 16, color: 'rgba(255,255,255,0.4)', background: 'none',
     border: 'none', cursor: 'pointer', fontSize: 13,
   },
   main:   { flex: 1, background: '#f5f5f5' },
 }
 
-export default function AppShell({ activeView, onDashboard, onRoster, onLogout, hasTeam, children }) {
+export default function AppShell({ activeView, onDashboard, onRoster, onLogout, hasTeam, coachName, children }) {
   return (
     <div style={s.root}>
       <nav style={s.topbar}>
@@ -30,6 +33,7 @@ export default function AppShell({ activeView, onDashboard, onRoster, onLogout, 
         {hasTeam && (
           <button style={s.link(activeView === 'roster')} onClick={onRoster}>Roster</button>
         )}
+        {coachName && <span style={s.welcome}>Welcome, {coachName}</span>}
         <button style={s.logout} onClick={onLogout}>Log out</button>
       </nav>
       <main style={s.main}>{children}</main>
