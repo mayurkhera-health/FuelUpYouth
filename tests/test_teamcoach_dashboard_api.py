@@ -55,7 +55,7 @@ def _auth():
 def test_list_teams():
     r = client.get("/api/team-coach/teams/", headers=_auth())
     assert r.status_code == 200
-    teams = r.json()
+    teams = r.json()["teams"]
     assert len(teams) == 1
     assert teams[0]["name"] == "U16"
     assert teams[0]["threshold_pct"] == 80
@@ -70,7 +70,7 @@ def test_other_coach_sees_no_teams():
     r = client.get("/api/team-coach/teams/",
                    headers={"Authorization": f"Bearer {other}"})
     assert r.status_code == 200
-    assert r.json() == []
+    assert r.json()["teams"] == []
 
 
 def test_get_roster():
