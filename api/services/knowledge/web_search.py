@@ -27,11 +27,11 @@ _USER_AGENT = "FuelUpYouth-NutritionCoach/1.0 (+https://fuelup-youth.fly.dev)"
 # noise scored 0.13-0.24. 0.45 cleanly separates the two with margin.
 _MIN_RESTAURANT_RELEVANCE = 0.45
 
-# The underlying scraper (no official API) is confirmed transiently flaky
-# under load — the exact same query returned 0 results, then 5 minutes
-# later returned 5, with no code change. One short retry absorbs that
-# without adding much latency to a request the user is already waiting on.
-_DDG_RETRY_DELAY_SECONDS = 1.5
+# One short retry on a transient failure — cheap insurance even against a
+# real API's occasional blip, not just the free scraper this replaced.
+_SEARCH_RETRY_DELAY_SECONDS = 1.5
+
+_BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
 
 
 @dataclass
@@ -67,29 +67,46 @@ def _site_filter_query(query: str) -> str:
     return f"({site_clause}) {query}"
 
 
-def _ddg_search(query: str, max_results: int) -> list[dict]:
-    """One retry on empty results or a raised exception — the scraper returns
-    an empty list (not an error) when transiently rate-limited/blocked, so an
-    empty result on the first attempt is retried once before being trusted as
-    "genuinely nothing found"."""
-    try:
-        from duckduckgo_search import DDGS
-    except ImportError as exc:
-        raise RuntimeError("duckduckgo-search is required for coach web search") from exc
+def _brave_search(query: str, max_results: int) -> list[dict]:
+    """Brave's real Web Search API — replaced the free duckduckgo_search
+    scraper, which gave unreliable/nonsense rankings for restaurant names
+    colliding with common English words ("In-N-Out" vs. "in"/"out", "Olive
+    Garden" vs. an unrelated open-source video editor called Olive), on top
+    of being transiently rate-limited under load with no signal other than
+    an empty result. Requires BRAVE_SEARCH_API_KEY.
+
+    Returns the same shape the rest of this module already expects:
+    [{"title", "href", "body"}, ...] — one retry on an empty result or a
+    raised exception before trusting the outcome, same resilience the old
+    scraper needed, kept as cheap insurance against a real API's occasional
+    blip too."""
+    api_key = os.getenv("BRAVE_SEARCH_API_KEY")
+    if not api_key:
+        raise RuntimeError("BRAVE_SEARCH_API_KEY is not configured")
 
     for attempt in range(2):
         try:
-            with DDGS() as ddgs:
-                results = list(ddgs.text(query, max_results=max_results))
+            resp = requests.get(
+                _BRAVE_SEARCH_URL,
+                headers={"X-Subscription-Token": api_key, "Accept": "application/json"},
+                params={"q": query, "count": min(max_results, 20)},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            results = [
+                {"title": r.get("title", ""), "href": r.get("url", ""), "body": r.get("description", "")}
+                for r in data.get("web", {}).get("results", [])
+            ]
         except Exception:
             if attempt == 0:
-                time.sleep(_DDG_RETRY_DELAY_SECONDS)
+                time.sleep(_SEARCH_RETRY_DELAY_SECONDS)
                 continue
             raise
         else:
             if results or attempt == 1:
                 return results
-            time.sleep(_DDG_RETRY_DELAY_SECONDS)
+            time.sleep(_SEARCH_RETRY_DELAY_SECONDS)
     return []  # unreachable — loop always returns or raises
 
 
@@ -128,7 +145,7 @@ def search_approved_sites(query: str, *, max_results: int = 5) -> list[WebSearch
         return []
 
     try:
-        hits = _ddg_search(_site_filter_query(trimmed), max_results=max_results * 2)
+        hits = _brave_search(_site_filter_query(trimmed), max_results=max_results * 2)
     except Exception:
         logger.exception("Approved-domain web search failed")
         return []
@@ -203,16 +220,16 @@ def search_restaurant_menu(
     if not name:
         return []
 
-    # Search on the restaurant name (+ city, if known) alone — appending the
-    # athlete's raw, conversational question (punctuation, filler words)
-    # reliably returns zero hits from DDG. `query` is still used below to
+    # Search on the restaurant name (+ city, if known) alone — keeps the
+    # query targeted rather than diluted with the athlete's raw, conversational
+    # phrasing (punctuation, filler words). `query` is still used below to
     # rank the fetched pages by relevance, just not the search string itself.
     search_query = f"{name} menu nutrition facts"
     if city:
         search_query += f" near {city}"
 
     try:
-        hits = _ddg_search(search_query, max_results=max_results * 2)
+        hits = _brave_search(search_query, max_results=max_results * 2)
     except Exception:
         logger.exception("Restaurant menu search failed for %r", name)
         return []
@@ -224,8 +241,8 @@ def search_restaurant_menu(
 
     # Score every candidate before ranking/truncating — an early cutoff at
     # max_results (before sorting) can lock in low-relevance hits ahead of
-    # better ones DDG happened to rank lower. Only page *fetches* stay capped
-    # (network cost); scoring itself is cheap.
+    # better ones the search API happened to rank lower. Only page *fetches*
+    # stay capped (network cost); scoring itself is cheap.
     for hit in hits:
         url = (hit.get("href") or hit.get("url") or "").strip()
         if not url or url in seen_urls:
