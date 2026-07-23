@@ -1,9 +1,12 @@
+import logging
 import os
 import time
 
 import requests
 
 from api.services.nutrition_calc import calc_age
+
+logger = logging.getLogger(__name__)
 
 
 def derive_sweat_profile(athlete: dict) -> str:
@@ -111,10 +114,19 @@ def compute_heat_flag(temp_f: float, humidity: int) -> tuple[bool, str]:
 
 def weather_context(raw: dict, location_label: str | None = None) -> dict | None:
     """Shape a raw get_weather() result into the coach-prompt-ready form —
-    heat-flag classified, with an optional resolved location name for copy."""
+    heat-flag classified, with an optional resolved location name for copy.
+    Never raises: malformed upstream data (e.g. the API returning a null
+    humidity field — a real, observed shape, not a hypothetical) just means
+    no weather enrichment for this call, not a broken coach response."""
     if raw.get("error") or raw.get("temp_f") is None:
         return None
-    heat_flag, heat_level = compute_heat_flag(float(raw["temp_f"]), int(raw.get("humidity", 50)))
+    try:
+        humidity_raw = raw.get("humidity")
+        humidity = int(humidity_raw) if humidity_raw is not None else 50
+        heat_flag, heat_level = compute_heat_flag(float(raw["temp_f"]), humidity)
+    except (TypeError, ValueError):
+        logger.warning("weather_context: unusable raw weather shape %r", raw)
+        return None
     return {
         "temp_f": raw["temp_f"],
         "humidity": raw.get("humidity"),
@@ -131,20 +143,26 @@ def resolve_weather(
     """Weather for a coach prompt: an event's own venue location always wins
     (game/practice-site weather matters more than wherever the athlete's
     phone happens to be) — falls back to device coordinates only when there's
-    no event, or the event has no stored location. None if neither resolves."""
-    has_coords = event and event.get("latitude") is not None and event.get("longitude") is not None
-    if event and (has_coords or event.get("city")):
-        raw = get_weather(city=event.get("city"), lat=event.get("latitude"), lon=event.get("longitude"))
-        return weather_context(raw)
-    if latitude is not None and longitude is not None:
-        location_label = None
-        try:
-            location_label = reverse_geocode_city(latitude, longitude)
-        except Exception:
-            pass
-        raw = get_weather(lat=latitude, lon=longitude)
-        return weather_context(raw, location_label=location_label)
-    return None
+    no event, or the event has no stored location. None if neither resolves,
+    or on any unexpected failure — this is best-effort enrichment for the
+    coach prompt and must never be the reason a real chat request breaks."""
+    try:
+        has_coords = event and event.get("latitude") is not None and event.get("longitude") is not None
+        if event and (has_coords or event.get("city")):
+            raw = get_weather(city=event.get("city"), lat=event.get("latitude"), lon=event.get("longitude"))
+            return weather_context(raw)
+        if latitude is not None and longitude is not None:
+            location_label = None
+            try:
+                location_label = reverse_geocode_city(latitude, longitude)
+            except Exception:
+                pass
+            raw = get_weather(lat=latitude, lon=longitude)
+            return weather_context(raw, location_label=location_label)
+        return None
+    except Exception:
+        logger.exception("resolve_weather failed unexpectedly")
+        return None
 
 
 _GEOCODE_TTL_SECONDS = 86400  # a coordinate's city doesn't change — cache a full day

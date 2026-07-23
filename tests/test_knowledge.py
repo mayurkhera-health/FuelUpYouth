@@ -432,6 +432,49 @@ def test_knowledge_answer_skips_weather_lookup_without_location():
     assert "HEAT ADVISORY" not in mock_converse.call_args.kwargs["system"]
 
 
+def test_knowledge_answer_survives_null_humidity_end_to_end():
+    """The actual production crash, reproduced through the real call chain
+    (not just the isolated weather.py unit) — a null-humidity API response
+    must not 500 the whole coach answer. Only mocks the network boundary
+    (_fetch_weather); resolve_weather/weather_context run for real."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.retrieval import KnowledgeChunk
+
+    mock_chunk = KnowledgeChunk(
+        chunk_id=1, item_id=1, slug="hydration",
+        title="Hydration for Youth Athletes", category="hydration",
+        source="ACSM", source_urls=["https://www.acsm.org"],
+        organization_id="acsm", organization_name="ACSM", organization_url="https://www.acsm.org",
+        applicable_age_range="9-17", tags=["hydration"],
+        review_status="approved", heading=None,
+        content="Drink water regularly during activity.", score=0.7, origin="local",
+    )
+
+    with patch("api.services.knowledge.answer._classify_coach_path",
+               return_value={"path": "knowledge", "recipe_category": None}):
+        with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):
+            with patch("api.services.knowledge.answer._todays_event", return_value=None):
+                with patch(
+                    "api.services.weather._fetch_weather",
+                    return_value={"temp_f": 92.0, "humidity": None, "description": "hazy", "error": None},
+                ):
+                    with patch("api.services.weather.reverse_geocode_city", return_value=None):
+                        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+                            with patch(
+                                "api.services.knowledge.answer.converse_text", return_value="Stay hydrated!"
+                            ) as mock_converse:
+                                result = answer_with_knowledge(
+                                    "How much water should I drink?",
+                                    {"id": 1, "first_name": "Alex", "age": 14, "gender": "female", "weight_lbs": 120},
+                                    now="2026-07-23T14:00:00",
+                                    latitude=37.33, longitude=-121.89,
+                                )
+
+    assert result["answer"] == "Stay hydrated!"
+    system_prompt = mock_converse.call_args.kwargs["system"]
+    assert "HEAT ADVISORY" in system_prompt   # still classified hot via the 50% humidity default
+
+
 def test_classifier_system_prompt_documents_capabilities():
     from api.services.knowledge.answer import _CLASSIFIER_SYSTEM
     assert "out_of_scope" in _CLASSIFIER_SYSTEM

@@ -614,7 +614,7 @@ def _todays_event(athlete_id: int, now: str | None) -> dict | None:
     if now:
         try:
             today_str = _dt.fromisoformat(now).date().isoformat()
-        except ValueError:
+        except (ValueError, TypeError):
             today_str = _date.today().isoformat()
     else:
         today_str = _date.today().isoformat()
@@ -677,7 +677,7 @@ def answer_with_knowledge(
             try:
                 from datetime import datetime as _dt
                 meal_period = _meal_period_from_time(_dt.fromisoformat(now))
-            except ValueError:
+            except (ValueError, TypeError):
                 meal_period = None
 
         city = None

@@ -16,8 +16,27 @@ import pytest
 
 from api import database as _dbmod
 from api.services import email_service
+from api.services import weather as _weathermod
 from api.services.db_migrations import run_all
 from db.setup import init_db  # opens _persistent_memory_conn as the module-DB keepalive
+
+
+@pytest.fixture(autouse=True)
+def _clean_weather_caches():
+    """
+    get_weather() and reverse_geocode_city() cache results in module-level dicts
+    (correct for prod — a single process, TTL-bounded). In tests that's a silent
+    cross-test/cross-file pollution risk: several test files use the same sample
+    coordinates (e.g. San Jose, 37.33/-121.89), so a test earlier in the run can
+    populate the cache and a later test's mocked _fetch_weather never gets called
+    at all — it just serves the earlier test's cached result instead, passing or
+    failing based on execution order rather than what it actually asserts. Caught
+    this exact failure mode while adding weather tests: a test worked in isolation
+    but failed inside the full suite.
+    """
+    _weathermod._weather_cache.clear()
+    _weathermod._geocode_cache.clear()
+    yield
 
 
 @pytest.fixture(autouse=True)

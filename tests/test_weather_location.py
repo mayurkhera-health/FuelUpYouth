@@ -147,6 +147,34 @@ def test_weather_context_none_on_error():
     assert weather.weather_context({"error": None, "temp_f": None}) is None
 
 
+def test_weather_context_null_humidity_does_not_crash():
+    """Real production crash, confirmed live: OpenWeatherMap can return
+    humidity as null (key present, value None) rather than omitting it.
+    raw.get("humidity", 50) only defaults when the key is ABSENT — a present-
+    but-None value used to reach int(None) and raise TypeError, taking down
+    the entire coach response for what's meant to be best-effort enrichment.
+    Must degrade to the 50% default, never raise."""
+    ctx = weather.weather_context({"temp_f": 92.0, "humidity": None, "description": "clear", "error": None})
+    assert ctx is not None
+    assert ctx["temp_f"] == 92.0
+    assert ctx["humidity"] is None          # preserved as-is for display
+    assert ctx["heat_flag"] is True          # classified using the 50% default
+    assert ctx["heat_level"] == "hot"
+
+
+def test_weather_context_malformed_temp_returns_none_not_raise():
+    """Any other unexpected shape from upstream (non-numeric temp, etc.)
+    degrades to no-weather rather than crashing the caller."""
+    assert weather.weather_context({"temp_f": "not-a-number", "humidity": 40, "error": None}) is None
+    assert weather.weather_context({"temp_f": 92.0, "humidity": "not-a-number", "error": None}) is None
+
+
+def test_weather_context_extreme_cold_no_heat_flag():
+    ctx = weather.weather_context({"temp_f": -10.0, "humidity": 20, "description": "frigid", "error": None})
+    assert ctx["heat_flag"] is False
+    assert ctx["heat_level"] == "none"
+
+
 def test_weather_context_shapes_result():
     ctx = weather.weather_context(
         {"temp_f": 92.0, "humidity": 40, "description": "sunny", "error": None},
@@ -210,6 +238,117 @@ def test_resolve_weather_geocode_failure_still_returns_weather(monkeypatch):
     result = weather.resolve_weather(None, latitude=1.0, longitude=2.0)
     assert result["temp_f"] == 60.0
     assert result["location_label"] is None
+
+
+def test_resolve_weather_survives_get_weather_raising(monkeypatch):
+    """resolve_weather is best-effort enrichment for the coach prompt — an
+    unexpected exception anywhere in the chain (not just the known
+    null-humidity shape) must degrade to no weather, never propagate up
+    into answer_with_knowledge / assemble_context and break the response."""
+    def boom(city=None, lat=None, lon=None):
+        raise RuntimeError("network exploded")
+
+    monkeypatch.setattr(weather, "get_weather", boom)
+    assert weather.resolve_weather(None, latitude=1.0, longitude=2.0) is None
+    assert weather.resolve_weather({"city": "Somewhere"}, None, None) is None
+
+
+def test_resolve_weather_event_with_null_humidity_does_not_crash(monkeypatch):
+    """End-to-end through the event-location branch specifically, since that
+    path is unreachable from the device-fallback tests above."""
+    monkeypatch.setattr(
+        weather, "get_weather",
+        lambda city=None, lat=None, lon=None: {"temp_f": 88.0, "humidity": None, "description": "hazy", "error": None},
+    )
+    result = weather.resolve_weather({"city": "Stadium City"}, None, None)
+    assert result is not None
+    assert result["heat_flag"] is True
+
+
+def test_reverse_geocode_place_without_state_returns_name_only(monkeypatch):
+    """International locations (or some US territories) often have no
+    'state' field — must not crash on the `if name and state` check, and
+    must still return a usable label rather than None."""
+    weather._geocode_cache.clear()
+    monkeypatch.setenv("OPENWEATHERMAP_API_KEY", "test-key")
+    monkeypatch.setattr(
+        weather.requests, "get",
+        lambda url, params=None, timeout=None: _FakeGeoResp(200, [{"name": "Tokyo", "state": None}]),
+    )
+    assert weather.reverse_geocode_city(35.68, 139.69) == "Tokyo"
+
+
+def test_reverse_geocode_network_exception_returns_none(monkeypatch):
+    weather._geocode_cache.clear()
+    monkeypatch.setenv("OPENWEATHERMAP_API_KEY", "test-key")
+
+    def boom(url, params=None, timeout=None):
+        raise ConnectionError("network down")
+
+    monkeypatch.setattr(weather.requests, "get", boom)
+    assert weather.reverse_geocode_city(37.33, -121.89) is None
+
+
+def test_get_weather_error_result_not_cached_past_its_short_ttl(monkeypatch):
+    """Error results use a much shorter TTL (60s vs 30min) so a transient
+    outage self-heals quickly instead of poisoning the cache for half an hour."""
+    weather._weather_cache.clear()
+    clock = {"t": 1000.0}
+    monkeypatch.setattr(weather, "_now", lambda: clock["t"])
+    calls = {"n": 0}
+
+    def fake_fetch(city=None, lat=None, lon=None):
+        calls["n"] += 1
+        return {"temp_f": None, "humidity": None, "description": "unknown", "error": "API down"}
+
+    monkeypatch.setattr(weather, "_fetch_weather", fake_fetch)
+    weather.get_weather(city="Denver")
+    assert calls["n"] == 1
+
+    clock["t"] += 30  # still within the 60s error TTL
+    weather.get_weather(city="Denver")
+    assert calls["n"] == 1, "must serve the cached error, not refetch yet"
+
+    clock["t"] += 40  # now 70s elapsed — past the 60s error TTL
+    weather.get_weather(city="Denver")
+    assert calls["n"] == 2, "must refetch once the short error TTL expires"
+
+
+def test_get_weather_success_result_cached_for_full_ttl(monkeypatch):
+    weather._weather_cache.clear()
+    clock = {"t": 1000.0}
+    monkeypatch.setattr(weather, "_now", lambda: clock["t"])
+    calls = {"n": 0}
+
+    def fake_fetch(city=None, lat=None, lon=None):
+        calls["n"] += 1
+        return {"temp_f": 75.0, "humidity": 50, "description": "clear", "error": None}
+
+    monkeypatch.setattr(weather, "_fetch_weather", fake_fetch)
+    weather.get_weather(city="Denver")
+
+    clock["t"] += 1700  # under 30min
+    weather.get_weather(city="Denver")
+    assert calls["n"] == 1, "must still be cached under the 30min success TTL"
+
+    clock["t"] += 200  # now past 1800s total
+    weather.get_weather(city="Denver")
+    assert calls["n"] == 2
+
+
+def test_get_weather_nearby_coords_share_cache_key():
+    """Documents the intentional rounding behavior: coordinates are rounded
+    to 3 decimals (~111m) for the cache key, so two GPS reads a few meters
+    apart during the same request burst hit one cached entry rather than
+    firing duplicate API calls."""
+    weather._weather_cache.clear()
+    from unittest.mock import patch
+    with patch.object(weather, "_fetch_weather", return_value={
+        "temp_f": 70.0, "humidity": 40, "description": "clear", "error": None,
+    }) as mock_fetch:
+        weather.get_weather(lat=37.33001, lon=-121.89001)
+        weather.get_weather(lat=37.33002, lon=-121.89002)
+    assert mock_fetch.call_count == 1
 
 
 def test_reverse_geocode_is_cached(monkeypatch):

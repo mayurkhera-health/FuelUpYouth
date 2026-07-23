@@ -90,3 +90,24 @@ def test_weather_result_flows_into_context():
         ctx = assemble_context(conn=conn, latitude=37.33, longitude=-121.89, **_kwargs())
 
     assert ctx["weather"] == fake_weather
+
+
+def test_survives_resolve_weather_raising_unexpectedly():
+    """assemble_context itself has no try/except around resolve_weather —
+    it relies entirely on resolve_weather being a hardened boundary that
+    never raises. This proves that contract from assemble_context's side:
+    even if resolve_weather somehow still raised, real weather.resolve_weather
+    (not mocked here) is what actually protects this call — see
+    test_weather_location.py's test_resolve_weather_survives_get_weather_raising
+    for the boundary itself. This test exercises the REAL resolve_weather
+    (unmocked) with a null-humidity API response reaching it through the
+    full assemble_context call, end to end."""
+    conn = _conn()
+    with patch(
+        "api.services.weather._fetch_weather",
+        return_value={"temp_f": 92.0, "humidity": None, "description": "hazy", "error": None},
+    ):
+        ctx = assemble_context(conn=conn, latitude=37.33, longitude=-121.89, **_kwargs())
+
+    assert ctx["weather"] is not None
+    assert ctx["weather"]["heat_flag"] is True
