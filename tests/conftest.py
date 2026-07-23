@@ -15,8 +15,30 @@ from unittest.mock import MagicMock
 import pytest
 
 from api import database as _dbmod
+from api.services import email_service
 from api.services.db_migrations import run_all
 from db.setup import init_db  # opens _persistent_memory_conn as the module-DB keepalive
+
+
+@pytest.fixture(autouse=True)
+def _no_real_email(monkeypatch):
+    """
+    Hard block on real outbound email for the entire suite. email_service.send_email
+    reads real GMAIL_USER/GMAIL_APP_PASSWORD from the environment (e.g. a local .env
+    used for manual dev testing) — with no guard here, any test that exercises a
+    route sending a transactional email (onboarding welcome, calendar-sync digest,
+    founder alerts' email fallback, etc.) sends a REAL message via smtplib. This
+    already happened in production: dozens of real "Welcome to FuelUp" emails went
+    out to the test fixture address (tests/test_login_alerts.py's pat@example.com)
+    from every full test-suite run on a machine with real Gmail creds configured.
+
+    autouse + function-scoped so it applies to every test with zero opt-in, and a
+    test that wants to assert on send_email's own args can still monkeypatch.setattr
+    it again locally — that call runs after this one and simply wins for that test.
+    No test currently does (grep confirms zero references to email_service in
+    tests/), so this is a pure safety net, not a behavior change for any test today.
+    """
+    monkeypatch.setattr(email_service, "send_email", lambda *a, **k: True)
 
 
 @pytest.fixture(autouse=True, scope="session")
