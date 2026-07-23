@@ -824,3 +824,147 @@ def test_calculation_included_when_relevant():
                  "weight_lbs": 115, "event_type": "rest"}
             )
     assert result["answer"] is not None
+
+
+# ── persona-aware audience framing ──────────────────────────────────────────
+
+def test_audience_suffix_empty_when_persona_unset():
+    from api.services.knowledge.answer import _audience_suffix
+    assert _audience_suffix(None, {"first_name": "Alex"}) == ""
+    assert _audience_suffix("coach", {"first_name": "Alex"}) == ""  # unrecognized value
+
+
+def test_audience_suffix_parent_tone():
+    from api.services.knowledge.answer import _audience_suffix
+    suffix = _audience_suffix("parent", {"first_name": "Alex"})
+    assert "Alex's parent/guardian" in suffix
+    assert "not the athlete" in suffix
+
+
+def test_audience_suffix_athlete_tone():
+    from api.services.knowledge.answer import _audience_suffix
+    suffix = _audience_suffix("athlete", {"first_name": "Alex", "age": 14})
+    assert "speaking directly to Alex" in suffix
+    assert "age 14" in suffix
+
+
+def test_build_system_prompt_no_audience_block_without_persona():
+    from api.services.knowledge.answer import _build_system_prompt
+    prompt = _build_system_prompt(chunks=[], calc_result=None)
+    assert "AUDIENCE:" not in prompt
+
+
+def test_build_system_prompt_includes_persona_audience_block():
+    from api.services.knowledge.answer import _build_system_prompt
+    prompt = _build_system_prompt(
+        chunks=[], calc_result=None, persona="parent", athlete={"first_name": "Jamie"}
+    )
+    assert "AUDIENCE:" in prompt
+    assert "Jamie's parent/guardian" in prompt
+
+
+def test_knowledge_answer_passes_persona_into_system_prompt():
+    """End-to-end: persona sent on the request must reach the Bedrock system
+    prompt for the main knowledge-answer path."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.retrieval import KnowledgeChunk
+
+    mock_chunk = KnowledgeChunk(
+        chunk_id=1, item_id=1, slug="iron_magnesium", title="Iron Requirements",
+        category="micronutrients", source="AAP", source_urls=["https://www.aap.org"],
+        organization_id="aap", organization_name="AAP", organization_url="https://www.aap.org",
+        applicable_age_range="9-17", tags=["iron"], review_status="approved", heading="Iron",
+        content="Female athletes need 15mg iron per day.", score=0.7, origin="local",
+    )
+
+    with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):
+        with patch("api.services.knowledge.answer._call_bedrock", return_value="15mg") as mock_call:
+            answer_with_knowledge(
+                "how much iron do I need",
+                {"id": 1, "first_name": "Riley", "age": 14, "gender": "female", "weight_lbs": 120},
+                persona="athlete",
+            )
+
+    system_prompt = mock_call.call_args.args[0]
+    assert "speaking directly to Riley" in system_prompt
+
+
+def test_coach_restaurant_passes_persona_into_system_prompt():
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.web_search import RestaurantSearchResult
+
+    mock_results = [
+        RestaurantSearchResult(
+            url="https://www.pandaexpress.com/menu", title="Panda Express Menu",
+            snippet="", content="Grilled Teriyaki Chicken", score=0.9,
+        )
+    ]
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "restaurant", "recipe_category": None, "restaurant_name": "Panda Express"},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch(
+                "api.services.knowledge.web_search.search_restaurant_menu", return_value=mock_results
+            ):
+                with patch(
+                    "api.services.knowledge.answer.converse_text",
+                    return_value="**Grilled Teriyaki Chicken** is your best bet.",
+                ) as mock_converse:
+                    answer_with_knowledge(
+                        "What should I get at Panda Express?",
+                        {"id": 1, "first_name": "Jordan", "age": 13, "gender": "male", "weight_lbs": 100},
+                        persona="parent",
+                    )
+
+    system_prompt = mock_converse.call_args.kwargs["system"]
+    assert "Jordan's parent/guardian" in system_prompt
+
+
+def test_coach_out_of_scope_passes_persona_into_system_prompt():
+    from api.services.knowledge.answer import answer_with_knowledge
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "out_of_scope", "recipe_category": None, "restaurant_name": None},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch(
+                "api.services.knowledge.answer.converse_text", return_value="Ask me about fueling!"
+            ) as mock_converse:
+                answer_with_knowledge(
+                    "what's the homework due tomorrow",
+                    {"id": 1, "first_name": "Sam", "age": 12},
+                    persona="athlete",
+                )
+
+    system_prompt = mock_converse.call_args.kwargs["system"]
+    assert "speaking directly to Sam" in system_prompt
+
+
+def test_coach_recipe_opener_passes_persona_into_system_prompt():
+    from api.services.knowledge.answer import answer_with_knowledge
+
+    mock_gen_result = {
+        "recipes": [{"recipe": {"id": 1, "name": "Bites"}, "source_ingredients": []}],
+        "recipe": {"id": 1, "name": "Bites"},
+        "source_ingredients": [],
+    }
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "recipe", "recipe_category": "halftime"},
+    ):
+        with patch("api.services.recipe_generator.generate_recipe_options", return_value=mock_gen_result):
+            with patch(
+                "api.services.bedrock_client.converse_text", return_value="Let's get you fueled."
+            ) as mock_converse:
+                answer_with_knowledge(
+                    "Give me a halftime recipe",
+                    {"id": 1, "first_name": "Casey", "age": 16},
+                    persona="parent",
+                )
+
+    system_prompt = mock_converse.call_args.kwargs["system"]
+    assert "Casey's parent/guardian" in system_prompt

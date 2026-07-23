@@ -29,6 +29,7 @@ class AskRequest(BaseModel):
     now: Optional[str] = None            # client local ISO timestamp — meal-timing framing
     latitude: Optional[float] = None     # device location — restaurant search only, optional
     longitude: Optional[float] = None
+    persona: Optional[str] = None        # "parent" | "athlete" — who's asking, for response tone
 
 
 class StatusUpdate(BaseModel):
@@ -126,6 +127,7 @@ def ask_knowledge(body: AskRequest):
         now=body.now,
         latitude=body.latitude,
         longitude=body.longitude,
+        persona=body.persona,
     )
 
 

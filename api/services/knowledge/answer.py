@@ -133,6 +133,27 @@ _CALC_KEYWORDS = {
 }
 
 
+def _audience_suffix(persona: str | None, athlete: dict) -> str:
+    """Persona-aware audience framing, appended to a system prompt. Empty
+    string when persona is unset/unknown — keeps today's generic tone as the
+    default for any caller that hasn't been updated to send it."""
+    name = athlete.get("first_name", "the athlete")
+    if persona == "parent":
+        return (
+            f"\n\nAUDIENCE: You are speaking to {name}'s parent/guardian, not the athlete "
+            "directly. Help them understand what to prepare or look out for. Use a "
+            "supportive, parent-educator tone."
+        )
+    if persona == "athlete":
+        age = athlete.get("age", "13-17")
+        return (
+            f"\n\nAUDIENCE: You are speaking directly to {name}, a youth athlete (age {age}). "
+            "Use encouraging, age-appropriate language — like a knowledgeable coach talking "
+            "to them, not a textbook."
+        )
+    return ""
+
+
 def _detect_safety_flag(question: str) -> bool:
     q = question.lower()
     return any(term in q for term in _SAFETY_TERMS)
@@ -190,7 +211,7 @@ def _classify_coach_path(question: str, athlete: dict) -> dict:
         return {"path": "recipe", "recipe_category": "snack", "restaurant_name": None}
 
 
-def _answer_out_of_scope(question: str, athlete: dict) -> dict:
+def _answer_out_of_scope(question: str, athlete: dict, persona: str | None = None) -> dict:
     """Friendly redirect when the question is outside knowledge/recipe capabilities."""
     first_name = athlete.get("first_name", "there")
 
@@ -213,7 +234,7 @@ def _answer_out_of_scope(question: str, athlete: dict) -> dict:
     user = f"Athlete's first name: {first_name}\nQuestion: {question.strip()}"
     try:
         answer_text = converse_text(
-            system=_OUT_OF_SCOPE_SYSTEM,
+            system=_OUT_OF_SCOPE_SYSTEM + _audience_suffix(persona, athlete),
             user=user,
             max_tokens=256,
             temperature=0.4,
@@ -274,7 +295,7 @@ def _question_with_history(question: str, history: list[dict] | None) -> str:
     return f"{prefix}{question}" if prefix else question
 
 
-def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
+def _answer_with_recipe(question: str, athlete: dict, category: str, persona: str | None = None) -> dict:
     from api.services import recipe_generator
     from api.services.recipe_categories import resolve_category
 
@@ -338,7 +359,7 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
         "Do not list the recipes — that happens separately. "
         "End with a natural offer to show specific recipes, like: "
         "'Want me to show you a couple of options that fit?' or similar."
-    )
+    ) + _audience_suffix(persona, athlete)
 
     _opener_user = (
         f"Athlete: {first_name}, age {age}, plays {position} {sport}. "
@@ -421,6 +442,7 @@ def _answer_with_restaurant(
     restaurant_name: str,
     meal_period: str | None = None,
     city: str | None = None,
+    persona: str | None = None,
 ) -> dict:
     from api.services.knowledge.web_search import search_restaurant_menu
 
@@ -428,7 +450,7 @@ def _answer_with_restaurant(
     name = (restaurant_name or "").strip()
 
     if not name or not is_configured():
-        return _answer_out_of_scope(question, athlete)
+        return _answer_out_of_scope(question, athlete, persona=persona)
 
     try:
         results = search_restaurant_menu(name, question, city=city)
@@ -475,7 +497,7 @@ def _answer_with_restaurant(
         timing_block=timing_block,
         excerpts_text=excerpts_text,
         allergy_block=allergy_block,
-    )
+    ) + _audience_suffix(persona, athlete)
 
     try:
         answer_text = converse_text(system=system_prompt, user=question, max_tokens=400, temperature=0.4)
@@ -515,7 +537,13 @@ def _maybe_calculate(question: str, athlete: dict) -> Optional[dict]:
     return None
 
 
-def _build_system_prompt(chunks: list, calc_result: Optional[dict], weather: Optional[dict] = None) -> str:
+def _build_system_prompt(
+    chunks: list,
+    calc_result: Optional[dict],
+    weather: Optional[dict] = None,
+    persona: str | None = None,
+    athlete: Optional[dict] = None,
+) -> str:
     chunks_text = ""
     if chunks:
         for i, c in enumerate(chunks, 1):
@@ -573,7 +601,7 @@ STRICT RULES — follow these exactly:
 
 KNOWLEDGE EXCERPTS:
 {chunks_text}
-{calc_text}"""
+{calc_text}""" + _audience_suffix(persona, athlete or {})
 
 
 def _call_bedrock(system_prompt: str, user_question: str) -> str:
@@ -645,6 +673,7 @@ def answer_with_knowledge(
     now: str | None = None,
     latitude: float | None = None,
     longitude: float | None = None,
+    persona: str | None = None,
 ) -> dict:
     """
     Main RAG entry point for the Nutrition Coach.
@@ -654,6 +683,8 @@ def answer_with_knowledge(
     search, and a heat/hydration advisory in the general knowledge answer
     (today's event venue wins over device location when both exist — see
     api.services.weather.resolve_weather). Every other path ignores them.
+    `persona` ("parent"|"athlete") tunes the reply's tone/voice; unset or
+    unrecognized values fall back to today's generic tone.
     """
     contextual_question = _question_with_history(question, history)
     if _detect_safety_flag(question):
@@ -671,7 +702,7 @@ def answer_with_knowledge(
 
     route = _classify_coach_path(contextual_question, athlete)
     if route["path"] == "out_of_scope":
-        return _answer_out_of_scope(contextual_question, athlete)
+        return _answer_out_of_scope(contextual_question, athlete, persona=persona)
 
     if route["path"] == "restaurant":
         meal_period = None
@@ -692,7 +723,7 @@ def answer_with_knowledge(
 
         return _answer_with_restaurant(
             contextual_question, athlete, route.get("restaurant_name") or "",
-            meal_period=meal_period, city=city,
+            meal_period=meal_period, city=city, persona=persona,
         )
 
     category_for_recipe = None
@@ -702,7 +733,7 @@ def answer_with_knowledge(
         category_for_recipe = route["recipe_category"]
 
     if category_for_recipe:
-        return _answer_with_recipe(contextual_question, athlete, category_for_recipe)
+        return _answer_with_recipe(contextual_question, athlete, category_for_recipe, persona=persona)
 
     calc_result = _maybe_calculate(contextual_question, athlete)
 
@@ -734,7 +765,7 @@ def answer_with_knowledge(
         event = _todays_event(athlete_id, now) if athlete_id else None
         weather = resolve_weather(event, latitude, longitude)
 
-    system_prompt = _build_system_prompt(chunks, calc_result, weather=weather)
+    system_prompt = _build_system_prompt(chunks, calc_result, weather=weather, persona=persona, athlete=athlete)
     try:
         answer_text = _call_bedrock(system_prompt, contextual_question)
     except Exception:
