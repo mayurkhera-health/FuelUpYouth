@@ -2,34 +2,9 @@
 import json
 
 from api.database import get_conn
-from api.services.weather import get_weather
+from api.services.weather import resolve_weather
 from api.services.nutrition_calc import calc_daily_targets
 from api.services.safety_filters import check_input_safe, check_output_safe
-
-
-def _heat_flag(temp_f: float, humidity: int) -> tuple[bool, str]:
-    effective = temp_f + (5 if humidity > 70 else 0)
-    if effective >= 95:
-        return True, "very_hot"
-    if effective >= 85:
-        return True, "hot"
-    if effective >= 78:
-        return True, "warm"
-    return False, "none"
-
-
-def _weather_context(raw: dict, location_label: str | None = None) -> dict | None:
-    if raw.get("error") or raw.get("temp_f") is None:
-        return None
-    heat_flag, heat_level = _heat_flag(float(raw["temp_f"]), int(raw.get("humidity", 50)))
-    return {
-        "temp_f": raw["temp_f"],
-        "humidity": raw.get("humidity"),
-        "description": raw.get("description", ""),
-        "heat_flag": heat_flag,
-        "heat_level": heat_level,
-        "location_label": location_label,
-    }
 
 
 def assemble_context(
@@ -65,28 +40,7 @@ def assemble_context(
     ).fetchone()
     event = dict(event) if event else None
 
-    weather: dict | None = None
-    _has_coords = event and event.get("latitude") is not None and event.get("longitude") is not None
-    if event and (_has_coords or event.get("city")):
-        raw = get_weather(
-            city=event.get("city"),
-            lat=event.get("latitude"),
-            lon=event.get("longitude"),
-        )
-        weather = _weather_context(raw)
-    elif latitude is not None and longitude is not None:
-        # No event today (or no location on it) — fall back to the athlete's
-        # device location so everyday hydration guidance still gets real
-        # local weather, not just game-day fueling. Best-effort: a bad/slow
-        # geocode never blocks the chat, it just loses the city name in copy.
-        from api.services.weather import reverse_geocode_city
-        location_label = None
-        try:
-            location_label = reverse_geocode_city(latitude, longitude)
-        except Exception:
-            pass
-        raw = get_weather(lat=latitude, lon=longitude)
-        weather = _weather_context(raw, location_label=location_label)
+    weather = resolve_weather(event, latitude, longitude)
 
     event_type = (event or {}).get("event_type", "rest") or "rest"
     targets = calc_daily_targets(athlete, event_type)

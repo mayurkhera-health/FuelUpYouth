@@ -98,6 +98,55 @@ def get_weather(city: str | None = None, lat: float | None = None, lon: float | 
     return result
 
 
+def compute_heat_flag(temp_f: float, humidity: int) -> tuple[bool, str]:
+    effective = temp_f + (5 if humidity > 70 else 0)
+    if effective >= 95:
+        return True, "very_hot"
+    if effective >= 85:
+        return True, "hot"
+    if effective >= 78:
+        return True, "warm"
+    return False, "none"
+
+
+def weather_context(raw: dict, location_label: str | None = None) -> dict | None:
+    """Shape a raw get_weather() result into the coach-prompt-ready form —
+    heat-flag classified, with an optional resolved location name for copy."""
+    if raw.get("error") or raw.get("temp_f") is None:
+        return None
+    heat_flag, heat_level = compute_heat_flag(float(raw["temp_f"]), int(raw.get("humidity", 50)))
+    return {
+        "temp_f": raw["temp_f"],
+        "humidity": raw.get("humidity"),
+        "description": raw.get("description", ""),
+        "heat_flag": heat_flag,
+        "heat_level": heat_level,
+        "location_label": location_label,
+    }
+
+
+def resolve_weather(
+    event: dict | None, latitude: float | None = None, longitude: float | None = None
+) -> dict | None:
+    """Weather for a coach prompt: an event's own venue location always wins
+    (game/practice-site weather matters more than wherever the athlete's
+    phone happens to be) — falls back to device coordinates only when there's
+    no event, or the event has no stored location. None if neither resolves."""
+    has_coords = event and event.get("latitude") is not None and event.get("longitude") is not None
+    if event and (has_coords or event.get("city")):
+        raw = get_weather(city=event.get("city"), lat=event.get("latitude"), lon=event.get("longitude"))
+        return weather_context(raw)
+    if latitude is not None and longitude is not None:
+        location_label = None
+        try:
+            location_label = reverse_geocode_city(latitude, longitude)
+        except Exception:
+            pass
+        raw = get_weather(lat=latitude, lon=longitude)
+        return weather_context(raw, location_label=location_label)
+    return None
+
+
 _GEOCODE_TTL_SECONDS = 86400  # a coordinate's city doesn't change — cache a full day
 _geocode_cache: dict[str, tuple[float, str | None]] = {}
 

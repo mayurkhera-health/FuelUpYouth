@@ -513,7 +513,7 @@ def _maybe_calculate(question: str, athlete: dict) -> Optional[dict]:
     return None
 
 
-def _build_system_prompt(chunks: list, calc_result: Optional[dict]) -> str:
+def _build_system_prompt(chunks: list, calc_result: Optional[dict], weather: Optional[dict] = None) -> str:
     chunks_text = ""
     if chunks:
         for i, c in enumerate(chunks, 1):
@@ -535,10 +535,22 @@ def _build_system_prompt(chunks: list, calc_result: Optional[dict]) -> str:
             f"Source: {calc_result.get('source', '')}"
         )
 
+    heat_block = ""
+    if weather and weather.get("heat_flag"):
+        temp = weather.get("temp_f", "")
+        city = weather.get("location_label") or "the athlete's area"
+        heat_block = (
+            f"\n\n🌡️  HEAT ADVISORY: It is {temp}°F in {city} today ({weather.get('heat_level', 'hot')} "
+            f"conditions). If relevant to the question, emphasize extra hydration — 8-12 oz more fluid "
+            f"per hour of activity — and mention electrolytes for any activity over 60 minutes. "
+            f"Don't force this in if the question is unrelated to hydration/activity."
+        )
+
     return f"""You are FuelUp's Nutrition Coach for youth soccer athletes ages 9-17.
 
 YOUR CAPABILITIES:
 {_COACH_CAPABILITIES}
+{heat_block}
 
 STRICT RULES — follow these exactly:
 1. Answer ONLY from the knowledge excerpts provided below (from trusted sports nutrition organizations and live approved-site web results). Never invent nutritional values, formulas, or dosages.
@@ -592,6 +604,35 @@ def _citations_from_chunks(chunks: list[KnowledgeChunk]) -> list[dict]:
     return citations
 
 
+def _todays_event(athlete_id: int, now: str | None) -> dict | None:
+    """Best-effort lookup of the athlete's event for "today" (client local
+    date if `now` is given, else server date). Never raises — a lookup
+    failure just means no event-venue weather, not a broken answer."""
+    from datetime import date as _date, datetime as _dt
+    from api.database import get_conn
+
+    if now:
+        try:
+            today_str = _dt.fromisoformat(now).date().isoformat()
+        except ValueError:
+            today_str = _date.today().isoformat()
+    else:
+        today_str = _date.today().isoformat()
+
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM events WHERE athlete_id = ? AND event_date = ? ORDER BY start_time LIMIT 1",
+            (athlete_id, today_str),
+        ).fetchone()
+        return dict(row) if row else None
+    except Exception:
+        logger.exception("Today's-event lookup failed for athlete_id=%s", athlete_id)
+        return None
+    finally:
+        conn.close()
+
+
 def answer_with_knowledge(
     question: str,
     athlete: dict,
@@ -606,9 +647,11 @@ def answer_with_knowledge(
     """
     Main RAG entry point for the Nutrition Coach.
     Returns {"answer", "citations", "calculation", "sources"}.
-    `now` (client local ISO timestamp) and `latitude`/`longitude` are optional —
-    only used to enrich a restaurant-lookup answer with meal-timing framing and
-    a location-narrowed search; every other path ignores them.
+    `now` (client local ISO timestamp) and `latitude`/`longitude` are optional.
+    Used for: restaurant-lookup meal-timing framing + location-narrowed
+    search, and a heat/hydration advisory in the general knowledge answer
+    (today's event venue wins over device location when both exist — see
+    api.services.weather.resolve_weather). Every other path ignores them.
     """
     contextual_question = _question_with_history(question, history)
     if _detect_safety_flag(question):
@@ -682,7 +725,14 @@ def answer_with_knowledge(
             "sources": list_sources(),
         }
 
-    system_prompt = _build_system_prompt(chunks, calc_result)
+    weather = None
+    if now or (latitude is not None and longitude is not None):
+        from api.services.weather import resolve_weather
+        athlete_id = athlete.get("id")
+        event = _todays_event(athlete_id, now) if athlete_id else None
+        weather = resolve_weather(event, latitude, longitude)
+
+    system_prompt = _build_system_prompt(chunks, calc_result, weather=weather)
     try:
         answer_text = _call_bedrock(system_prompt, contextual_question)
     except Exception:

@@ -285,6 +285,153 @@ def test_safety_guardrail_in_system_prompt():
     assert "Trader Joe" in prompt or "store" in prompt.lower()
 
 
+def test_build_system_prompt_no_heat_block_without_weather():
+    from api.services.knowledge.answer import _build_system_prompt
+    assert "HEAT ADVISORY" not in _build_system_prompt(chunks=[], calc_result=None, weather=None)
+    cold = {"temp_f": 60.0, "humidity": 40, "heat_flag": False, "heat_level": "none", "location_label": None}
+    assert "HEAT ADVISORY" not in _build_system_prompt(chunks=[], calc_result=None, weather=cold)
+
+
+def test_build_system_prompt_includes_heat_block_when_hot():
+    from api.services.knowledge.answer import _build_system_prompt
+    hot = {
+        "temp_f": 92.0, "humidity": 40, "heat_flag": True, "heat_level": "hot",
+        "location_label": "San Jose, CA",
+    }
+    prompt = _build_system_prompt(chunks=[], calc_result=None, weather=hot)
+    assert "HEAT ADVISORY" in prompt
+    assert "92.0" in prompt
+    assert "San Jose, CA" in prompt
+
+
+def test_todays_event_uses_now_local_date():
+    from api.services.knowledge.answer import _todays_event
+
+    class _FakeConn:
+        def execute(self, sql, params):
+            self.seen_params = params
+            return self
+        def fetchone(self):
+            return {"event_name": "Big Game", "city": "Stadium City"}
+        def close(self):
+            pass
+
+    fake_conn = _FakeConn()
+    with patch("api.database.get_conn", return_value=fake_conn):
+        event = _todays_event(1, "2026-07-23T11:15:00")
+
+    assert event == {"event_name": "Big Game", "city": "Stadium City"}
+    assert fake_conn.seen_params == (1, "2026-07-23")
+
+
+def test_todays_event_falls_back_to_server_date_without_now():
+    from datetime import date
+    from api.services.knowledge.answer import _todays_event
+
+    class _FakeConn:
+        def execute(self, sql, params):
+            self.seen_params = params
+            return self
+        def fetchone(self):
+            return None
+        def close(self):
+            pass
+
+    fake_conn = _FakeConn()
+    with patch("api.database.get_conn", return_value=fake_conn):
+        event = _todays_event(1, None)
+
+    assert event is None
+    assert fake_conn.seen_params == (1, date.today().isoformat())
+
+
+def test_todays_event_returns_none_on_db_error():
+    from api.services.knowledge.answer import _todays_event
+
+    class _BoomConn:
+        def execute(self, sql, params):
+            raise RuntimeError("db down")
+        def close(self):
+            pass
+
+    with patch("api.database.get_conn", return_value=_BoomConn()):
+        assert _todays_event(1, None) is None
+
+
+def test_knowledge_answer_includes_weather_when_location_given():
+    """now/lat/lon on a plain knowledge question should reach the system
+    prompt as a heat advisory when it resolves hot — the actual live path
+    the mobile app calls, not the unused /api/coach/chat one."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.retrieval import KnowledgeChunk
+
+    mock_chunk = KnowledgeChunk(
+        chunk_id=1, item_id=1, slug="hydration",
+        title="Hydration for Youth Athletes", category="hydration",
+        source="ACSM", source_urls=["https://www.acsm.org"],
+        organization_id="acsm", organization_name="ACSM", organization_url="https://www.acsm.org",
+        applicable_age_range="9-17", tags=["hydration"],
+        review_status="approved", heading=None,
+        content="Drink water regularly during activity.", score=0.7, origin="local",
+    )
+    hot_weather = {
+        "temp_f": 92.0, "humidity": 40, "heat_flag": True, "heat_level": "hot",
+        "location_label": "San Jose, CA",
+    }
+
+    with patch("api.services.knowledge.answer._classify_coach_path",
+               return_value={"path": "knowledge", "recipe_category": None}):
+        with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):
+            with patch("api.services.knowledge.answer._todays_event", return_value=None) as mock_event:
+                with patch("api.services.weather.resolve_weather", return_value=hot_weather) as mock_resolve:
+                    with patch("api.services.knowledge.answer.is_configured", return_value=True):
+                        with patch("api.services.knowledge.answer.converse_text") as mock_converse:
+                            mock_converse.return_value = "Stay hydrated!"
+                            answer_with_knowledge(
+                                "How much water should I drink?",
+                                {"id": 1, "first_name": "Alex", "age": 14, "gender": "female", "weight_lbs": 120},
+                                now="2026-07-23T14:00:00",
+                                latitude=37.33, longitude=-121.89,
+                            )
+
+    mock_event.assert_called_once_with(1, "2026-07-23T14:00:00")
+    mock_resolve.assert_called_once_with(None, 37.33, -121.89)
+    system_prompt = mock_converse.call_args.kwargs["system"]
+    assert "HEAT ADVISORY" in system_prompt
+    assert "San Jose, CA" in system_prompt
+
+
+def test_knowledge_answer_skips_weather_lookup_without_location():
+    """No now/lat/lon on the request -> zero weather-related calls. Must not
+    regress the existing no-location flow with wasted DB/geocode work."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.retrieval import KnowledgeChunk
+
+    mock_chunk = KnowledgeChunk(
+        chunk_id=1, item_id=1, slug="hydration",
+        title="Hydration for Youth Athletes", category="hydration",
+        source="ACSM", source_urls=["https://www.acsm.org"],
+        organization_id="acsm", organization_name="ACSM", organization_url="https://www.acsm.org",
+        applicable_age_range="9-17", tags=["hydration"],
+        review_status="approved", heading=None,
+        content="Drink water regularly during activity.", score=0.7, origin="local",
+    )
+
+    with patch("api.services.knowledge.answer._classify_coach_path",
+               return_value={"path": "knowledge", "recipe_category": None}):
+        with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):
+            with patch("api.services.knowledge.answer._todays_event") as mock_event:
+                with patch("api.services.knowledge.answer.is_configured", return_value=True):
+                    with patch("api.services.knowledge.answer.converse_text", return_value="ok") as mock_converse:
+                        answer_with_knowledge(
+                            "How much water should I drink?",
+                            {"id": 1, "first_name": "Alex", "age": 14, "gender": "female", "weight_lbs": 120},
+                        )
+
+    mock_event.assert_not_called()
+    assert "HEAT ADVISORY" not in mock_converse.call_args.kwargs["system"]
+
+
 def test_classifier_system_prompt_documents_capabilities():
     from api.services.knowledge.answer import _CLASSIFIER_SYSTEM
     assert "out_of_scope" in _CLASSIFIER_SYSTEM

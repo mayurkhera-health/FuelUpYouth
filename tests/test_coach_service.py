@@ -1,5 +1,7 @@
-"""assemble_context weather resolution: event location (existing) vs the new
-device-location fallback for days with no event."""
+"""assemble_context threads today's event + device latitude/longitude into
+resolve_weather() correctly. Weather-resolution logic itself (event-wins,
+device-fallback, heat thresholds) is tested directly in test_weather_location.py
+against api.services.weather, which now owns that logic."""
 import sqlite3
 import sys
 from pathlib import Path
@@ -46,57 +48,45 @@ def _kwargs(**overrides):
     return base
 
 
-def test_no_event_no_location_leaves_weather_none():
+def test_no_event_passes_none_and_device_coords_to_resolve_weather():
     conn = _conn()
-    ctx = assemble_context(conn=conn, **_kwargs())
-    assert ctx["weather"] is None
+    with patch("api.services.coach_service.resolve_weather", return_value=None) as mock_resolve:
+        assemble_context(conn=conn, latitude=37.33, longitude=-121.89, **_kwargs())
+
+    mock_resolve.assert_called_once_with(None, 37.33, -121.89)
 
 
-def test_no_event_falls_back_to_device_location():
-    conn = _conn()
-    fake_weather = {"temp_f": 92.0, "humidity": 40, "description": "sunny", "error": None}
-
-    with patch("api.services.coach_service.get_weather", return_value=fake_weather) as mock_weather:
-        with patch(
-            "api.services.weather.reverse_geocode_city", return_value="San Jose, CA"
-        ) as mock_geocode:
-            ctx = assemble_context(conn=conn, latitude=37.33, longitude=-121.89, **_kwargs())
-
-    mock_geocode.assert_called_once_with(37.33, -121.89)
-    mock_weather.assert_called_once_with(lat=37.33, lon=-121.89)
-    assert ctx["weather"]["temp_f"] == 92.0
-    assert ctx["weather"]["heat_flag"] is True
-    assert ctx["weather"]["location_label"] == "San Jose, CA"
-
-
-def test_event_location_wins_over_device_location():
-    """An event with its own venue location must NOT be overridden by the
-    device fallback — game-day weather at the actual venue matters more than
-    wherever the athlete's phone happens to be right now."""
+def test_todays_event_passed_to_resolve_weather():
     conn = _conn()
     conn.execute(
         "INSERT INTO events (athlete_id, event_date, event_name, event_type, city, latitude, longitude) "
         "VALUES (1, '2026-07-23', 'Big Game', 'game', 'Stadium City', 10.0, 20.0)"
     )
+    with patch("api.services.coach_service.resolve_weather", return_value=None) as mock_resolve:
+        assemble_context(conn=conn, latitude=37.33, longitude=-121.89, **_kwargs())
 
-    with patch("api.services.coach_service.get_weather", return_value={
-        "temp_f": 70.0, "humidity": 30, "description": "clear", "error": None,
-    }) as mock_weather:
-        with patch("api.services.weather.reverse_geocode_city") as mock_geocode:
-            ctx = assemble_context(conn=conn, latitude=37.33, longitude=-121.89, **_kwargs())
-
-    mock_geocode.assert_not_called()
-    mock_weather.assert_called_once_with(city="Stadium City", lat=10.0, lon=20.0)
-    assert ctx["weather"]["temp_f"] == 70.0
+    (event_arg, lat_arg, lon_arg), _ = mock_resolve.call_args
+    assert event_arg["event_name"] == "Big Game"
+    assert event_arg["city"] == "Stadium City"
+    assert (lat_arg, lon_arg) == (37.33, -121.89)
 
 
-def test_geocode_failure_still_returns_weather_without_label():
+def test_no_latitude_longitude_still_works():
     conn = _conn()
-    with patch("api.services.coach_service.get_weather", return_value={
-        "temp_f": 60.0, "humidity": 50, "description": "cloudy", "error": None,
-    }):
-        with patch("api.services.weather.reverse_geocode_city", side_effect=RuntimeError("boom")):
-            ctx = assemble_context(conn=conn, latitude=1.0, longitude=2.0, **_kwargs())
+    with patch("api.services.coach_service.resolve_weather", return_value=None) as mock_resolve:
+        ctx = assemble_context(conn=conn, **_kwargs())
 
-    assert ctx["weather"]["temp_f"] == 60.0
-    assert ctx["weather"]["location_label"] is None
+    mock_resolve.assert_called_once_with(None, None, None)
+    assert ctx["weather"] is None
+
+
+def test_weather_result_flows_into_context():
+    conn = _conn()
+    fake_weather = {
+        "temp_f": 92.0, "humidity": 40, "description": "sunny",
+        "heat_flag": True, "heat_level": "hot", "location_label": "San Jose, CA",
+    }
+    with patch("api.services.coach_service.resolve_weather", return_value=fake_weather):
+        ctx = assemble_context(conn=conn, latitude=37.33, longitude=-121.89, **_kwargs())
+
+    assert ctx["weather"] == fake_weather

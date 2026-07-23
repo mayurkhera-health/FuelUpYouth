@@ -133,6 +133,85 @@ def test_reverse_geocode_empty_response_returns_none(monkeypatch):
     assert weather.reverse_geocode_city(0.0, 0.0) is None
 
 
+def test_compute_heat_flag_thresholds():
+    assert weather.compute_heat_flag(70, 40) == (False, "none")
+    assert weather.compute_heat_flag(80, 40) == (True, "warm")
+    assert weather.compute_heat_flag(86, 40) == (True, "hot")
+    assert weather.compute_heat_flag(96, 40) == (True, "very_hot")
+    # high humidity bumps the effective temp by 5
+    assert weather.compute_heat_flag(75, 80) == (True, "warm")
+
+
+def test_weather_context_none_on_error():
+    assert weather.weather_context({"error": "boom"}) is None
+    assert weather.weather_context({"error": None, "temp_f": None}) is None
+
+
+def test_weather_context_shapes_result():
+    ctx = weather.weather_context(
+        {"temp_f": 92.0, "humidity": 40, "description": "sunny", "error": None},
+        location_label="San Jose, CA",
+    )
+    assert ctx == {
+        "temp_f": 92.0, "humidity": 40, "description": "sunny",
+        "heat_flag": True, "heat_level": "hot", "location_label": "San Jose, CA",
+    }
+
+
+def test_resolve_weather_prefers_event_location(monkeypatch):
+    event = {"city": "Stadium City", "latitude": 10.0, "longitude": 20.0}
+    seen = {}
+    monkeypatch.setattr(
+        weather, "get_weather",
+        lambda city=None, lat=None, lon=None: seen.update(city=city, lat=lat, lon=lon) or
+        {"temp_f": 70.0, "humidity": 30, "description": "clear", "error": None},
+    )
+
+    def boom(*a, **k):
+        raise AssertionError("must not geocode when the event already has a location")
+
+    monkeypatch.setattr(weather, "reverse_geocode_city", boom)
+    result = weather.resolve_weather(event, latitude=37.33, longitude=-121.89)
+    assert seen == {"city": "Stadium City", "lat": 10.0, "lon": 20.0}
+    assert result["temp_f"] == 70.0
+    assert result["location_label"] is None
+
+
+def test_resolve_weather_falls_back_to_device_location(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        weather, "get_weather",
+        lambda city=None, lat=None, lon=None: seen.update(city=city, lat=lat, lon=lon) or
+        {"temp_f": 92.0, "humidity": 40, "description": "sunny", "error": None},
+    )
+    monkeypatch.setattr(weather, "reverse_geocode_city", lambda lat, lon: "San Jose, CA")
+
+    result = weather.resolve_weather(None, latitude=37.33, longitude=-121.89)
+    assert seen == {"city": None, "lat": 37.33, "lon": -121.89}
+    assert result["heat_flag"] is True
+    assert result["location_label"] == "San Jose, CA"
+
+
+def test_resolve_weather_none_when_nothing_available():
+    assert weather.resolve_weather(None, latitude=None, longitude=None) is None
+    assert weather.resolve_weather({"event_type": "rest"}, None, None) is None
+
+
+def test_resolve_weather_geocode_failure_still_returns_weather(monkeypatch):
+    monkeypatch.setattr(
+        weather, "get_weather",
+        lambda city=None, lat=None, lon=None: {"temp_f": 60.0, "humidity": 50, "description": "cloudy", "error": None},
+    )
+
+    def boom(lat, lon):
+        raise RuntimeError("geocode down")
+
+    monkeypatch.setattr(weather, "reverse_geocode_city", boom)
+    result = weather.resolve_weather(None, latitude=1.0, longitude=2.0)
+    assert result["temp_f"] == 60.0
+    assert result["location_label"] is None
+
+
 def test_reverse_geocode_is_cached(monkeypatch):
     weather._geocode_cache.clear()
     monkeypatch.setenv("OPENWEATHERMAP_API_KEY", "test-key")
