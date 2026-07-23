@@ -264,7 +264,7 @@ def test_citations_included_in_answer():
     )
 
     with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):
-        with patch("api.services.knowledge.answer._call_bedrock",
+        with patch("api.services.knowledge.answer._call_llm",
                    return_value="Female athletes need 15mg iron. Source: Iron and Magnesium Requirements"):
             result = answer_with_knowledge(
                 "how much iron does a girl need",
@@ -425,7 +425,7 @@ def test_calculation_included_when_relevant():
     )
 
     with patch("api.services.knowledge.answer.retrieve", return_value=[mock_chunk]):
-        with patch("api.services.knowledge.answer._call_bedrock", return_value="15mg"):
+        with patch("api.services.knowledge.answer._call_llm", return_value="15mg"):
             result = answer_with_knowledge(
                 "how much iron does she need",
                 {"id": 1, "first_name": "Maya", "age": 15, "gender": "female",
