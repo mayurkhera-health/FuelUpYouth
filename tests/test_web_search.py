@@ -66,6 +66,30 @@ def test_restaurant_search_not_restricted_to_approved_domains():
     assert "Panda Express" in query_used
 
 
+def test_restaurant_search_filters_low_relevance_results():
+    """Off-topic hits (e.g. the giant panda animal, not Panda Express) must be
+    dropped even though they matched the search term — confirmed live that
+    genuine Panda Express pages score ~0.57-0.70 vs ~0.13-0.24 for animal
+    content, well clear of the 0.45 floor."""
+    hits = [
+        {"href": "https://www.pandaexpress.com/", "title": "Panda Express",
+         "body": "Orange Chicken, Broccoli Beef, Fried Rice menu"},
+        {"href": "https://en.wikipedia.org/wiki/Giant_panda", "title": "Giant panda - Wikipedia",
+         "body": "The giant panda is a bear species endemic to China"},
+    ]
+
+    # query vector, then one content vector per hit (in hit order)
+    vectors = [[1.0, 0.0], [1.0, 0.0], [0.0, 1.0]]
+
+    with patch("api.services.knowledge.web_search._ddg_search", return_value=hits):
+        with patch("api.services.knowledge.web_search._fetch_page_text", return_value=""):
+            with patch("api.services.knowledge.web_search.embed_text", side_effect=vectors):
+                results = search_restaurant_menu("Panda Express", "healthy lunch options", max_results=5)
+
+    assert len(results) == 1
+    assert results[0].url == "https://www.pandaexpress.com/"
+
+
 def test_restaurant_search_query_excludes_raw_question():
     """A verbose, punctuated athlete question must not be appended to the DDG
     search string — it reliably returns zero hits (confirmed live against

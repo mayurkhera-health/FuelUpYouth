@@ -386,7 +386,8 @@ MENU EXCERPTS:
 {excerpts_text}
 
 STRICT RULES — follow these exactly:
-1. Recommend ONLY items that actually appear in the excerpts above — never invent menu items, prices, or nutrition facts. If the excerpts don't clearly list specific items, say so plainly and ask the athlete what's on the menu in front of them.
+1. Recommend ONLY items that are explicitly NAMED in the excerpts above, with real descriptive detail — not a restaurant's generic homepage/marketing blurb ("fresh from the wok", "welcome to our kitchen"). Some excerpts below may be marketing copy with no real menu items; ignore those and use the ones that actually list dishes.
+   If NONE of the excerpts clearly name specific dishes, do NOT guess, hint, or hedge — no "if available," "typically has," "ask staff to confirm," or similar softening. Instead respond with exactly this (fill in the name): "I found {restaurant_name}'s page but couldn't pull specific menu items from it — tell me two or three things you're seeing on the menu and I'll help you pick the best one."
 2. Favor items with real protein plus vegetables/whole grains; steer away from deep-fried or heavily sauced options — general sports-nutrition principles, not invented numbers.
 3. NEVER quote specific calorie, carb, protein, or gram numbers. Use food language ("the grilled option", "a side with more veggies"), not numbers — even if the excerpts contain numbers.
 4. NEVER recommend supplements for athletes under 18.

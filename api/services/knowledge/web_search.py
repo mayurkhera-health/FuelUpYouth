@@ -21,6 +21,11 @@ _MAX_PAGE_CHARS = 1800
 _MAX_FETCH_PAGES = 4
 _USER_AGENT = "FuelUpYouth-NutritionCoach/1.0 (+https://fuelup-youth.fly.dev)"
 
+# Empirically calibrated against live results for "Panda Express": the
+# restaurant's own pages scored 0.57-0.70, unrelated "giant panda the animal"
+# noise scored 0.13-0.24. 0.45 cleanly separates the two with margin.
+_MIN_RESTAURANT_RELEVANCE = 0.45
+
 
 @dataclass
 class WebSearchResult:
@@ -186,7 +191,12 @@ def search_restaurant_menu(
     query_vec = embed_text(f"{name} {query}".strip())
     results: list[RestaurantSearchResult] = []
     seen_urls: set[str] = set()
+    fetched_pages = 0
 
+    # Score every candidate before ranking/truncating — an early cutoff at
+    # max_results (before sorting) can lock in low-relevance hits ahead of
+    # better ones DDG happened to rank lower. Only page *fetches* stay capped
+    # (network cost); scoring itself is cheap.
     for hit in hits:
         url = (hit.get("href") or hit.get("url") or "").strip()
         if not url or url in seen_urls:
@@ -197,7 +207,8 @@ def search_restaurant_menu(
         snippet = (hit.get("body") or hit.get("snippet") or "").strip()
 
         content = snippet
-        if len(results) < _MAX_FETCH_PAGES:
+        if fetched_pages < _MAX_FETCH_PAGES:
+            fetched_pages += 1
             try:
                 page_text = _fetch_page_text(url)
                 if page_text:
@@ -209,12 +220,11 @@ def search_restaurant_menu(
             continue
 
         score = cosine_similarity(query_vec, embed_text(f"{title}\n{content[:1200]}"))
+        if score < _MIN_RESTAURANT_RELEVANCE:
+            continue
         results.append(
             RestaurantSearchResult(url=url, title=title, snippet=snippet, content=content, score=score)
         )
-
-        if len(results) >= max_results:
-            break
 
     results.sort(key=lambda r: r.score, reverse=True)
     return results[:max_results]
