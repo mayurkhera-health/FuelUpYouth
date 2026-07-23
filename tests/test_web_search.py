@@ -105,6 +105,24 @@ def test_restaurant_search_query_excludes_raw_question():
     assert query_used == "Panda Express menu nutrition facts"
 
 
+def test_restaurant_search_includes_city_when_given():
+    with patch("api.services.knowledge.web_search._ddg_search", return_value=[]) as mock_search:
+        with patch("api.services.knowledge.web_search.embed_text", return_value=[1.0, 0.0]):
+            search_restaurant_menu("Panda Express", "healthy lunch options", city="San Jose, CA")
+
+    query_used = mock_search.call_args.args[0]
+    assert "near San Jose, CA" in query_used
+
+
+def test_restaurant_search_omits_city_when_not_given():
+    with patch("api.services.knowledge.web_search._ddg_search", return_value=[]) as mock_search:
+        with patch("api.services.knowledge.web_search.embed_text", return_value=[1.0, 0.0]):
+            search_restaurant_menu("Panda Express", "healthy lunch options")
+
+    query_used = mock_search.call_args.args[0]
+    assert "near" not in query_used
+
+
 def test_restaurant_search_disabled_returns_empty(monkeypatch):
     monkeypatch.setenv("COACH_WEB_SEARCH_ENABLED", "false")
     results = search_restaurant_menu("Panda Express", "lunch")

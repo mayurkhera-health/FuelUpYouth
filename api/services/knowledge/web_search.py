@@ -161,13 +161,17 @@ def search_approved_sites(query: str, *, max_results: int = 5) -> list[WebSearch
 
 
 def search_restaurant_menu(
-    restaurant_name: str, query: str, *, max_results: int = 5
+    restaurant_name: str, query: str, *, city: str | None = None, max_results: int = 5
 ) -> list[RestaurantSearchResult]:
     """
     Open web search for a specific named restaurant's own menu/nutrition
     page — deliberately NOT restricted to approved_domains(). Results come
     from the restaurant's own site, not a vetted sports-nutrition source;
     the caller is responsible for saying so in the response.
+
+    `city`, when given, narrows the search to that location (multi-location
+    chains often have region-specific menus/pricing). Optional — searches
+    the chain generally without it.
     """
     if not _web_search_enabled():
         return []
@@ -176,11 +180,13 @@ def search_restaurant_menu(
     if not name:
         return []
 
-    # Search on the restaurant name alone — appending the athlete's raw,
-    # conversational question (punctuation, filler words) reliably returns
-    # zero hits from DDG. `query` is still used below to rank the fetched
-    # pages by relevance, just not as part of the search string itself.
+    # Search on the restaurant name (+ city, if known) alone — appending the
+    # athlete's raw, conversational question (punctuation, filler words)
+    # reliably returns zero hits from DDG. `query` is still used below to
+    # rank the fetched pages by relevance, just not the search string itself.
     search_query = f"{name} menu nutrition facts"
+    if city:
+        search_query += f" near {city}"
 
     try:
         hits = _ddg_search(search_query, max_results=max_results * 2)

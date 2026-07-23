@@ -94,3 +94,55 @@ def test_get_weather_none_when_both_missing(monkeypatch):
     res = weather.get_weather()
     assert res["error"] == "No location provided"
     assert res["temp_f"] is None
+
+
+class _FakeGeoResp:
+    def __init__(self, status_code=200, data=None):
+        self.status_code = status_code
+        self._data = data if data is not None else []
+
+    def json(self):
+        return self._data
+
+
+def test_reverse_geocode_returns_city_and_state(monkeypatch):
+    weather._geocode_cache.clear()
+    monkeypatch.setenv("OPENWEATHERMAP_API_KEY", "test-key")
+    monkeypatch.setattr(
+        weather.requests, "get",
+        lambda url, params=None, timeout=None: _FakeGeoResp(200, [{"name": "San Jose", "state": "CA"}]),
+    )
+    assert weather.reverse_geocode_city(37.33, -121.89) == "San Jose, CA"
+
+
+def test_reverse_geocode_no_api_key_returns_none(monkeypatch):
+    weather._geocode_cache.clear()
+    monkeypatch.delenv("OPENWEATHERMAP_API_KEY", raising=False)
+
+    def boom(*a, **k):
+        raise AssertionError("must not call the API with no key configured")
+
+    monkeypatch.setattr(weather.requests, "get", boom)
+    assert weather.reverse_geocode_city(37.33, -121.89) is None
+
+
+def test_reverse_geocode_empty_response_returns_none(monkeypatch):
+    weather._geocode_cache.clear()
+    monkeypatch.setenv("OPENWEATHERMAP_API_KEY", "test-key")
+    monkeypatch.setattr(weather.requests, "get", lambda url, params=None, timeout=None: _FakeGeoResp(200, []))
+    assert weather.reverse_geocode_city(0.0, 0.0) is None
+
+
+def test_reverse_geocode_is_cached(monkeypatch):
+    weather._geocode_cache.clear()
+    monkeypatch.setenv("OPENWEATHERMAP_API_KEY", "test-key")
+    calls = {"n": 0}
+
+    def fake_get(url, params=None, timeout=None):
+        calls["n"] += 1
+        return _FakeGeoResp(200, [{"name": "San Jose", "state": "CA"}])
+
+    monkeypatch.setattr(weather.requests, "get", fake_get)
+    weather.reverse_geocode_city(37.33, -121.89)
+    weather.reverse_geocode_city(37.33, -121.89)
+    assert calls["n"] == 1

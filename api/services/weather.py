@@ -98,6 +98,45 @@ def get_weather(city: str | None = None, lat: float | None = None, lon: float | 
     return result
 
 
+_GEOCODE_TTL_SECONDS = 86400  # a coordinate's city doesn't change — cache a full day
+_geocode_cache: dict[str, tuple[float, str | None]] = {}
+
+
+def reverse_geocode_city(lat: float, lon: float) -> str | None:
+    """Coordinates -> a human-readable city string ("San Jose, CA"), for
+    location-flavored search queries. Reuses OPENWEATHERMAP_API_KEY (already
+    configured) via their free geocoding endpoint — no new vendor. Returns
+    None on any failure; callers should degrade gracefully, not block on it."""
+    api_key = os.getenv("OPENWEATHERMAP_API_KEY")
+    if not api_key:
+        return None
+
+    key = f"{round(float(lat), 2)},{round(float(lon), 2)}"
+    cached = _geocode_cache.get(key)
+    if cached and (_now() - cached[0]) < _GEOCODE_TTL_SECONDS:
+        return cached[1]
+
+    try:
+        resp = requests.get(
+            "http://api.openweathermap.org/geo/1.0/reverse",
+            params={"lat": lat, "lon": lon, "limit": 1, "appid": api_key},
+            timeout=3,
+        )
+        data = resp.json()
+        if resp.status_code != 200 or not data:
+            _geocode_cache[key] = (_now(), None)
+            return None
+        place = data[0]
+        name = place.get("name")
+        state = place.get("state")
+        city = f"{name}, {state}" if name and state else name
+        _geocode_cache[key] = (_now(), city)
+        return city
+    except Exception:
+        _geocode_cache[key] = (_now(), None)
+        return None
+
+
 def calc_sweat_output(athlete: dict, event: dict, weather: dict) -> dict:
     wt_kg = athlete["weight_lbs"] * 0.453592
     event_type = (event.get("event_type") or "").lower()

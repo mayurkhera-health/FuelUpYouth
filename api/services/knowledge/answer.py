@@ -381,7 +381,7 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
 _RESTAURANT_SYSTEM_TEMPLATE = """You are FuelUp's Nutrition Coach for youth soccer athletes ages 9-17.
 
 The athlete is at or heading to {restaurant_name}. Below are excerpts pulled live from {restaurant_name}'s own website/menu — NOT your usual vetted sports-nutrition sources.
-
+{timing_block}
 MENU EXCERPTS:
 {excerpts_text}
 
@@ -397,7 +397,29 @@ STRICT RULES — follow these exactly:
 8. Format as **Markdown**: bold the main pick, 2-4 short sentences or a short bullet list. No headings, tables, or code blocks."""
 
 
-def _answer_with_restaurant(question: str, athlete: dict, restaurant_name: str) -> dict:
+def _meal_period_from_time(local_dt) -> str:
+    """Best-guess meal period from local clock time, to frame a restaurant
+    recommendation (full meal vs. quick snack). Bands are intentionally
+    generous — a label to shape tone, not a precise cutoff."""
+    hour = local_dt.hour + local_dt.minute / 60
+    if 5 <= hour < 10.5:
+        return "breakfast"
+    if 10.5 <= hour < 14:
+        return "lunch"
+    if 14 <= hour < 17:
+        return "afternoon snack"
+    if 17 <= hour < 21:
+        return "dinner"
+    return "late-night snack"
+
+
+def _answer_with_restaurant(
+    question: str,
+    athlete: dict,
+    restaurant_name: str,
+    meal_period: str | None = None,
+    city: str | None = None,
+) -> dict:
     from api.services.knowledge.web_search import search_restaurant_menu
 
     first_name = athlete.get("first_name", "there")
@@ -407,7 +429,7 @@ def _answer_with_restaurant(question: str, athlete: dict, restaurant_name: str) 
         return _answer_out_of_scope(question, athlete)
 
     try:
-        results = search_restaurant_menu(name, question)
+        results = search_restaurant_menu(name, question, city=city)
     except Exception:
         logger.exception("Restaurant menu search failed for %r", name)
         results = []
@@ -438,8 +460,17 @@ def _answer_with_restaurant(question: str, athlete: dict, restaurant_name: str) 
         f"\n[{i}] {r.title}\n{r.content}" for i, r in enumerate(results, 1)
     )
 
+    timing_block = ""
+    if meal_period:
+        timing_block = (
+            f"\nIt's currently close to {meal_period} for the athlete — frame your pick for that "
+            f"(a fuller meal for lunch/dinner, something quicker and lighter for a snack window). "
+            f"Mention this assumption briefly in one clause rather than asking first.\n"
+        )
+
     system_prompt = _RESTAURANT_SYSTEM_TEMPLATE.format(
         restaurant_name=name,
+        timing_block=timing_block,
         excerpts_text=excerpts_text,
         allergy_block=allergy_block,
     )
@@ -568,10 +599,16 @@ def answer_with_knowledge(
     is_first_message: bool = False,
     recipe_category: str | None = None,
     prefer_recipe: bool = False,
+    now: str | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
 ) -> dict:
     """
     Main RAG entry point for the Nutrition Coach.
     Returns {"answer", "citations", "calculation", "sources"}.
+    `now` (client local ISO timestamp) and `latitude`/`longitude` are optional —
+    only used to enrich a restaurant-lookup answer with meal-timing framing and
+    a location-narrowed search; every other path ignores them.
     """
     contextual_question = _question_with_history(question, history)
     if _detect_safety_flag(question):
@@ -592,7 +629,26 @@ def answer_with_knowledge(
         return _answer_out_of_scope(contextual_question, athlete)
 
     if route["path"] == "restaurant":
-        return _answer_with_restaurant(contextual_question, athlete, route.get("restaurant_name") or "")
+        meal_period = None
+        if now:
+            try:
+                from datetime import datetime as _dt
+                meal_period = _meal_period_from_time(_dt.fromisoformat(now))
+            except ValueError:
+                meal_period = None
+
+        city = None
+        if latitude is not None and longitude is not None:
+            from api.services.weather import reverse_geocode_city
+            try:
+                city = reverse_geocode_city(latitude, longitude)
+            except Exception:
+                logger.exception("Reverse geocode failed for %s,%s", latitude, longitude)
+
+        return _answer_with_restaurant(
+            contextual_question, athlete, route.get("restaurant_name") or "",
+            meal_period=meal_period, city=city,
+        )
 
     category_for_recipe = None
     if prefer_recipe and recipe_category:

@@ -26,6 +26,9 @@ class AskRequest(BaseModel):
     history: list[dict] = []
     recipe_category: Optional[str] = None
     prefer_recipe: bool = False
+    now: Optional[str] = None            # client local ISO timestamp — meal-timing framing
+    latitude: Optional[float] = None     # device location — restaurant search only, optional
+    longitude: Optional[float] = None
 
 
 class StatusUpdate(BaseModel):
@@ -120,6 +123,9 @@ def ask_knowledge(body: AskRequest):
         is_first_message=body.is_first_message,
         recipe_category=body.recipe_category,
         prefer_recipe=body.prefer_recipe,
+        now=body.now,
+        latitude=body.latitude,
+        longitude=body.longitude,
     )
 
 

@@ -476,6 +476,101 @@ def test_coach_routes_restaurant_requests():
     assert "Grilled Teriyaki Chicken" in system_prompt
 
 
+def test_meal_period_from_time_boundaries():
+    from datetime import datetime
+    from api.services.knowledge.answer import _meal_period_from_time
+
+    assert _meal_period_from_time(datetime(2026, 7, 22, 7, 0)) == "breakfast"
+    # the exact case from the founder's report: 11:15am -> close to lunch
+    assert _meal_period_from_time(datetime(2026, 7, 22, 11, 15)) == "lunch"
+    assert _meal_period_from_time(datetime(2026, 7, 22, 13, 59)) == "lunch"
+    assert _meal_period_from_time(datetime(2026, 7, 22, 15, 30)) == "afternoon snack"
+    assert _meal_period_from_time(datetime(2026, 7, 22, 18, 0)) == "dinner"
+    assert _meal_period_from_time(datetime(2026, 7, 22, 23, 0)) == "late-night snack"
+    assert _meal_period_from_time(datetime(2026, 7, 22, 2, 0)) == "late-night snack"
+
+
+def test_coach_restaurant_includes_meal_timing_and_location():
+    """now + lat/lon should reach the restaurant system prompt as meal-period
+    framing and a location-narrowed search — without the caller (route) doing
+    any of that derivation itself."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.web_search import RestaurantSearchResult
+
+    mock_results = [
+        RestaurantSearchResult(
+            url="https://www.pandaexpress.com/menu", title="Panda Express Menu",
+            snippet="", content="Grilled Teriyaki Chicken, Broccoli Beef", score=0.9,
+        )
+    ]
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "restaurant", "recipe_category": None, "restaurant_name": "Panda Express"},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch(
+                "api.services.weather.reverse_geocode_city", return_value="San Jose, CA"
+            ) as mock_geocode:
+                with patch(
+                    "api.services.knowledge.web_search.search_restaurant_menu",
+                    return_value=mock_results,
+                ) as mock_search:
+                    with patch(
+                        "api.services.knowledge.answer.converse_text",
+                        return_value="**Grilled Teriyaki Chicken** is your best bet.",
+                    ) as mock_converse:
+                        answer_with_knowledge(
+                            "I am heading to Panda Express for lunch, what should I get?",
+                            {"id": 1, "first_name": "Alex", "age": 14, "gender": "female", "weight_lbs": 120},
+                            now="2026-07-22T11:15:00",
+                            latitude=37.33,
+                            longitude=-121.89,
+                        )
+
+    mock_geocode.assert_called_once_with(37.33, -121.89)
+    mock_search.assert_called_once()
+    assert mock_search.call_args.kwargs["city"] == "San Jose, CA"
+    system_prompt = mock_converse.call_args.kwargs["system"]
+    assert "lunch" in system_prompt.lower()
+
+
+def test_coach_restaurant_skips_timing_and_location_when_not_given():
+    """No now/lat/lon on the request -> no geocode call, no timing block -
+    must not break the existing no-location flow."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.web_search import RestaurantSearchResult
+
+    mock_results = [
+        RestaurantSearchResult(
+            url="https://www.pandaexpress.com/menu", title="Panda Express Menu",
+            snippet="", content="Grilled Teriyaki Chicken", score=0.9,
+        )
+    ]
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "restaurant", "recipe_category": None, "restaurant_name": "Panda Express"},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch("api.services.weather.reverse_geocode_city") as mock_geocode:
+                with patch(
+                    "api.services.knowledge.web_search.search_restaurant_menu",
+                    return_value=mock_results,
+                ) as mock_search:
+                    with patch(
+                        "api.services.knowledge.answer.converse_text",
+                        return_value="**Grilled Teriyaki Chicken** is your best bet.",
+                    ):
+                        answer_with_knowledge(
+                            "What should I get at Panda Express?",
+                            {"id": 1, "first_name": "Alex", "age": 14, "gender": "female", "weight_lbs": 120},
+                        )
+
+    mock_geocode.assert_not_called()
+    assert mock_search.call_args.kwargs["city"] is None
+
+
 def test_coach_restaurant_falls_back_when_no_menu_found():
     from api.services.knowledge.answer import answer_with_knowledge
 
