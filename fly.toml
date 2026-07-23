@@ -1,3 +1,10 @@
+source = "fuelup_data"
+  destination = "/data"
+  scheduled_snapshots = true
+  snapshot_retention = 14
+  auto_extend_size_threshold = 80
+  auto_extend_size_increment = "1GB"
+  auto_extend_size_limit = "5GB"
 # fly.toml — FuelUp Youth Soccer Nutrition Platform
 app = 'fuelup-youth'
 primary_region = 'sjc'
