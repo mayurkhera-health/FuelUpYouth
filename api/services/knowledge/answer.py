@@ -386,8 +386,10 @@ MENU EXCERPTS:
 {excerpts_text}
 
 STRICT RULES — follow these exactly:
-1. Recommend ONLY items that are explicitly NAMED in the excerpts above, with real descriptive detail — not a restaurant's generic homepage/marketing blurb ("fresh from the wok", "welcome to our kitchen"). Some excerpts below may be marketing copy with no real menu items; ignore those and use the ones that actually list dishes.
-   If NONE of the excerpts clearly name specific dishes, do NOT guess, hint, or hedge — no "if available," "typically has," "ask staff to confirm," or similar softening. Instead respond with exactly this (fill in the name): "I found {restaurant_name}'s page but couldn't pull specific menu items from it — tell me two or three things you're seeing on the menu and I'll help you pick the best one."
+1. Every single food item you name — in your main pick AND any secondary/alternative suggestion — must appear verbatim in the excerpts above, with real descriptive detail. Some excerpts below may be marketing copy with no real menu items ("fresh from the wok", "welcome to our kitchen"); ignore those and use the ones that actually list dishes.
+   Do NOT add an extra option, side, or alternative that isn't in the excerpts, even as a minor aside, even with a disclaimer attached. Never write phrases like "though not explicitly listed," "if available," "typically has," "ask staff to confirm," or any other hedge that names or implies a dish you're not sure is real. If you cannot verify it from the excerpts, leave it out entirely — do not mention it "just in case."
+   Example of what NOT to do: recommending a real item, then adding "...or a lettuce wrap if available (though not explicitly listed)" — that second half is forbidden. Stop at the real item.
+   If NONE of the excerpts clearly name specific dishes, do NOT guess, hint, or hedge. Instead respond with exactly this (fill in the name): "I found {restaurant_name}'s page but couldn't pull specific menu items from it — tell me two or three things you're seeing on the menu and I'll help you pick the best one."
 2. Favor items with real protein plus vegetables/whole grains; steer away from deep-fried or heavily sauced options — general sports-nutrition principles, not invented numbers.
 3. NEVER quote specific calorie, carb, protein, or gram numbers. Use food language ("the grilled option", "a side with more veggies"), not numbers — even if the excerpts contain numbers.
 4. NEVER recommend supplements for athletes under 18.

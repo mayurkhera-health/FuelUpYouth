@@ -779,6 +779,22 @@ def test_coach_restaurant_falls_back_when_no_menu_found():
     assert "Some Obscure Diner" in result["answer"]
 
 
+def test_restaurant_prompt_forbids_hedged_extra_suggestions():
+    """Confirmed live: given a real, grounded menu item, the model still
+    tacked on an unverified aside ("...or a lettuce wrap if available (though
+    not explicitly listed)"). Rule 1 must explicitly forbid this exact
+    pattern, not just the "nothing found at all" case — a partial hedge
+    alongside a real answer slipped through the original wording."""
+    from api.services.knowledge.answer import _RESTAURANT_SYSTEM_TEMPLATE
+
+    prompt = _RESTAURANT_SYSTEM_TEMPLATE.format(
+        restaurant_name="Test Diner", timing_block="", excerpts_text="", allergy_block="None",
+    )
+    assert "though not explicitly listed" in prompt  # the exact forbidden phrase, named
+    assert "even as a minor aside" in prompt
+    assert "do not mention it" in prompt.lower()
+
+
 def test_calculation_included_when_relevant():
     """Iron question for a known athlete should produce a non-None result."""
     from api.services.knowledge.answer import answer_with_knowledge
