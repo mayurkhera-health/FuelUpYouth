@@ -1,6 +1,7 @@
 """Tests for approved-domain web search."""
 
 import sys
+import types
 from pathlib import Path
 from unittest.mock import patch
 
@@ -8,12 +9,117 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from api.services.knowledge import web_search
 from api.services.knowledge.web_search import (
     WebSearchResult,
     RestaurantSearchResult,
     search_approved_sites,
     search_restaurant_menu,
 )
+
+
+# ── _ddg_search retry behavior ──────────────────────────────────────────────
+# duckduckgo_search isn't installed in this local/CI environment (only in the
+# deployed container), and _ddg_search imports it lazily inside the function
+# body — so these tests inject a fake module into sys.modules rather than
+# patching an attribute on the real package.
+def _install_fake_ddgs(monkeypatch, text_impl):
+    fake_module = types.ModuleType("duckduckgo_search")
+
+    class _FakeDDGS:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def text(self, query, max_results=None):
+            return text_impl(query, max_results)
+
+    fake_module.DDGS = _FakeDDGS
+    monkeypatch.setitem(sys.modules, "duckduckgo_search", fake_module)
+
+
+def test_ddg_search_returns_immediately_on_first_success(monkeypatch):
+    def boom_if_called_twice(*a, **k):
+        raise AssertionError("must not sleep when the first attempt already has results")
+
+    monkeypatch.setattr(web_search.time, "sleep", boom_if_called_twice)
+    calls = {"n": 0}
+
+    def text_impl(query, max_results):
+        calls["n"] += 1
+        return iter([{"title": "Found", "href": "https://x.com", "body": "b"}])
+
+    _install_fake_ddgs(monkeypatch, text_impl)
+    results = web_search._ddg_search("test query", 5)
+    assert len(results) == 1
+    assert calls["n"] == 1
+
+
+def test_ddg_search_retries_once_on_empty_result(monkeypatch):
+    """The confirmed live failure mode: the scraper returns an empty list
+    (not an error) when transiently rate-limited/blocked — the exact same
+    query returned 0 results, then 5 minutes later returned 5, no code
+    change. One retry must absorb this instead of reporting "not found"."""
+    monkeypatch.setattr(web_search.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+    sequence = [[], [{"title": "Found", "href": "https://x.com", "body": "b"}]]
+
+    def text_impl(query, max_results):
+        idx = calls["n"]
+        calls["n"] += 1
+        return iter(sequence[idx])
+
+    _install_fake_ddgs(monkeypatch, text_impl)
+    results = web_search._ddg_search("test query", 5)
+    assert len(results) == 1
+    assert calls["n"] == 2
+
+
+def test_ddg_search_empty_on_both_attempts_returns_empty_not_raise(monkeypatch):
+    monkeypatch.setattr(web_search.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def text_impl(query, max_results):
+        calls["n"] += 1
+        return iter([])
+
+    _install_fake_ddgs(monkeypatch, text_impl)
+    results = web_search._ddg_search("test query", 5)
+    assert results == []
+    assert calls["n"] == 2  # confirmed it retried, not just gave up on attempt one
+
+
+def test_ddg_search_retries_once_on_exception(monkeypatch):
+    monkeypatch.setattr(web_search.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def text_impl(query, max_results):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise ConnectionError("blocked")
+        return iter([{"title": "Found", "href": "https://x.com", "body": "b"}])
+
+    _install_fake_ddgs(monkeypatch, text_impl)
+    results = web_search._ddg_search("test query", 5)
+    assert len(results) == 1
+    assert calls["n"] == 2
+
+
+def test_ddg_search_raises_after_two_failed_attempts(monkeypatch):
+    """Callers (search_approved_sites, search_restaurant_menu) already catch
+    and degrade gracefully on an exception here — confirm it still surfaces
+    as an exception (not silently swallowed a third time) after the retry
+    budget is spent, rather than looping forever."""
+    monkeypatch.setattr(web_search.time, "sleep", lambda s: None)
+
+    def text_impl(query, max_results):
+        raise ConnectionError("still blocked")
+
+    _install_fake_ddgs(monkeypatch, text_impl)
+    with pytest.raises(ConnectionError):
+        web_search._ddg_search("test query", 5)
 
 
 def test_search_filters_to_approved_domains():

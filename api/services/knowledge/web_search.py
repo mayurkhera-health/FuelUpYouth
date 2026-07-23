@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import time
 from dataclasses import dataclass
 from html import unescape
 from urllib.parse import urlparse
@@ -25,6 +26,12 @@ _USER_AGENT = "FuelUpYouth-NutritionCoach/1.0 (+https://fuelup-youth.fly.dev)"
 # restaurant's own pages scored 0.57-0.70, unrelated "giant panda the animal"
 # noise scored 0.13-0.24. 0.45 cleanly separates the two with margin.
 _MIN_RESTAURANT_RELEVANCE = 0.45
+
+# The underlying scraper (no official API) is confirmed transiently flaky
+# under load — the exact same query returned 0 results, then 5 minutes
+# later returned 5, with no code change. One short retry absorbs that
+# without adding much latency to a request the user is already waiting on.
+_DDG_RETRY_DELAY_SECONDS = 1.5
 
 
 @dataclass
@@ -61,13 +68,29 @@ def _site_filter_query(query: str) -> str:
 
 
 def _ddg_search(query: str, max_results: int) -> list[dict]:
+    """One retry on empty results or a raised exception — the scraper returns
+    an empty list (not an error) when transiently rate-limited/blocked, so an
+    empty result on the first attempt is retried once before being trusted as
+    "genuinely nothing found"."""
     try:
         from duckduckgo_search import DDGS
     except ImportError as exc:
         raise RuntimeError("duckduckgo-search is required for coach web search") from exc
 
-    with DDGS() as ddgs:
-        return list(ddgs.text(query, max_results=max_results))
+    for attempt in range(2):
+        try:
+            with DDGS() as ddgs:
+                results = list(ddgs.text(query, max_results=max_results))
+        except Exception:
+            if attempt == 0:
+                time.sleep(_DDG_RETRY_DELAY_SECONDS)
+                continue
+            raise
+        else:
+            if results or attempt == 1:
+                return results
+            time.sleep(_DDG_RETRY_DELAY_SECONDS)
+    return []  # unreachable — loop always returns or raises
 
 
 def _strip_html(html: str) -> str:
