@@ -171,7 +171,11 @@ def search_restaurant_menu(
     if not name:
         return []
 
-    search_query = f"{name} menu nutrition facts {query}".strip()
+    # Search on the restaurant name alone — appending the athlete's raw,
+    # conversational question (punctuation, filler words) reliably returns
+    # zero hits from DDG. `query` is still used below to rank the fetched
+    # pages by relevance, just not as part of the search string itself.
+    search_query = f"{name} menu nutrition facts"
 
     try:
         hits = _ddg_search(search_query, max_results=max_results * 2)

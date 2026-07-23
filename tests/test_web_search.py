@@ -66,6 +66,21 @@ def test_restaurant_search_not_restricted_to_approved_domains():
     assert "Panda Express" in query_used
 
 
+def test_restaurant_search_query_excludes_raw_question():
+    """A verbose, punctuated athlete question must not be appended to the DDG
+    search string — it reliably returns zero hits (confirmed live against
+    DuckDuckGo). Only the restaurant name feeds the actual search."""
+    with patch("api.services.knowledge.web_search._ddg_search", return_value=[]) as mock_search:
+        with patch("api.services.knowledge.web_search.embed_text", return_value=[1.0, 0.0]):
+            search_restaurant_menu(
+                "Panda Express",
+                "I am heading to Panda Express for lunch. Can you recommend a few healthy options?",
+            )
+
+    query_used = mock_search.call_args.args[0]
+    assert query_used == "Panda Express menu nutrition facts"
+
+
 def test_restaurant_search_disabled_returns_empty(monkeypatch):
     monkeypatch.setenv("COACH_WEB_SEARCH_ENABLED", "false")
     results = search_restaurant_menu("Panda Express", "lunch")
