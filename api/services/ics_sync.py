@@ -228,31 +228,37 @@ def sync_platform(conn, athlete_id: int, platform: str, ics_url: str,
             # export, so a UID-only lookup never finds a previously-imported copy
             # of the same event — including one imported by an EARLIER sync of
             # this same platform (its uid is stale too). Fall back to matching
-            # on (name, date, start_time) among rows from either a manual import
-            # or this same platform — never a *different* connected platform, to
-            # avoid merging two distinct feeds' events that happen to collide —
-            # and only when exactly one row matches (ambiguous duplicates are
-            # left for INSERT to resolve).
-            name_time_count = conn.execute(
-                "SELECT COUNT(*) FROM events WHERE athlete_id=? AND event_name=? "
-                "AND event_date=? AND start_time=? AND source IN ('manual', ?)",
-                (athlete_id, ev["event_name"], ev["event_date"], ev["start_time"], platform),
-            ).fetchone()[0]
-            if name_time_count > 1:
-                logger.warning(
-                    "Name+time fallback skipped for uid %s: %d ambiguous rows "
-                    "(athlete %s, event_name=%r, date=%s)",
-                    uid, name_time_count, athlete_id, ev["event_name"], ev["event_date"],
-                )
-                name_time_row = None
-            elif name_time_count == 1:
-                name_time_row = conn.execute(
-                    "SELECT * FROM events WHERE athlete_id=? AND event_name=? "
-                    "AND event_date=? AND start_time=? AND source IN ('manual', ?)",
-                    (athlete_id, ev["event_name"], ev["event_date"], ev["start_time"], platform),
-                ).fetchone()
-            else:
-                name_time_row = None
+            # on (name, date, start_time), checked in two tiers:
+            #   1. Same-platform rows first — this is the real steady-state case
+            #      (adopting our OWN prior sync's row under its now-rotated uid),
+            #      and must not be blocked by unrelated leftover manual imports.
+            #   2. Only if no same-platform row exists, fall back to a manual
+            #      import — never a *different* connected platform, to avoid
+            #      merging two distinct feeds' events that happen to collide.
+            # Ambiguous (>1 match) at either tier is left for INSERT to resolve.
+            def _match_row(source_filter, params_extra=()):
+                count = conn.execute(
+                    f"SELECT COUNT(*) FROM events WHERE athlete_id=? AND event_name=? "
+                    f"AND event_date=? AND start_time=? AND {source_filter}",
+                    (athlete_id, ev["event_name"], ev["event_date"], ev["start_time"], *params_extra),
+                ).fetchone()[0]
+                if count == 1:
+                    return conn.execute(
+                        f"SELECT * FROM events WHERE athlete_id=? AND event_name=? "
+                        f"AND event_date=? AND start_time=? AND {source_filter}",
+                        (athlete_id, ev["event_name"], ev["event_date"], ev["start_time"], *params_extra),
+                    ).fetchone()
+                if count > 1:
+                    logger.warning(
+                        "Name+time fallback (%s) skipped for uid %s: %d ambiguous rows "
+                        "(athlete %s, event_name=%r, date=%s)",
+                        source_filter, uid, count, athlete_id, ev["event_name"], ev["event_date"],
+                    )
+                return None
+
+            name_time_row = _match_row("source = ?", (platform,))
+            if name_time_row is None:
+                name_time_row = _match_row("source = 'manual'")
             if name_time_row:
                 matched = dict(name_time_row)
                 logger.debug(

@@ -253,6 +253,49 @@ def test_name_time_fallback_adopts_prior_byga_duplicate_on_uid_rotation(monkeypa
     assert counts["inserted"] == 0, "Must not re-report this event as new"
 
 
+def test_name_time_fallback_adopts_byga_row_despite_ambiguous_manual_dupes(monkeypatch, _spy_windows):
+    """Confirmed live production bug: an athlete with TWO stale duplicate
+    manual-source rows (from an old double-import, unrelated to the live
+    sync) alongside the real byga-sourced row from the prior cycle. The
+    manual dupes alone are ambiguous (2 matches), but the byga row is a
+    clean single match — the same-platform tier must adopt via that row
+    and never let unrelated manual clutter block it, or every cycle
+    re-reports the event as new indefinitely."""
+    conn = _fresh_conn()
+    event_date = FUT1.strftime("%Y-%m-%d")
+    start_time = FUT1.strftime("%H:%M")
+
+    for suffix in ("1", "2"):
+        conn.execute(
+            "INSERT INTO events (athlete_id, event_name, event_type, event_date, "
+            "start_time, duration_hours, uid, source) VALUES "
+            "(1,'Team Practice','practice',?,?,1.5,?,?)",
+            (event_date, start_time, f"stale-manual-{suffix}", "manual"),
+        )
+    conn.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, "
+        "start_time, duration_hours, uid, source) VALUES "
+        "(1,'Team Practice','practice',?,?,1.5,'byga-uid-from-last-sync','byga')",
+        (event_date, start_time),
+    )
+    conn.commit()
+    byga_id = conn.execute("SELECT id FROM events WHERE source='byga'").fetchone()[0]
+
+    _feed(monkeypatch, _cal(_vevent("byga-rotated-uid", FUT1, "Team Practice")))
+    counts = ics_sync.sync_platform(conn, 1, "byga", "http://x", "competitive")
+
+    byga_row = dict(conn.execute("SELECT * FROM events WHERE id=?", (byga_id,)).fetchone())
+    assert byga_row["uid"] == "byga-rotated-uid", "Byga row must be adopted despite manual dupes"
+    assert counts["updated"] == 1
+    assert counts["inserted"] == 0, "Must not re-report as new because of unrelated manual clutter"
+
+    manual_rows = conn.execute(
+        "SELECT uid FROM events WHERE source='manual' ORDER BY id"
+    ).fetchall()
+    assert {r["uid"] for r in manual_rows} == {"stale-manual-1", "stale-manual-2"}, \
+        "Stale manual rows must be left untouched"
+
+
 def test_name_time_fallback_does_not_merge_across_platforms(monkeypatch, _spy_windows):
     """A row synced from a DIFFERENT platform (e.g. playmetrics) must never be
     adopted by a byga sync, even with matching name/date/time — that would
