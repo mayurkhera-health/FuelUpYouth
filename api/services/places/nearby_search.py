@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 
@@ -70,7 +71,7 @@ def _rate_limited(athlete_id: int | None) -> bool:
     return False
 
 
-def _fsq_search(lat: float, lon: float, radius_m: int, query: str, limit: int) -> list[dict]:
+def _fsq_search(lat: float, lon: float, radius_m: int, query: str, limit: int, sort: str = "RATING") -> list[dict]:
     api_key = os.getenv("FOURSQUARE_API_KEY")
     if not api_key:
         raise RuntimeError("FOURSQUARE_API_KEY is not configured")
@@ -84,7 +85,7 @@ def _fsq_search(lat: float, lon: float, radius_m: int, query: str, limit: int) -
         "ll": f"{lat},{lon}",
         "radius": radius_m,
         "query": query,
-        "sort": "RATING",
+        "sort": sort,
         "limit": limit,
     }
 
@@ -189,3 +190,38 @@ def search_nearby_restaurants(
 
     candidates.sort(key=lambda c: (c.rating is None, -(c.rating or 0)))
     return candidates[:max_results]
+
+
+def _normalize_name(name: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", name.lower())
+
+
+def find_restaurant_by_name(
+    name: str, lat: float, lon: float, athlete_id: int | None, *, radius_m: int = _WIDE_RADIUS_M
+) -> PlaceCandidate | None:
+    """Look up ONE specific named restaurant's real address near a
+    coordinate — for prepending a verified "Name — address" line to the
+    named-restaurant menu-lookup answer. Returns None (never a guess) unless
+    a candidate's name confidently matches the requested name, so a
+    mismatched nearby result never gets attributed to the wrong restaurant."""
+    if not name.strip() or not _places_enabled() or _rate_limited(athlete_id):
+        return None
+
+    try:
+        raw_results = _fsq_search(lat, lon, radius_m, name, limit=5, sort="RELEVANCE")
+    except Exception:
+        logger.exception("Foursquare name lookup failed for %r", name)
+        return None
+
+    target = _normalize_name(name)
+    if not target:
+        return None
+
+    for raw in raw_results:
+        candidate = _parse_candidate(raw)
+        if not candidate:
+            continue
+        candidate_norm = _normalize_name(candidate.name)
+        if target in candidate_norm or candidate_norm in target:
+            return candidate
+    return None

@@ -666,6 +666,113 @@ def test_coach_routes_restaurant_requests():
     assert "Grilled Teriyaki Chicken" in system_prompt
 
 
+def test_restaurant_answer_leads_with_name_and_address_when_matched():
+    """The parent's ask: the coach's top-level restaurant answer should lead
+    with the restaurant's name and a verified address, not bury it in prose."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.web_search import RestaurantSearchResult
+    from api.services.places.nearby_search import PlaceCandidate
+
+    mock_results = [
+        RestaurantSearchResult(
+            url="https://www.pandaexpress.com/menu", title="Panda Express Menu",
+            snippet="", content="Grilled Teriyaki Chicken, Broccoli Beef", score=0.9,
+        )
+    ]
+    mock_place = PlaceCandidate(
+        place_id="p1", name="Panda Express", distance_m=500,
+        address="123 Main St, San Jose, CA", category="Chinese", rating=8.0,
+        review_count=100, price_level=2, open_now=True, website=None, maps_url=None,
+    )
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "restaurant", "recipe_category": None, "restaurant_name": "Panda Express"},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch("api.services.knowledge.web_search.search_restaurant_menu", return_value=mock_results):
+                with patch("api.services.knowledge.answer.converse_text", return_value="Get the grilled option."):
+                    with patch(
+                        "api.services.places.nearby_search.find_restaurant_by_name",
+                        return_value=mock_place,
+                    ) as mock_find:
+                        result = answer_with_knowledge(
+                            "I am heading to Panda Express for lunch, what should I get?",
+                            {"id": 1, "first_name": "Alex", "age": 14},
+                            latitude=37.33, longitude=-121.89,
+                        )
+
+    mock_find.assert_called_once_with("Panda Express", 37.33, -121.89, 1)
+    assert result["answer"].startswith("**Panda Express** — 123 Main St, San Jose, CA\n\n")
+    assert "Get the grilled option." in result["answer"]
+
+
+def test_restaurant_answer_leads_with_name_only_without_coords():
+    """No device location on the request -> name-only header, never a
+    Foursquare lookup attempt (nothing to look up near)."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.web_search import RestaurantSearchResult
+
+    mock_results = [
+        RestaurantSearchResult(
+            url="https://www.pandaexpress.com/menu", title="Panda Express Menu",
+            snippet="", content="Grilled Teriyaki Chicken", score=0.9,
+        )
+    ]
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "restaurant", "recipe_category": None, "restaurant_name": "Panda Express"},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch("api.services.knowledge.web_search.search_restaurant_menu", return_value=mock_results):
+                with patch("api.services.knowledge.answer.converse_text", return_value="Get the grilled option."):
+                    with patch(
+                        "api.services.places.nearby_search.find_restaurant_by_name"
+                    ) as mock_find:
+                        result = answer_with_knowledge(
+                            "What should I get at Panda Express?",
+                            {"id": 1, "first_name": "Alex", "age": 14},
+                        )
+
+    mock_find.assert_not_called()
+    assert result["answer"].startswith("**Panda Express**\n\n")
+    assert " — " not in result["answer"].split("\n\n")[0]
+
+
+def test_restaurant_answer_leads_with_name_only_when_no_confident_match():
+    """Coords present but Foursquare has no confident name match -> still
+    lead with the name, just skip the address rather than guess."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.web_search import RestaurantSearchResult
+
+    mock_results = [
+        RestaurantSearchResult(
+            url="https://www.pandaexpress.com/menu", title="Panda Express Menu",
+            snippet="", content="Grilled Teriyaki Chicken", score=0.9,
+        )
+    ]
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "restaurant", "recipe_category": None, "restaurant_name": "Panda Express"},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch("api.services.knowledge.web_search.search_restaurant_menu", return_value=mock_results):
+                with patch("api.services.knowledge.answer.converse_text", return_value="Get the grilled option."):
+                    with patch(
+                        "api.services.places.nearby_search.find_restaurant_by_name",
+                        return_value=None,
+                    ):
+                        result = answer_with_knowledge(
+                            "What should I get at Panda Express?",
+                            {"id": 1, "first_name": "Alex", "age": 14},
+                            latitude=37.33, longitude=-121.89,
+                        )
+
+    assert result["answer"].startswith("**Panda Express**\n\n")
+
+
 def test_meal_period_from_time_boundaries():
     from datetime import datetime
     from api.services.knowledge.answer import _meal_period_from_time

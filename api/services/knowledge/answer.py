@@ -451,6 +451,27 @@ def _meal_period_from_time(local_dt) -> str:
     return "late-night snack"
 
 
+def _restaurant_header(name: str, athlete_id: int | None, latitude: float | None, longitude: float | None) -> str:
+    """A deterministic "**Name** — address" line for the top of a
+    named-restaurant answer. Address comes from a verified Foursquare name
+    match, never guessed — silently omitted (name-only) when coordinates are
+    unavailable or no confident match is found, rather than risk a wrong
+    address in a coach response."""
+    header = f"**{name}**"
+    if latitude is None or longitude is None:
+        return header + "\n\n"
+    from api.services.places.nearby_search import find_restaurant_by_name
+
+    try:
+        place = find_restaurant_by_name(name, latitude, longitude, athlete_id)
+    except Exception:
+        logger.exception("Restaurant address lookup failed for %r", name)
+        place = None
+    if place and place.address:
+        header += f" — {place.address}"
+    return header + "\n\n"
+
+
 def _answer_with_restaurant(
     question: str,
     athlete: dict,
@@ -458,6 +479,8 @@ def _answer_with_restaurant(
     meal_period: str | None = None,
     city: str | None = None,
     persona: str | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
 ) -> dict:
     from api.services.knowledge.web_search import search_restaurant_menu
 
@@ -530,8 +553,10 @@ def _answer_with_restaurant(
             "sources": list_sources(),
         }
 
+    header = _restaurant_header(name, athlete.get("id"), latitude, longitude)
+
     return {
-        "answer": answer_text,
+        "answer": header + answer_text,
         "format": "markdown",
         "intent": "restaurant",
         "citations": [],
@@ -876,6 +901,7 @@ def answer_with_knowledge(
         return _answer_with_restaurant(
             contextual_question, athlete, route.get("restaurant_name") or "",
             meal_period=meal_period, city=city, persona=persona,
+            latitude=latitude, longitude=longitude,
         )
 
     if route["path"] == "restaurant_nearby":

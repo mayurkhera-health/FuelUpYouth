@@ -9,7 +9,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.services.places import nearby_search
-from api.services.places.nearby_search import PlaceCandidate, search_nearby_restaurants
+from api.services.places.nearby_search import PlaceCandidate, search_nearby_restaurants, find_restaurant_by_name
 
 
 def _fake_response(status_code=200, results=None, raise_for_status_error=None):
@@ -197,3 +197,69 @@ def test_missing_place_id_or_name_dropped(monkeypatch):
     monkeypatch.setattr(nearby_search.requests, "get", lambda *a, **k: _fake_response(results=hits))
     results = search_nearby_restaurants(37.33, -121.89, athlete_id=1)
     assert [c.name for c in results] == ["Valid"]
+
+
+# ── find_restaurant_by_name ──────────────────────────────────────────────────
+
+def test_find_by_name_returns_confident_match(monkeypatch):
+    monkeypatch.setenv("FOURSQUARE_API_KEY", "test-key")
+    hits = [
+        _place(fsq_id="wrong", name="Panda Garden Buffet"),
+        _place(fsq_id="right", name="Panda Express"),
+    ]
+    seen = {}
+
+    def fake_get(url, headers=None, params=None, timeout=None):
+        seen.update(params=params)
+        return _fake_response(results=hits)
+
+    monkeypatch.setattr(nearby_search.requests, "get", fake_get)
+    place = find_restaurant_by_name("Panda Express", 37.33, -121.89, athlete_id=1)
+
+    assert place is not None
+    assert place.place_id == "right"  # "Panda Garden Buffet" isn't a confident match, skipped
+    assert seen["params"]["sort"] == "RELEVANCE"
+    assert seen["params"]["query"] == "Panda Express"
+
+
+def test_find_by_name_no_match_returns_none(monkeypatch):
+    monkeypatch.setenv("FOURSQUARE_API_KEY", "test-key")
+    hits = [_place(fsq_id="p1", name="Totally Different Diner")]
+    monkeypatch.setattr(nearby_search.requests, "get", lambda *a, **k: _fake_response(results=hits))
+    place = find_restaurant_by_name("Panda Express", 37.33, -121.89, athlete_id=1)
+    assert place is None
+
+
+def test_find_by_name_no_results_returns_none(monkeypatch):
+    monkeypatch.setenv("FOURSQUARE_API_KEY", "test-key")
+    monkeypatch.setattr(nearby_search.requests, "get", lambda *a, **k: _fake_response(results=[]))
+    place = find_restaurant_by_name("Panda Express", 37.33, -121.89, athlete_id=1)
+    assert place is None
+
+
+def test_find_by_name_missing_key_returns_none(monkeypatch):
+    monkeypatch.delenv("FOURSQUARE_API_KEY", raising=False)
+    place = find_restaurant_by_name("Panda Express", 37.33, -121.89, athlete_id=1)
+    assert place is None
+
+
+def test_find_by_name_provider_error_returns_none(monkeypatch):
+    monkeypatch.setenv("FOURSQUARE_API_KEY", "test-key")
+    monkeypatch.setattr(nearby_search.time, "sleep", lambda s: None)
+    monkeypatch.setattr(
+        nearby_search.requests, "get",
+        lambda *a, **k: (_ for _ in ()).throw(ConnectionError("blocked")),
+    )
+    place = find_restaurant_by_name("Panda Express", 37.33, -121.89, athlete_id=1)
+    assert place is None
+
+
+def test_find_by_name_shares_rate_limit_with_nearby_search(monkeypatch):
+    monkeypatch.setenv("FOURSQUARE_API_KEY", "test-key")
+    monkeypatch.setattr(
+        nearby_search.requests, "get",
+        lambda *a, **k: _fake_response(results=[_place(fsq_id="p1", name="Panda Express")]),
+    )
+    for _ in range(nearby_search._RATE_LIMIT_MAX_CALLS):
+        search_nearby_restaurants(37.33, -121.89, athlete_id=7)
+    assert find_restaurant_by_name("Panda Express", 37.33, -121.89, athlete_id=7) is None
