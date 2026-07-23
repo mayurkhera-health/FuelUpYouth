@@ -943,6 +943,117 @@ def test_coach_out_of_scope_passes_persona_into_system_prompt():
     assert "speaking directly to Sam" in system_prompt
 
 
+def test_classify_coach_path_parses_restaurant_nearby_route():
+    from api.services.knowledge.answer import _classify_coach_path
+
+    with patch("api.services.knowledge.answer.is_configured", return_value=True):
+        with patch(
+            "api.services.knowledge.answer.converse_text",
+            return_value='{"path": "restaurant_nearby", "recipe_category": null, "restaurant_name": null}',
+        ):
+            route = _classify_coach_path(
+                "What are some healthy restaurants near me?",
+                {"first_name": "Alex", "age": 14},
+            )
+    assert route == {"path": "restaurant_nearby", "recipe_category": None, "restaurant_name": None}
+
+
+def test_coach_routes_nearby_restaurant_requests():
+    """A 'near me' style question with no named restaurant should hit
+    nearby-restaurant discovery, not the named-menu-lookup path or RAG."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.places.nearby_search import PlaceCandidate
+
+    mock_candidates = [
+        PlaceCandidate(
+            place_id="p1", name="Green Bowl", distance_m=800, address="123 Main St",
+            category="Salad", rating=8.7, review_count=210, price_level=2,
+            open_now=True, website="https://example.com", maps_url="https://foursquare.com/v/green-bowl",
+        )
+    ]
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "restaurant_nearby", "recipe_category": None, "restaurant_name": None},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch(
+                "api.services.places.nearby_search.search_nearby_restaurants",
+                return_value=mock_candidates,
+            ) as mock_search:
+                with patch(
+                    "api.services.knowledge.answer.converse_text",
+                    return_value="**Green Bowl** is a solid pick nearby.",
+                ):
+                    result = answer_with_knowledge(
+                        "What are some healthy restaurants near me?",
+                        {"id": 1, "first_name": "Alex", "age": 14, "gender": "female", "weight_lbs": 120},
+                        latitude=37.33,
+                        longitude=-121.89,
+                    )
+
+    mock_search.assert_called_once_with(37.33, -121.89, 1)
+    assert result["intent"] == "restaurant_nearby"
+    assert result["nearby_sources"][0]["name"] == "Green Bowl"
+
+
+def test_coach_nearby_restaurant_requires_location():
+    """No lat/lon on the request -> friendly ask for a location, no Places
+    call at all — must not silently 500 or fall through to RAG."""
+    from api.services.knowledge.answer import answer_with_knowledge
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "restaurant_nearby", "recipe_category": None, "restaurant_name": None},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch("api.services.places.nearby_search.search_nearby_restaurants") as mock_search:
+                result = answer_with_knowledge(
+                    "What are some healthy restaurants near me?",
+                    {"id": 1, "first_name": "Alex", "age": 14},
+                )
+
+    mock_search.assert_not_called()
+    assert result["intent"] == "restaurant_nearby"
+    assert "location" in result["answer"].lower()
+
+
+def test_coach_nearby_restaurant_falls_back_when_none_found():
+    from api.services.knowledge.answer import answer_with_knowledge
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "restaurant_nearby", "recipe_category": None, "restaurant_name": None},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch(
+                "api.services.places.nearby_search.search_nearby_restaurants", return_value=[]
+            ):
+                result = answer_with_knowledge(
+                    "Find a restaurant close to me",
+                    {"id": 1, "first_name": "Alex", "age": 14},
+                    latitude=37.33,
+                    longitude=-121.89,
+                )
+
+    assert result["intent"] == "restaurant_nearby"
+    assert "couldn't find" in result["answer"].lower()
+
+
+def test_nearby_restaurant_prompt_forbids_menu_claims():
+    """Places data has no menu contents — the prompt must forbid naming
+    specific dishes, the same discipline already enforced for the
+    named-restaurant path's hedged-suggestion bug."""
+    from api.services.knowledge.answer import _NEARBY_RESTAURANT_SYSTEM_TEMPLATE
+
+    prompt = _NEARBY_RESTAURANT_SYSTEM_TEMPLATE.format(
+        timing_block="", candidates_text="[1] Green Bowl — Salad", allergy_block="None",
+    )
+    assert "never name a specific dish" in prompt.lower()
+    assert "only recommend restaurants that appear in the candidates" in prompt.lower()
+    assert "do not quote raw rating decimals" in prompt.lower()
+
+
 def test_coach_recipe_opener_passes_persona_into_system_prompt():
     from api.services.knowledge.answer import answer_with_knowledge
 

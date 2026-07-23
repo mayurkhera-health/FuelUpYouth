@@ -28,6 +28,7 @@ WHAT YOU CAN HELP WITH:
 - **Knowledge answers** — youth soccer sports nutrition from trusted organizations: fueling timing (pre-game, halftime, post-game, practice days), hydration, carbs/protein/recovery, iron and calcium for athletes, what *types* of foods fit a fueling window, and safe fueling habits. You can also use pre-calculated numbers when provided (iron, protein, hydration, calories).
 - **Recipe recommendations** — suggest a science-backed meal or snack from FuelUp's curated recipe library for a fueling window: halftime, pre-game, post-game, breakfast, lunch, dinner, snack, or hydration. Valid library recipes are filtered for the athlete's allergies and dietary restrictions, then the best match is selected for what they asked.
 - **Restaurant menu lookup** — when the athlete names a specific restaurant with a fixed menu (fast food, sit-down chain), look up that restaurant's own posted menu and suggest the better fueling picks from it.
+- **Nearby restaurant suggestions** — when the athlete/parent wants restaurant ideas near their current location (no specific restaurant named), suggest 2-5 real nearby options using their device location — name, distance, rating, and hours, not menu contents.
 
 WHAT YOU CANNOT DO:
 - You do not invent new recipes — recommendations come only from FuelUp's curated recipe library.
@@ -62,6 +63,10 @@ Choose exactly ONE path. Deciding question for recipe vs knowledge: did the user
   NOT restaurant if it's a grocery/general store (Trader Joe's, Costco, Walmart) — those have no single fixed "menu" to look up → out_of_scope instead.
   NOT restaurant if the user already lists the specific items/options themselves → knowledge (evaluate what they gave you).
 
+- "restaurant_nearby" — The user wants restaurant SUGGESTIONS/ideas near their current location, and does NOT name one specific restaurant. Signals: "near me", "nearby", "close by", "around here", "in the area", "what's around here". Often paired with a meal-context word (healthy, post-practice, pre-game, recovery) — that's fine, still restaurant_nearby.
+  NOT restaurant_nearby if a specific restaurant is named → restaurant instead.
+  NOT restaurant_nearby if they're not asking about eating out anywhere → knowledge or out_of_scope per the other rules.
+
 - "out_of_scope" — The question cannot be answered by knowledge, recipe selection, or a restaurant lookup. Route here when:
   • Asking what to buy/eat at a specific GROCERY/general store WITHOUT listing what's available ("what should I get at Trader Joe's", "healthy stuff at Costco")
   • Real-time or personal info you don't have (weather, their schedule, what's in their pantry/fridge)
@@ -71,6 +76,7 @@ Choose exactly ONE path. Deciding question for recipe vs knowledge: did the user
   NOT out_of_scope if the user lists options and asks you to choose ("I have bananas and pretzels at home — which is better pre-game?") → knowledge
   NOT out_of_scope if they explicitly ask for a recipe from our library → recipe
   NOT out_of_scope if they name a specific restaurant with a fixed menu → restaurant
+  NOT out_of_scope if they want nearby restaurant ideas without naming one → restaurant_nearby
 
 {_COACH_CAPABILITIES}
 
@@ -98,12 +104,18 @@ restaurant (specific restaurant, fixed menu, nothing listed yet):
 - "What's the best thing on the McDonald's menu?" → restaurant, restaurant_name: "McDonald's"
 - "What should I order at Chipotle before my game?" → restaurant, restaurant_name: "Chipotle"
 
+restaurant_nearby (wants ideas, nothing named, near their location):
+- "What are some healthy restaurants near me?" → restaurant_nearby
+- "Where can I get a good post-practice meal nearby?" → restaurant_nearby
+- "Find a restaurant close to me with good recovery meal options" → restaurant_nearby
+- "What's around here for lunch?" → restaurant_nearby
+
 out_of_scope (grocery/general store, real-time data, non-nutrition, medical/weight):
 - "What can I eat at Trader Joe's?" → out_of_scope
 - "What's healthy at Costco?" → out_of_scope
 
 Return ONLY valid JSON, no markdown:
-{{"path": "knowledge" | "recipe" | "restaurant" | "out_of_scope", "recipe_category": null | "category_key", "restaurant_name": null | "restaurant name"}}"""
+{{"path": "knowledge" | "recipe" | "restaurant" | "restaurant_nearby" | "out_of_scope", "recipe_category": null | "category_key", "restaurant_name": null | "restaurant name"}}"""
 
 _OUT_OF_SCOPE_SYSTEM = f"""You are FuelUp's Nutrition Coach for youth soccer athletes ages 9-17.
 
@@ -162,8 +174,8 @@ def _detect_safety_flag(question: str) -> bool:
 def _classify_coach_path(question: str, athlete: dict) -> dict:
     """
     LLM router: choose knowledge RAG vs recipe library selection vs restaurant
-    menu lookup vs out-of-scope redirect.
-    Returns {"path": "knowledge"|"recipe"|"restaurant"|"out_of_scope",
+    menu lookup vs nearby-restaurant discovery vs out-of-scope redirect.
+    Returns {"path": "knowledge"|"recipe"|"restaurant"|"restaurant_nearby"|"out_of_scope",
              "recipe_category": str|None, "restaurant_name": str|None}.
     """
     if not is_configured():
@@ -186,11 +198,14 @@ def _classify_coach_path(question: str, athlete: dict) -> dict:
         return {"path": "knowledge", "recipe_category": None, "restaurant_name": None}
 
     path = parsed.get("path", "knowledge")
-    if path not in ("knowledge", "recipe", "restaurant", "out_of_scope"):
+    if path not in ("knowledge", "recipe", "restaurant", "restaurant_nearby", "out_of_scope"):
         path = "knowledge"
 
     if path == "out_of_scope":
         return {"path": "out_of_scope", "recipe_category": None, "restaurant_name": None}
+
+    if path == "restaurant_nearby":
+        return {"path": "restaurant_nearby", "recipe_category": None, "restaurant_name": None}
 
     if path == "restaurant":
         restaurant_name = (parsed.get("restaurant_name") or "").strip()
@@ -526,6 +541,149 @@ def _answer_with_restaurant(
     }
 
 
+_NEARBY_RESTAURANT_SYSTEM_TEMPLATE = """You are FuelUp's Nutrition Coach for youth soccer athletes ages 9-17.
+
+The athlete/parent wants restaurant ideas near their current location. Below are real nearby restaurants from a live restaurant-search provider — this is DISCOVERY DATA ONLY (name, distance, rating, hours, price). You do NOT have menu contents for any of these — no dish names, no ingredients, no calorie/macro data.
+{timing_block}
+NEARBY CANDIDATES:
+{candidates_text}
+
+STRICT RULES — follow these exactly:
+1. Only recommend restaurants that appear in the candidates above. Never invent or assume a restaurant that isn't listed.
+2. You do NOT know any restaurant's menu here. Never name a specific dish, never claim a place "has" a specific healthy item. Speak only about the type of food (its cuisine/category) in general terms — e.g. "a Mediterranean spot with grilled options tend to fit well" not "get the grilled chicken bowl."
+3. Recommend 2-5 of the candidates, briefly explaining why each fits the fueling context (pre-practice = lighter/carb-forward, post-practice = protein+carb recovery, general = balanced). Mention distance and describe rating/popularity qualitatively ("well-reviewed", "highly rated nearby") — do not quote raw rating decimals or review counts verbatim, the exact scale isn't meant to be read out.
+4. {allergy_block}
+5. NEVER quote specific calorie, carb, protein, or gram numbers — you have none for these candidates.
+6. NEVER recommend supplements for athletes under 18.
+7. Be transparent this is a restaurant-search result, not menu-verified — one brief phrase is enough. If they want specific menu picks for one of these, invite them to ask about that restaurant by name next.
+8. Educational food guidance only — never medical advice, never diagnose.
+9. Format as **Markdown**: 2-5 short recommendations, bold the restaurant names. No headings, tables, or code blocks."""
+
+
+def _derive_meal_period(now: str | None) -> str | None:
+    """Best-guess meal period from a client local timestamp, shared by the
+    named-restaurant and nearby-restaurant paths. None if `now` is absent
+    or unparseable — callers just skip the timing framing."""
+    if not now:
+        return None
+    try:
+        from datetime import datetime as _dt
+        return _meal_period_from_time(_dt.fromisoformat(now))
+    except (ValueError, TypeError):
+        return None
+
+
+def _answer_with_nearby_restaurants(
+    question: str,
+    athlete: dict,
+    latitude: float | None,
+    longitude: float | None,
+    meal_period: str | None = None,
+    persona: str | None = None,
+) -> dict:
+    first_name = athlete.get("first_name", "there")
+
+    if latitude is None or longitude is None or not is_configured():
+        return {
+            "answer": (
+                f"**I'd need your location to find restaurants nearby, {first_name}.** "
+                "Make sure location access is on, or tell me a neighborhood or city and "
+                "I'll work from that instead."
+            ),
+            "format": "markdown",
+            "intent": "restaurant_nearby",
+            "citations": [],
+            "calculation": None,
+            "sources": list_sources(),
+        }
+
+    from api.services.places.nearby_search import search_nearby_restaurants
+
+    try:
+        candidates = search_nearby_restaurants(latitude, longitude, athlete.get("id"))
+    except Exception:
+        logger.exception("Nearby restaurant search failed for athlete_id=%s", athlete.get("id"))
+        candidates = []
+
+    if not candidates:
+        return {
+            "answer": (
+                f"**I couldn't find nearby restaurants right now, {first_name}.** "
+                "Try again in a moment, or tell me a specific restaurant and I can look up its menu instead."
+            ),
+            "format": "markdown",
+            "intent": "restaurant_nearby",
+            "citations": [],
+            "calculation": None,
+            "sources": list_sources(),
+        }
+
+    allergies = _parse_allergies(athlete.get("allergies"))
+    restrictions = _parse_dietary(athlete.get("dietary_restrictions"))
+    allergy_parts = []
+    if allergies:
+        allergy_parts.append(f"Allergies to keep in mind — favor cuisine types unlikely to center on: {', '.join(allergies)}.")
+    if restrictions:
+        allergy_parts.append(f"Dietary restrictions to respect: {', '.join(restrictions)}.")
+    allergy_block = " ".join(allergy_parts) or "No known allergies or dietary restrictions."
+
+    def _fmt_candidate(c, i):
+        bits = [c.category]
+        if c.distance_m is not None:
+            bits.append(f"{c.distance_m / 1609.34:.1f} mi away")
+        if c.rating is not None:
+            review_note = f", {c.review_count} reviews" if c.review_count else ""
+            bits.append(f"rated {c.rating}{review_note}")
+        if c.price_level:
+            bits.append("$" * c.price_level)
+        if c.open_now is not None:
+            bits.append("open now" if c.open_now else "closed now")
+        return f"[{i}] {c.name} — {', '.join(bits)}. {c.address}"
+
+    candidates_text = "\n".join(_fmt_candidate(c, i) for i, c in enumerate(candidates, 1))
+
+    timing_block = ""
+    if meal_period:
+        timing_block = (
+            f"\nIt's currently close to {meal_period} for the athlete — weight your picks toward that "
+            f"(a fuller meal for lunch/dinner, something quicker and lighter for a snack window).\n"
+        )
+
+    system_prompt = _NEARBY_RESTAURANT_SYSTEM_TEMPLATE.format(
+        timing_block=timing_block,
+        candidates_text=candidates_text,
+        allergy_block=allergy_block,
+    ) + _audience_suffix(persona, athlete)
+
+    try:
+        answer_text = converse_text(system=system_prompt, user=question, max_tokens=400, temperature=0.4)
+    except Exception:
+        logger.exception("Nearby restaurant answer generation failed")
+        return {
+            "answer": (
+                f"**I found some nearby options but I'm having trouble right now, {first_name}.** "
+                "Try again in a moment."
+            ),
+            "format": "markdown",
+            "intent": "restaurant_nearby",
+            "citations": [],
+            "calculation": None,
+            "sources": list_sources(),
+        }
+
+    return {
+        "answer": answer_text,
+        "format": "markdown",
+        "intent": "restaurant_nearby",
+        "citations": [],
+        "nearby_sources": [
+            {"name": c.name, "place_id": c.place_id, "maps_url": c.maps_url} for c in candidates
+        ],
+        "calculation": None,
+        "sources": list_sources(),
+    }
+
+
 def _maybe_calculate(question: str, athlete: dict) -> Optional[dict]:
     q = question.lower()
     for keyword, fn in _CALC_KEYWORDS.items():
@@ -705,13 +863,7 @@ def answer_with_knowledge(
         return _answer_out_of_scope(contextual_question, athlete, persona=persona)
 
     if route["path"] == "restaurant":
-        meal_period = None
-        if now:
-            try:
-                from datetime import datetime as _dt
-                meal_period = _meal_period_from_time(_dt.fromisoformat(now))
-            except (ValueError, TypeError):
-                meal_period = None
+        meal_period = _derive_meal_period(now)
 
         city = None
         if latitude is not None and longitude is not None:
@@ -724,6 +876,12 @@ def answer_with_knowledge(
         return _answer_with_restaurant(
             contextual_question, athlete, route.get("restaurant_name") or "",
             meal_period=meal_period, city=city, persona=persona,
+        )
+
+    if route["path"] == "restaurant_nearby":
+        return _answer_with_nearby_restaurants(
+            contextual_question, athlete, latitude, longitude,
+            meal_period=_derive_meal_period(now), persona=persona,
         )
 
     category_for_recipe = None
