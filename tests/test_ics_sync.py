@@ -221,6 +221,64 @@ def test_name_time_fallback_skips_ambiguous_duplicates(monkeypatch, _spy_windows
         "Manual row UIDs must not be overwritten by the fallback"
 
 
+def test_name_time_fallback_adopts_prior_byga_duplicate_on_uid_rotation(monkeypatch, _spy_windows):
+    """The actual production bug: a PRIOR byga-sourced row (from an earlier
+    sync) must also be adoptable by the fallback, not just manual rows —
+    otherwise every periodic resync of a UID-rotating feed re-inserts the
+    same events as "new" and re-fires the new-events notification email."""
+    conn = _fresh_conn()
+    event_date = FUT1.strftime("%Y-%m-%d")
+    start_time = FUT1.strftime("%H:%M")
+
+    # Row from a PRIOR byga sync — source='byga', uid from that earlier export.
+    conn.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, "
+        "start_time, duration_hours, uid, source) VALUES "
+        "(1,'Team Practice','practice',?,?,1.5,'byga-uid-from-last-sync','byga')",
+        (event_date, start_time),
+    )
+    conn.commit()
+    prior_id = conn.execute("SELECT id FROM events").fetchone()[0]
+
+    # BYGA rotated the UID again on this export — same event, new uid.
+    _feed(monkeypatch, _cal(_vevent("byga-rotated-uid", FUT1, "Team Practice")))
+    counts = ics_sync.sync_platform(conn, 1, "byga", "http://x", "competitive")
+
+    rows = conn.execute("SELECT * FROM events").fetchall()
+    assert len(rows) == 1, f"Expected 1 row (updated in place), got {len(rows)} — duplicate inserted"
+    row = dict(rows[0])
+    assert row["id"] == prior_id
+    assert row["uid"] == "byga-rotated-uid"
+    assert counts["updated"] == 1
+    assert counts["inserted"] == 0, "Must not re-report this event as new"
+
+
+def test_name_time_fallback_does_not_merge_across_platforms(monkeypatch, _spy_windows):
+    """A row synced from a DIFFERENT platform (e.g. playmetrics) must never be
+    adopted by a byga sync, even with matching name/date/time — that would
+    silently reassign an event between the athlete's two connected feeds."""
+    conn = _fresh_conn()
+    event_date = FUT1.strftime("%Y-%m-%d")
+    start_time = FUT1.strftime("%H:%M")
+
+    conn.execute(
+        "INSERT INTO events (athlete_id, event_name, event_type, event_date, "
+        "start_time, duration_hours, uid, source) VALUES "
+        "(1,'Team Practice','practice',?,?,1.5,'playmetrics-uid','playmetrics')",
+        (event_date, start_time),
+    )
+    conn.commit()
+
+    _feed(monkeypatch, _cal(_vevent("byga-uid", FUT1, "Team Practice")))
+    counts = ics_sync.sync_platform(conn, 1, "byga", "http://x", "competitive")
+
+    rows = conn.execute("SELECT uid, source FROM events ORDER BY source").fetchall()
+    assert len(rows) == 2, "Both the playmetrics row and the new byga row must exist separately"
+    assert {r["source"] for r in rows} == {"playmetrics", "byga"}
+    assert counts["inserted"] == 1
+    assert counts["updated"] == 0
+
+
 def test_migrations_idempotent():
     conn = sqlite3.connect(":memory:")
     conn.execute("CREATE TABLE athletes (id INTEGER PRIMARY KEY)")

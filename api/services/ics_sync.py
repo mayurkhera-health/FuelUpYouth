@@ -226,17 +226,21 @@ def sync_platform(conn, athlete_id: int, platform: str, ics_url: str,
         if uid not in existing:
             # BYGA (and some other providers) rotate their VEVENT UIDs on every
             # export, so a UID-only lookup never finds a previously-imported copy
-            # of the same event. Fall back to matching on (name, date, start_time)
-            # — but only for manually-sourced rows, and only when exactly one row
-            # matches (ambiguous duplicates are left for INSERT to resolve).
+            # of the same event — including one imported by an EARLIER sync of
+            # this same platform (its uid is stale too). Fall back to matching
+            # on (name, date, start_time) among rows from either a manual import
+            # or this same platform — never a *different* connected platform, to
+            # avoid merging two distinct feeds' events that happen to collide —
+            # and only when exactly one row matches (ambiguous duplicates are
+            # left for INSERT to resolve).
             name_time_count = conn.execute(
                 "SELECT COUNT(*) FROM events WHERE athlete_id=? AND event_name=? "
-                "AND event_date=? AND start_time=? AND source='manual'",
-                (athlete_id, ev["event_name"], ev["event_date"], ev["start_time"]),
+                "AND event_date=? AND start_time=? AND source IN ('manual', ?)",
+                (athlete_id, ev["event_name"], ev["event_date"], ev["start_time"], platform),
             ).fetchone()[0]
             if name_time_count > 1:
                 logger.warning(
-                    "Name+time fallback skipped for uid %s: %d ambiguous manual rows "
+                    "Name+time fallback skipped for uid %s: %d ambiguous rows "
                     "(athlete %s, event_name=%r, date=%s)",
                     uid, name_time_count, athlete_id, ev["event_name"], ev["event_date"],
                 )
@@ -244,8 +248,8 @@ def sync_platform(conn, athlete_id: int, platform: str, ics_url: str,
             elif name_time_count == 1:
                 name_time_row = conn.execute(
                     "SELECT * FROM events WHERE athlete_id=? AND event_name=? "
-                    "AND event_date=? AND start_time=? AND source='manual'",
-                    (athlete_id, ev["event_name"], ev["event_date"], ev["start_time"]),
+                    "AND event_date=? AND start_time=? AND source IN ('manual', ?)",
+                    (athlete_id, ev["event_name"], ev["event_date"], ev["start_time"], platform),
                 ).fetchone()
             else:
                 name_time_row = None
@@ -268,6 +272,13 @@ def sync_platform(conn, athlete_id: int, platform: str, ics_url: str,
                     )
                 else:
                     # Register under the new uid so the delete phase won't remove it.
+                    # If the adopted row already had an entry in `existing` under its
+                    # OLD uid (true when adopting a prior same-platform row on UID
+                    # rotation — matched.uid was loaded into `existing` at step 2),
+                    # drop that stale entry too. Otherwise phase 4's "uid not in
+                    # desired" delete sweep matches the old key and removes the row
+                    # we just updated, out from under itself.
+                    existing.pop(matched.get("uid"), None)
                     existing[uid] = {**matched, "uid": uid, "source": platform}
                     counts["updated"] += 1
                     affected_dates.add(ev["event_date"])
