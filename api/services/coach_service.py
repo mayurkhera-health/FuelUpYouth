@@ -18,6 +18,20 @@ def _heat_flag(temp_f: float, humidity: int) -> tuple[bool, str]:
     return False, "none"
 
 
+def _weather_context(raw: dict, location_label: str | None = None) -> dict | None:
+    if raw.get("error") or raw.get("temp_f") is None:
+        return None
+    heat_flag, heat_level = _heat_flag(float(raw["temp_f"]), int(raw.get("humidity", 50)))
+    return {
+        "temp_f": raw["temp_f"],
+        "humidity": raw.get("humidity"),
+        "description": raw.get("description", ""),
+        "heat_flag": heat_flag,
+        "heat_level": heat_level,
+        "location_label": location_label,
+    }
+
+
 def assemble_context(
     *,
     athlete_id: int,
@@ -28,6 +42,8 @@ def assemble_context(
     category_label: str,
     plan_date: str,
     conn,
+    latitude: float | None = None,
+    longitude: float | None = None,
 ) -> dict:
     athlete = conn.execute(
         "SELECT * FROM athletes WHERE id = ?", (athlete_id,)
@@ -57,18 +73,20 @@ def assemble_context(
             lat=event.get("latitude"),
             lon=event.get("longitude"),
         )
-        if not raw.get("error") and raw.get("temp_f") is not None:
-            heat_flag, heat_level = _heat_flag(
-                float(raw["temp_f"]),
-                int(raw.get("humidity", 50)),
-            )
-            weather = {
-                "temp_f": raw["temp_f"],
-                "humidity": raw.get("humidity"),
-                "description": raw.get("description", ""),
-                "heat_flag": heat_flag,
-                "heat_level": heat_level,
-            }
+        weather = _weather_context(raw)
+    elif latitude is not None and longitude is not None:
+        # No event today (or no location on it) — fall back to the athlete's
+        # device location so everyday hydration guidance still gets real
+        # local weather, not just game-day fueling. Best-effort: a bad/slow
+        # geocode never blocks the chat, it just loses the city name in copy.
+        from api.services.weather import reverse_geocode_city
+        location_label = None
+        try:
+            location_label = reverse_geocode_city(latitude, longitude)
+        except Exception:
+            pass
+        raw = get_weather(lat=latitude, lon=longitude)
+        weather = _weather_context(raw, location_label=location_label)
 
     event_type = (event or {}).get("event_type", "rest") or "rest"
     targets = calc_daily_targets(athlete, event_type)
@@ -133,7 +151,7 @@ def build_system_prompt(context: dict, persona: str) -> str:
     heat_block = ""
     if weather.get("heat_flag"):
         temp = weather.get("temp_f", "")
-        city = sch.get("event_city", "their area")
+        city = weather.get("location_label") or sch.get("event_city") or "their area"
         heat_block = (
             f"\n🌡️  HEAT ADVISORY: It is {temp}°F in {city} today "
             f"({weather.get('heat_level', 'hot')} conditions). "

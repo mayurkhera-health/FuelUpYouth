@@ -15,6 +15,8 @@ def get_context(
     category_key: str,
     category_label: str,
     plan_date: str,
+    latitude: float | None = None,
+    longitude: float | None = None,
 ):
     conn = get_conn()
     try:
@@ -27,6 +29,8 @@ def get_context(
             category_label=category_label,
             plan_date=plan_date,
             conn=conn,
+            latitude=latitude,
+            longitude=longitude,
         )
     except ValueError as e:
         raise HTTPException(404, str(e))
@@ -49,6 +53,8 @@ class ChatRequest(BaseModel):
     plan_date: str
     persona: str = "athlete"
     messages: list[_Msg]
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 @router.post("/chat")
@@ -64,6 +70,8 @@ def post_chat(body: ChatRequest):
             category_label=body.category_label,
             plan_date=body.plan_date,
             conn=conn,
+            latitude=body.latitude,
+            longitude=body.longitude,
         )
     except ValueError as e:
         raise HTTPException(404, str(e))
