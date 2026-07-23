@@ -418,11 +418,11 @@ KNOWLEDGE EXCERPTS:
 {calc_text}"""
 
 
-def _call_llm(system_prompt: str, user_question: str) -> str:
+def _call_bedrock(system_prompt: str, user_question: str) -> str:
     if not is_configured():
         raise RuntimeError(
-            "Kimi is not configured. Set KIMI_API_KEY (and optionally KIMI_MODEL_ID, "
-            "KIMI_BASE_URL) on the server."
+            "AWS Bedrock is not configured. Set AWS_REGION, AWS_ACCESS_KEY_ID, "
+            "AWS_SECRET_ACCESS_KEY, and BEDROCK_MODEL_ID on the server."
         )
     return converse_text(system=system_prompt, user=user_question, max_tokens=512, temperature=0.3)
 
@@ -512,9 +512,9 @@ def answer_with_knowledge(
 
     system_prompt = _build_system_prompt(chunks, calc_result)
     try:
-        answer_text = _call_llm(system_prompt, contextual_question)
+        answer_text = _call_bedrock(system_prompt, contextual_question)
     except Exception:
-        logger.exception("LLM call failed for Nutrition Coach")
+        logger.exception("Bedrock call failed for Nutrition Coach")
         return {
             "answer": _FALLBACK,
             "format": "markdown",

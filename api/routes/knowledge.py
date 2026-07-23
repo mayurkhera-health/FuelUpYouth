@@ -85,8 +85,8 @@ def coach_health():
         return {
             "status": "degraded",
             "error": str(exc),
-            "llm_configured": is_configured(),
-            "llm_model_id": model_id(),
+            "bedrock_configured": is_configured(),
+            "bedrock_model_id": model_id(),
         }
     finally:
         conn.close()
@@ -95,8 +95,8 @@ def coach_health():
         "status": "ok" if chunk_count > 0 and is_configured() else "degraded",
         "approved_items": item_count,
         "approved_chunks": chunk_count,
-        "llm_configured": is_configured(),
-        "llm_model_id": model_id(),
+        "bedrock_configured": is_configured(),
+        "bedrock_model_id": model_id(),
     }
 
 

@@ -36,7 +36,7 @@ CALENDAR_WARN_BELOW_RATE = 0.50
 # to one concept). Used only to name a red check in human terms.
 HEALTH_PLAIN = {
     "bedrock_ping": "the AI coach",
-    "kimi_inference": "the AI coach",
+    "bedrock_inference": "the AI coach",
     "gmail_smtp": "email sending",
     "db_writable": "the app database",
     "disk_space": "storage space",

@@ -7,9 +7,6 @@ Design constraints (deliberately small): ~9 checks, one 15-min job + one daily
 job, best-effort everywhere. A crashing check marks itself red and never kills
 the runner. Reuses existing clients — bedrock_client, email_service, the Expo
 push path — rather than building parallel ones.
-
-bedrock_ping checks AWS Bedrock (still used for embeddings only). kimi_inference
-checks the Kimi chat/completions call that powers the Nutrition Coach.
 """
 
 import json
@@ -33,7 +30,7 @@ log = logging.getLogger(__name__)
 CHECK_ORDER = [
     "bedrock_ping", "gmail_smtp", "db_writable", "disk_space",
     "scheduler_notifications", "scheduler_calendar_sync", "calendar_sync_systemic",
-    "expo_push", "kimi_inference",
+    "expo_push", "bedrock_inference",
 ]
 
 DISK_RED_PCT = 80.0
@@ -65,8 +62,7 @@ def _bedrock_control_client():
 
 
 def check_bedrock_ping(conn):
-    # AWS Bedrock is used for embeddings only now — chat/inference moved to Kimi.
-    if not bedrock_client.embeddings_configured():
+    if not bedrock_client.is_configured():
         return "unknown", "AWS not configured", None
     t0 = time.monotonic()
     try:
@@ -77,13 +73,13 @@ def check_bedrock_ping(conn):
         return "red", f"ping failed: {e}"[:200], None
 
 
-def check_kimi_inference(conn):
+def check_bedrock_inference(conn):
     if not bedrock_client.is_configured():
-        return "unknown", "Kimi not configured", None
+        return "unknown", "AWS not configured", None
     t0 = time.monotonic()
     try:
-        # Minimal, cheap real inference — catches model-access/quota issues a
-        # control-plane ping can't. Tiny max_tokens.
+        # Minimal, ~free real inference — catches model-access/quota issues the
+        # control-plane ping can't. Cheapest configured model, tiny max_tokens.
         txt = bedrock_client.converse_text(user="Reply with the single word ok.", max_tokens=5, temperature=0)
         ms = round((time.monotonic() - t0) * 1000)
         if txt and txt.strip():
@@ -196,7 +192,7 @@ CHECKS_15MIN = [
     ("expo_push", check_expo_push),
 ]
 CHECKS_DAILY = [
-    ("kimi_inference", check_kimi_inference),
+    ("bedrock_inference", check_bedrock_inference),
 ]
 
 

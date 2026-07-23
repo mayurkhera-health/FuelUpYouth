@@ -5,12 +5,12 @@ import { Card, Button, Skeleton, EmptyState, ErrorRetry } from "./ui";
 
 // Checks whose metric_value is a genuine response time (ms). Only these get a
 // "latency" pill — we never fabricate a latency for checks that don't have one.
-const LATENCY_CHECKS = new Set(["bedrock_ping", "kimi_inference", "gmail_smtp"]);
+const LATENCY_CHECKS = new Set(["bedrock_ping", "bedrock_inference", "gmail_smtp"]);
 
 // Friendly name + a one-line "what this watches" for each sensor, so the page
 // makes sense to a non-engineer. Keyed by backend check_name.
 const META = {
-  bedrock_ping: { title: "Embeddings service", blurb: "Connection to AWS Bedrock, used for knowledge-base embeddings" },
+  bedrock_ping: { title: "AI service", blurb: "Connection to the AI behind coaching & blueprints" },
   gmail_smtp: { title: "Email delivery", blurb: "Can sign in to the mailbox that sends emails" },
   db_writable: { title: "Database", blurb: "App database accepts reads & writes" },
   disk_space: { title: "Storage", blurb: "Free space on the data volume" },
@@ -18,14 +18,14 @@ const META = {
   scheduler_calendar_sync: { title: "Calendar sync job", blurb: "The 6-hour job that refreshes connected calendars" },
   calendar_sync_systemic: { title: "Calendar feeds", blurb: "BYGA / PlayMetrics feeds importing successfully" },
   expo_push: { title: "Push notifications", blurb: "Recent push sends to phones are landing" },
-  kimi_inference: { title: "AI responses", blurb: "The AI can generate a reply · checked once a day" },
+  bedrock_inference: { title: "AI responses", blurb: "The AI can generate a reply · checked once a day" },
 };
 
 // Drill-down runbook: what a red on this sensor means and the first thing to
 // try, in founder language. Shown in the detail drawer.
 const RUNBOOK = {
   bedrock_ping: {
-    means: "The app can't reach AWS Bedrock, so knowledge-base embeddings (Nutrition Coach retrieval) will fail until it recovers. Coaching replies still work — those run on Kimi.",
+    means: "The app can't reach AWS Bedrock, so coaching replies and blueprint generation will fail until it recovers.",
     firstTry: "Usually an AWS blip — re-run the check. If it stays red for 15+ min, check the AWS status page and the app's AWS credentials.",
   },
   gmail_smtp: {
@@ -56,9 +56,9 @@ const RUNBOOK = {
     means: "Recent push notifications are all failing to reach phones.",
     firstTry: "Check recent sends below — 'DeviceNotRegistered' on every row means stale tokens; other errors point at Expo's push service.",
   },
-  kimi_inference: {
-    means: "The daily end-to-end AI probe (a real generation via Kimi) failed even though the connection ping may be fine.",
-    firstTry: "Re-run the check. If it stays red, verify KIMI_API_KEY is still valid and the configured model ID is still available.",
+  bedrock_inference: {
+    means: "The daily end-to-end AI probe (a real generation) failed even though the connection ping may be fine.",
+    firstTry: "Re-run the check. If ping is green but this stays red, the configured model ID may no longer be available in this AWS region.",
   },
 };
 
@@ -70,7 +70,7 @@ const PENDING_COPY = {
   scheduler_calendar_sync: "Waiting for first run — within 6 hours",
   calendar_sync_systemic: "No connected calendars to check yet",
   expo_push: "No push notifications sent recently",
-  kimi_inference: "Runs automatically once a day (09:00 UTC)",
+  bedrock_inference: "Runs automatically once a day (09:00 UTC)",
 };
 
 function humanDetail(c) {

@@ -44,8 +44,7 @@ def client(monkeypatch):
     monkeypatch.delenv("GMAIL_APP_PASSWORD", raising=False)
     monkeypatch.delenv("ADMIN_ALERT_PARENT_ID", raising=False)
     monkeypatch.delenv("ADMIN_ALERT_EMAIL", raising=False)
-    monkeypatch.setattr(bedrock_client, "is_configured", lambda: False)  # no Kimi calls
-    monkeypatch.setattr(bedrock_client, "embeddings_configured", lambda: False)  # no AWS calls
+    monkeypatch.setattr(bedrock_client, "is_configured", lambda: False)  # no AWS calls
     admin_auth._failed_logins.clear()
     admin_health._last_run["t"] = 0.0  # reset the run rate-limiter
 

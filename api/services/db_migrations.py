@@ -471,7 +471,7 @@ def _create_admin_audit_log(conn):
 
 
 _HEALTH_CHECK_NAMES = [
-    "bedrock_ping", "kimi_inference", "gmail_smtp", "db_writable", "disk_space",
+    "bedrock_ping", "bedrock_inference", "gmail_smtp", "db_writable", "disk_space",
     "scheduler_notifications", "scheduler_calendar_sync", "calendar_sync_systemic",
     "expo_push",
 ]
