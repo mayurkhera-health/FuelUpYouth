@@ -8,7 +8,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from api.services.knowledge.web_search import WebSearchResult, search_approved_sites
+from api.services.knowledge.web_search import (
+    WebSearchResult,
+    RestaurantSearchResult,
+    search_approved_sites,
+    search_restaurant_menu,
+)
 
 
 def test_search_filters_to_approved_domains():
@@ -40,3 +45,33 @@ def test_site_filter_includes_approved_domains():
     assert "site:acsm.org" in query
     assert "site:aap.org" in query
     assert "pre game snack" in query
+
+
+def test_restaurant_search_not_restricted_to_approved_domains():
+    hits = [
+        {"href": "https://www.pandaexpress.com/menu", "title": "Panda Express Menu",
+         "body": "Grilled Teriyaki Chicken, Broccoli Beef"},
+    ]
+
+    with patch("api.services.knowledge.web_search._ddg_search", return_value=hits) as mock_search:
+        with patch("api.services.knowledge.web_search._fetch_page_text", return_value=""):
+            with patch("api.services.knowledge.web_search.embed_text", return_value=[1.0, 0.0]):
+                results = search_restaurant_menu("Panda Express", "healthy lunch options", max_results=3)
+
+    assert len(results) == 1
+    assert isinstance(results[0], RestaurantSearchResult)
+    assert results[0].url == "https://www.pandaexpress.com/menu"
+    query_used = mock_search.call_args.args[0]
+    assert "site:" not in query_used
+    assert "Panda Express" in query_used
+
+
+def test_restaurant_search_disabled_returns_empty(monkeypatch):
+    monkeypatch.setenv("COACH_WEB_SEARCH_ENABLED", "false")
+    results = search_restaurant_menu("Panda Express", "lunch")
+    assert results == []
+
+
+def test_restaurant_search_empty_name_returns_empty():
+    results = search_restaurant_menu("", "lunch")
+    assert results == []

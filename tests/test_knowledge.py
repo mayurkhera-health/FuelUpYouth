@@ -301,7 +301,7 @@ def test_classify_coach_path_parses_out_of_scope_route():
                 "What should I eat at Trader Joe's?",
                 {"first_name": "Alex", "age": 14},
             )
-    assert route == {"path": "out_of_scope", "recipe_category": None}
+    assert route == {"path": "out_of_scope", "recipe_category": None, "restaurant_name": None}
 
 
 def test_coach_routes_out_of_scope_without_retrieval():
@@ -328,7 +328,37 @@ def test_classify_coach_path_parses_recipe_route():
                 "Make me something for after the game",
                 {"first_name": "Alex", "age": 14},
             )
-    assert route == {"path": "recipe", "recipe_category": "post_game"}
+    assert route == {"path": "recipe", "recipe_category": "post_game", "restaurant_name": None}
+
+
+def test_classify_coach_path_parses_restaurant_route():
+    from api.services.knowledge.answer import _classify_coach_path
+
+    with patch("api.services.knowledge.answer.is_configured", return_value=True):
+        with patch(
+            "api.services.knowledge.answer.converse_text",
+            return_value='{"path": "restaurant", "recipe_category": null, "restaurant_name": "Panda Express"}',
+        ):
+            route = _classify_coach_path(
+                "I am heading to Panda Express for lunch, what should I get?",
+                {"first_name": "Alex", "age": 14},
+            )
+    assert route == {"path": "restaurant", "recipe_category": None, "restaurant_name": "Panda Express"}
+
+
+def test_classify_coach_path_restaurant_without_name_falls_back_to_out_of_scope():
+    from api.services.knowledge.answer import _classify_coach_path
+
+    with patch("api.services.knowledge.answer.is_configured", return_value=True):
+        with patch(
+            "api.services.knowledge.answer.converse_text",
+            return_value='{"path": "restaurant", "recipe_category": null, "restaurant_name": ""}',
+        ):
+            route = _classify_coach_path(
+                "What should I get for lunch?",
+                {"first_name": "Alex", "age": 14},
+            )
+    assert route == {"path": "out_of_scope", "recipe_category": None, "restaurant_name": None}
 
 
 def test_classify_coach_path_defaults_to_knowledge_on_bad_json():
@@ -340,7 +370,7 @@ def test_classify_coach_path_defaults_to_knowledge_on_bad_json():
                 "How much iron do I need?",
                 {"first_name": "Alex", "age": 14},
             )
-    assert route == {"path": "knowledge", "recipe_category": None}
+    assert route == {"path": "knowledge", "recipe_category": None, "restaurant_name": None}
 
 
 def test_coach_routes_recipe_requests():
@@ -401,6 +431,67 @@ def test_coach_skips_recipe_for_general_questions():
                     {"id": 1, "first_name": "Alex", "age": 14, "gender": "female", "weight_lbs": 120},
                 )
     mock_gen.assert_not_called()
+
+
+def test_coach_routes_restaurant_requests():
+    """Naming a specific restaurant should search that restaurant's own menu, not RAG."""
+    from api.services.knowledge.answer import answer_with_knowledge
+    from api.services.knowledge.web_search import RestaurantSearchResult
+
+    mock_results = [
+        RestaurantSearchResult(
+            url="https://www.pandaexpress.com/menu",
+            title="Panda Express Menu",
+            snippet="Grilled Teriyaki Chicken, Broccoli Beef, Fried Rice, Chow Mein",
+            content="Grilled Teriyaki Chicken, Broccoli Beef, Fried Rice, Chow Mein",
+            score=0.9,
+        )
+    ]
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "restaurant", "recipe_category": None, "restaurant_name": "Panda Express"},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch(
+                "api.services.knowledge.web_search.search_restaurant_menu", return_value=mock_results
+            ):
+                with patch(
+                    "api.services.knowledge.answer.converse_text",
+                    return_value="**Grilled Teriyaki Chicken** with a side of veggies is your best bet.",
+                ) as mock_converse:
+                    with patch("api.services.knowledge.answer.retrieve") as mock_retrieve:
+                        result = answer_with_knowledge(
+                            "I am heading to Panda Express for lunch, what should I get?",
+                            {"id": 1, "first_name": "Alex", "age": 14, "gender": "female", "weight_lbs": 120},
+                        )
+
+    mock_retrieve.assert_not_called()
+    assert result["intent"] == "restaurant"
+    assert "Grilled Teriyaki Chicken" in result["answer"]
+    assert result["restaurant_sources"][0]["url"] == "https://www.pandaexpress.com/menu"
+    # menu excerpts must reach the system prompt, not just the user question
+    system_prompt = mock_converse.call_args.kwargs["system"]
+    assert "Panda Express" in system_prompt
+    assert "Grilled Teriyaki Chicken" in system_prompt
+
+
+def test_coach_restaurant_falls_back_when_no_menu_found():
+    from api.services.knowledge.answer import answer_with_knowledge
+
+    with patch(
+        "api.services.knowledge.answer._classify_coach_path",
+        return_value={"path": "restaurant", "recipe_category": None, "restaurant_name": "Some Obscure Diner"},
+    ):
+        with patch("api.services.knowledge.answer.is_configured", return_value=True):
+            with patch("api.services.knowledge.web_search.search_restaurant_menu", return_value=[]):
+                result = answer_with_knowledge(
+                    "What should I get at Some Obscure Diner?",
+                    {"id": 1, "first_name": "Alex", "age": 14, "gender": "female", "weight_lbs": 120},
+                )
+
+    assert result["intent"] == "restaurant"
+    assert "Some Obscure Diner" in result["answer"]
 
 
 def test_calculation_included_when_relevant():

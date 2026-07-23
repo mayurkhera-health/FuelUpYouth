@@ -34,6 +34,17 @@ class WebSearchResult:
     score: float = 0.0
 
 
+@dataclass
+class RestaurantSearchResult:
+    """A page from a specific restaurant's own site — NOT a vetted
+    sports-nutrition source. Callers must say so in the response."""
+    url: str
+    title: str
+    snippet: str
+    content: str
+    score: float = 0.0
+
+
 def _web_search_enabled() -> bool:
     return os.getenv("COACH_WEB_SEARCH_ENABLED", "true").lower() not in ("0", "false", "no")
 
@@ -135,6 +146,67 @@ def search_approved_sites(query: str, *, max_results: int = 5) -> list[WebSearch
                 organization_url=org.url,
                 score=score,
             )
+        )
+
+        if len(results) >= max_results:
+            break
+
+    results.sort(key=lambda r: r.score, reverse=True)
+    return results[:max_results]
+
+
+def search_restaurant_menu(
+    restaurant_name: str, query: str, *, max_results: int = 5
+) -> list[RestaurantSearchResult]:
+    """
+    Open web search for a specific named restaurant's own menu/nutrition
+    page — deliberately NOT restricted to approved_domains(). Results come
+    from the restaurant's own site, not a vetted sports-nutrition source;
+    the caller is responsible for saying so in the response.
+    """
+    if not _web_search_enabled():
+        return []
+
+    name = (restaurant_name or "").strip()
+    if not name:
+        return []
+
+    search_query = f"{name} menu nutrition facts {query}".strip()
+
+    try:
+        hits = _ddg_search(search_query, max_results=max_results * 2)
+    except Exception:
+        logger.exception("Restaurant menu search failed for %r", name)
+        return []
+
+    query_vec = embed_text(f"{name} {query}".strip())
+    results: list[RestaurantSearchResult] = []
+    seen_urls: set[str] = set()
+
+    for hit in hits:
+        url = (hit.get("href") or hit.get("url") or "").strip()
+        if not url or url in seen_urls:
+            continue
+
+        seen_urls.add(url)
+        title = (hit.get("title") or urlparse(url).path or url).strip()
+        snippet = (hit.get("body") or hit.get("snippet") or "").strip()
+
+        content = snippet
+        if len(results) < _MAX_FETCH_PAGES:
+            try:
+                page_text = _fetch_page_text(url)
+                if page_text:
+                    content = page_text
+            except Exception:
+                logger.debug("Could not fetch restaurant page %s", url, exc_info=True)
+
+        if not content:
+            continue
+
+        score = cosine_similarity(query_vec, embed_text(f"{title}\n{content[:1200]}"))
+        results.append(
+            RestaurantSearchResult(url=url, title=title, snippet=snippet, content=content, score=score)
         )
 
         if len(results) >= max_results:

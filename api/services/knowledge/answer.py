@@ -27,10 +27,11 @@ _COACH_CAPABILITIES = """
 WHAT YOU CAN HELP WITH:
 - **Knowledge answers** — youth soccer sports nutrition from trusted organizations: fueling timing (pre-game, halftime, post-game, practice days), hydration, carbs/protein/recovery, iron and calcium for athletes, what *types* of foods fit a fueling window, and safe fueling habits. You can also use pre-calculated numbers when provided (iron, protein, hydration, calories).
 - **Recipe recommendations** — suggest a science-backed meal or snack from FuelUp's curated recipe library for a fueling window: halftime, pre-game, post-game, breakfast, lunch, dinner, snack, or hydration. Valid library recipes are filtered for the athlete's allergies and dietary restrictions, then the best match is selected for what they asked.
+- **Restaurant menu lookup** — when the athlete names a specific restaurant with a fixed menu (fast food, sit-down chain), look up that restaurant's own posted menu and suggest the better fueling picks from it.
 
 WHAT YOU CANNOT DO:
 - You do not invent new recipes — recommendations come only from FuelUp's curated recipe library.
-- You do not know what is on the shelf at a specific store (Trader Joe's, Costco, etc.), a restaurant menu, or what is in someone's fridge unless they tell you.
+- You do not know what is on the shelf at a specific grocery/general store (Trader Joe's, Costco, etc.) or what is in someone's fridge unless they tell you — those aren't a fixed, searchable "menu" the way a restaurant is.
 - You do not have real-time or personal data (today's weather, their game schedule, their weight history).
 - You are not a doctor — no diagnosis, treatment, or supplement recommendations for athletes under 18.
 - You do not help with weight loss, calorie restriction, or non-nutrition topics.
@@ -57,14 +58,19 @@ Choose exactly ONE path. Deciding question for recipe vs knowledge: did the user
   Set recipe_category to the best match:
   halftime | pre_game | post_game | breakfast | lunch | dinner | snack | hydration
 
-- "out_of_scope" — The question cannot be answered by knowledge or recipe selection alone. Route here when:
-  • Asking what to buy/eat at a specific store or restaurant WITHOUT listing what's available ("what should I get at Trader Joe's", "best things at Chipotle")
+- "restaurant" — The user names a SPECIFIC restaurant with a fixed, orderable menu (fast food or sit-down chain: McDonald's, Chipotle, Panda Express, Subway, etc.) and asks what to eat there, WITHOUT listing what's actually available/ordered. Extract the restaurant's name into restaurant_name.
+  NOT restaurant if it's a grocery/general store (Trader Joe's, Costco, Walmart) — those have no single fixed "menu" to look up → out_of_scope instead.
+  NOT restaurant if the user already lists the specific items/options themselves → knowledge (evaluate what they gave you).
+
+- "out_of_scope" — The question cannot be answered by knowledge, recipe selection, or a restaurant lookup. Route here when:
+  • Asking what to buy/eat at a specific GROCERY/general store WITHOUT listing what's available ("what should I get at Trader Joe's", "healthy stuff at Costco")
   • Real-time or personal info you don't have (weather, their schedule, what's in their pantry/fridge)
   • Non-nutrition topics (homework, sports scores, general chat)
   • Medical diagnosis, treatment, supplements for under-18, or weight-loss/dieting requests
 
   NOT out_of_scope if the user lists options and asks you to choose ("I have bananas and pretzels at home — which is better pre-game?") → knowledge
   NOT out_of_scope if they explicitly ask for a recipe from our library → recipe
+  NOT out_of_scope if they name a specific restaurant with a fixed menu → restaurant
 
 {_COACH_CAPABILITIES}
 
@@ -85,13 +91,19 @@ knowledge (ALL other food/meal guidance — text answer, NO recipe card):
 - "How much protein do I need?" → knowledge
 - "When should I eat before a game?" → knowledge
 - "Is my meal plan good?" → knowledge
+- "I have bananas and pretzels at home, which is better pre-game?" → knowledge
 
-out_of_scope:
+restaurant (specific restaurant, fixed menu, nothing listed yet):
+- "I am heading to Panda Express for lunch, what should I get?" → restaurant, restaurant_name: "Panda Express"
+- "What's the best thing on the McDonald's menu?" → restaurant, restaurant_name: "McDonald's"
+- "What should I order at Chipotle before my game?" → restaurant, restaurant_name: "Chipotle"
+
+out_of_scope (grocery/general store, real-time data, non-nutrition, medical/weight):
 - "What can I eat at Trader Joe's?" → out_of_scope
-- "What's the best thing on the McDonald's menu?" → out_of_scope
+- "What's healthy at Costco?" → out_of_scope
 
 Return ONLY valid JSON, no markdown:
-{{"path": "knowledge" | "recipe" | "out_of_scope", "recipe_category": null | "category_key"}}"""
+{{"path": "knowledge" | "recipe" | "restaurant" | "out_of_scope", "recipe_category": null | "category_key", "restaurant_name": null | "restaurant name"}}"""
 
 _OUT_OF_SCOPE_SYSTEM = f"""You are FuelUp's Nutrition Coach for youth soccer athletes ages 9-17.
 
@@ -102,7 +114,7 @@ The athlete asked something outside what you can answer directly. Respond in a w
 RESPONSE RULES:
 1. Keep it to 2–4 short sentences. Use **bold** once for the key invite or next step.
 2. Match the situation:
-   - Store/restaurant without a menu list → say you don't know what's on their shelves or menu; ask them to tell you what's available and you'll help them pick the best fueling option.
+   - Grocery/general store without an item list → say you don't know what's on their shelves; ask them to tell you what's available and you'll help them pick the best fueling option.
    - Fridge/pantry unknown → ask what they have on hand.
    - Non-nutrition topic → gently say you're here for sports fueling questions and offer to help with food for their next practice or game.
    - Medical/weight-loss/supplements → encourage talking with a doctor or sports dietitian; do not give medical advice.
@@ -128,11 +140,13 @@ def _detect_safety_flag(question: str) -> bool:
 
 def _classify_coach_path(question: str, athlete: dict) -> dict:
     """
-    LLM router: choose knowledge RAG vs recipe library selection vs out-of-scope redirect.
-    Returns {"path": "knowledge"|"recipe"|"out_of_scope", "recipe_category": str|None}.
+    LLM router: choose knowledge RAG vs recipe library selection vs restaurant
+    menu lookup vs out-of-scope redirect.
+    Returns {"path": "knowledge"|"recipe"|"restaurant"|"out_of_scope",
+             "recipe_category": str|None, "restaurant_name": str|None}.
     """
     if not is_configured():
-        return {"path": "knowledge", "recipe_category": None}
+        return {"path": "knowledge", "recipe_category": None, "restaurant_name": None}
 
     first = athlete.get("first_name", "athlete")
     age = athlete.get("age", "unknown")
@@ -148,26 +162,32 @@ def _classify_coach_path(question: str, athlete: dict) -> dict:
         parsed = parse_json_from_llm(text)
     except Exception:
         logger.exception("Coach path classification failed for question=%r", question[:80])
-        return {"path": "knowledge", "recipe_category": None}
+        return {"path": "knowledge", "recipe_category": None, "restaurant_name": None}
 
     path = parsed.get("path", "knowledge")
-    if path not in ("knowledge", "recipe", "out_of_scope"):
+    if path not in ("knowledge", "recipe", "restaurant", "out_of_scope"):
         path = "knowledge"
 
     if path == "out_of_scope":
-        return {"path": "out_of_scope", "recipe_category": None}
+        return {"path": "out_of_scope", "recipe_category": None, "restaurant_name": None}
+
+    if path == "restaurant":
+        restaurant_name = (parsed.get("restaurant_name") or "").strip()
+        if not restaurant_name:
+            return {"path": "out_of_scope", "recipe_category": None, "restaurant_name": None}
+        return {"path": "restaurant", "recipe_category": None, "restaurant_name": restaurant_name}
 
     category = parsed.get("recipe_category")
     if path != "recipe":
-        return {"path": "knowledge", "recipe_category": None}
+        return {"path": "knowledge", "recipe_category": None, "restaurant_name": None}
 
     from api.services.recipe_categories import resolve_category
 
     try:
         resolved = resolve_category(category or "snack")
-        return {"path": "recipe", "recipe_category": resolved["key"]}
+        return {"path": "recipe", "recipe_category": resolved["key"], "restaurant_name": None}
     except ValueError:
-        return {"path": "recipe", "recipe_category": "snack"}
+        return {"path": "recipe", "recipe_category": "snack", "restaurant_name": None}
 
 
 def _answer_out_of_scope(question: str, athlete: dict) -> dict:
@@ -358,6 +378,98 @@ def _answer_with_recipe(question: str, athlete: dict, category: str) -> dict:
     }
 
 
+_RESTAURANT_SYSTEM_TEMPLATE = """You are FuelUp's Nutrition Coach for youth soccer athletes ages 9-17.
+
+The athlete is at or heading to {restaurant_name}. Below are excerpts pulled live from {restaurant_name}'s own website/menu — NOT your usual vetted sports-nutrition sources.
+
+MENU EXCERPTS:
+{excerpts_text}
+
+STRICT RULES — follow these exactly:
+1. Recommend ONLY items that actually appear in the excerpts above — never invent menu items, prices, or nutrition facts. If the excerpts don't clearly list specific items, say so plainly and ask the athlete what's on the menu in front of them.
+2. Favor items with real protein plus vegetables/whole grains; steer away from deep-fried or heavily sauced options — general sports-nutrition principles, not invented numbers.
+3. NEVER quote specific calorie, carb, protein, or gram numbers. Use food language ("the grilled option", "a side with more veggies"), not numbers — even if the excerpts contain numbers.
+4. NEVER recommend supplements for athletes under 18.
+5. {allergy_block}
+6. Be transparent this came from the restaurant's own posted menu, not a sports-nutrition organization — one brief phrase is enough, don't over-explain.
+7. Educational food guidance only — never medical advice, never diagnose.
+8. Format as **Markdown**: bold the main pick, 2-4 short sentences or a short bullet list. No headings, tables, or code blocks."""
+
+
+def _answer_with_restaurant(question: str, athlete: dict, restaurant_name: str) -> dict:
+    from api.services.knowledge.web_search import search_restaurant_menu
+
+    first_name = athlete.get("first_name", "there")
+    name = (restaurant_name or "").strip()
+
+    if not name or not is_configured():
+        return _answer_out_of_scope(question, athlete)
+
+    try:
+        results = search_restaurant_menu(name, question)
+    except Exception:
+        logger.exception("Restaurant menu search failed for %r", name)
+        results = []
+
+    if not results:
+        return {
+            "answer": (
+                f"**I couldn't find {name}'s menu online just now.** "
+                "Tell me what a few options look like and I'll help you pick the best one to fuel up on."
+            ),
+            "format": "markdown",
+            "intent": "restaurant",
+            "citations": [],
+            "calculation": None,
+            "sources": list_sources(),
+        }
+
+    allergies = _parse_allergies(athlete.get("allergies"))
+    restrictions = _parse_dietary(athlete.get("dietary_restrictions"))
+    allergy_parts = []
+    if allergies:
+        allergy_parts.append(f"Allergies — NEVER suggest items containing: {', '.join(allergies)}.")
+    if restrictions:
+        allergy_parts.append(f"Dietary restrictions — always respect: {', '.join(restrictions)}.")
+    allergy_block = " ".join(allergy_parts) or "No known allergies or dietary restrictions."
+
+    excerpts_text = "\n".join(
+        f"\n[{i}] {r.title}\n{r.content}" for i, r in enumerate(results, 1)
+    )
+
+    system_prompt = _RESTAURANT_SYSTEM_TEMPLATE.format(
+        restaurant_name=name,
+        excerpts_text=excerpts_text,
+        allergy_block=allergy_block,
+    )
+
+    try:
+        answer_text = converse_text(system=system_prompt, user=question, max_tokens=400, temperature=0.4)
+    except Exception:
+        logger.exception("Restaurant answer generation failed for %r", name)
+        return {
+            "answer": (
+                f"**I found {name}'s menu but I'm having trouble right now, {first_name}.** "
+                "Try again in a moment, or tell me what you're considering and I'll help you choose."
+            ),
+            "format": "markdown",
+            "intent": "restaurant",
+            "citations": [],
+            "calculation": None,
+            "sources": list_sources(),
+        }
+
+    return {
+        "answer": answer_text,
+        "format": "markdown",
+        "intent": "restaurant",
+        "citations": [],
+        "restaurant_sources": [{"title": r.title, "url": r.url} for r in results],
+        "calculation": None,
+        "sources": list_sources(),
+    }
+
+
 def _maybe_calculate(question: str, athlete: dict) -> Optional[dict]:
     q = question.lower()
     for keyword, fn in _CALC_KEYWORDS.items():
@@ -477,6 +589,9 @@ def answer_with_knowledge(
     route = _classify_coach_path(contextual_question, athlete)
     if route["path"] == "out_of_scope":
         return _answer_out_of_scope(contextual_question, athlete)
+
+    if route["path"] == "restaurant":
+        return _answer_with_restaurant(contextual_question, athlete, route.get("restaurant_name") or "")
 
     category_for_recipe = None
     if prefer_recipe and recipe_category:
